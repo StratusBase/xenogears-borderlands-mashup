@@ -4,6 +4,8 @@ The normal **`/`** entry now uses the reference assets and complete elemental pr
 
 See [main-game integration and validation](main-integration.md) for the full combat/loot/equip loop, compatibility checks, screenshots and crowded-scene measurements.
 
+The subsequent [crowd-feedback pass](../crowd-feedback-verification.md) adds compact target totals, protected hit-number placement and shared transform work, with separate matched before/after measurements.
+
 ## Target
 
 - **R / 07 rifle:** tapered enamel receiver, machined bolt and barrel, rubber furniture, genuine skeletal-stock and reflex-sight openings, readable magazine and operating controls. Sparse wear and unit markings replace repeating surface noise.

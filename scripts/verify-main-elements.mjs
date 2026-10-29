@@ -30,7 +30,7 @@ async function feedback(page){return page.evaluate(()=>({
  weapon:document.querySelector('.weapon-name')?.textContent,profile:document.querySelector('.weapon-profile-line')?.textContent,
  dummy:{visible:!document.querySelector('.test-dummy-readout')?.hidden,label:document.querySelector('.test-dummy-readout')?.getAttribute('aria-label'),kind:document.querySelector('.test-dummy-readout')?.getAttribute('data-damage-kind'),values:[...document.querySelectorAll('.dummy-readout-metric>strong')].map(node=>node.textContent)},
  statuses:[...document.querySelectorAll('.target-status-chip')].map(node=>({label:node.getAttribute('aria-label'),text:node.textContent})),
- damageNumbers:[...document.querySelectorAll('.damage-number')].map(node=>({kind:node.getAttribute('data-damage-kind'),text:node.textContent})),
+ damageNumbers:[...document.querySelectorAll('.damage-number,.crowd-damage-number')].filter(node=>!node.hidden).map(node=>({kind:node.getAttribute('data-damage-kind'),text:node.textContent})),
 }));}
 async function picture(page,element,phase){const file=`main-elements-${element}-${phase}.png`;await page.screenshot({path:join(out,file)});return file;}
 async function fire(page){await page.mouse.down();await page.waitForTimeout(12);await page.mouse.up();}

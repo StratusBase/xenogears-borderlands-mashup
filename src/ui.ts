@@ -14,6 +14,8 @@ import type { TestDummySnapshot } from './core/testDummy';
 import './ui/encounter.css';
 import type { EncounterPhase } from './encounter/contracts';
 import { DEFAULT_WEAPON_BALANCE, type WeaponBalanceRules } from './core/weaponBalance';
+import { DamageNumberPresentation, type DamageFeedbackContext, type DamageFeedbackQuality, type DamageHead } from './ui/damageNumbers';
+import './ui/damageNumbers.css';
 
 export type SupplyKind = 'repair' | 'pilot-cache' | 'mech-cache';
 export interface ShopOffers { repair: number; pilotCache: number; mechCache: number }
@@ -189,6 +191,9 @@ export class GameUI {
   private toasts: HTMLDivElement;
   private damageLayer: HTMLDivElement;
   private numbers: HTMLDivElement;
+  private numberPresentation?: DamageNumberPresentation;
+  private readonly classicFeedback = { receivedEvents: 0, receivedDamage: 0, directEvents: 0, statusEvents: 0,
+    criticalEvents: 0, renderedEvents: 0, renderedDamage: 0, visible: 0, createdNodes: 0 };
   private fields: Record<string, HTMLElement> = {};
   private healthBar: HTMLDivElement;
   private shieldBar: HTMLDivElement;
@@ -235,7 +240,8 @@ export class GameUI {
   private respawning = false;
   private targetStatusNodes = new Map<ElementType, { chip: HTMLElement; value: HTMLElement; time: HTMLElement }>();
 
-  constructor(host: HTMLElement, private actions: UIActions, private readonly weaponBalance: Readonly<WeaponBalanceRules> = DEFAULT_WEAPON_BALANCE) {
+  constructor(host: HTMLElement, private actions: UIActions, private readonly weaponBalance: Readonly<WeaponBalanceRules> = DEFAULT_WEAPON_BALANCE,
+    readonly feedbackQuality: DamageFeedbackQuality = 'crowd') {
     this.root = el('div', 'game-interface');
     this.root.dataset.screen = 'start';
     this.root.dataset.mode = 'pilot';
@@ -383,9 +389,10 @@ export class GameUI {
     this.damageLayer = el('div', 'damage-layer');
     const healingLayer = this.field('healingLayer', 'div', 'healing-layer');
     this.numbers = el('div', 'damage-numbers');
+    if (this.feedbackQuality === 'crowd') this.numberPresentation = new DamageNumberPresentation(this.numbers, this.fields.crosshair);
     this.root.append(top, objective, center, targetStatuses, bottom, footer, captureControl, respawnLayer, this.lootPanel, this.overlay, this.toasts, this.damageLayer, healingLayer, this.numbers);
     this.dummyReadout = new TestDummyReadout(this.root);
-    window.addEventListener('pagehide', () => { this.loadoutPreview?.dispose(); this.workbench?.dispose(); this.dummyReadout.dispose(); });
+    window.addEventListener('pagehide', () => { this.loadoutPreview?.dispose(); this.workbench?.dispose(); this.dummyReadout.dispose(); this.numberPresentation?.dispose(); });
   }
 
   setTestDummy(snapshot: TestDummySnapshot | null): void { this.dummyReadout.update(this.screen === 'none' ? snapshot : null); }
@@ -1227,7 +1234,35 @@ export class GameUI {
   }
 
   /** Position is a normalized (0..1) viewport point projected by the combat scene. */
-  hit(damage: number, critical = false, effect?: DamageEffect, position?: { x: number; y: number }): void {
+  /** Called once per displayed frame; CSS-pixel viewport and simulation clock. */
+  updateFeedback(now: number, width: number, height: number, paused: boolean, heads?: readonly DamageHead[]): void {
+    this.numberPresentation?.update(now, width, height, paused, heads,
+      { encounterGuide: !this.fields.encounterGuide.hidden, toasts: this.toasts.childElementCount });
+  }
+
+  get feedbackDiagnostics() {
+    return this.numberPresentation?.diagnostics ?? { quality: 'classic' as const, ...this.classicFeedback,
+      mergedEvents: 0, overflowEvents: 0, unpresentedDamage: 0, pending: 0, records: this.classicFeedback.visible,
+      unpresentedEvents: 0, resetCancelledDamage: 0, resetCancelledEvents: 0, resetCount: 0, lastResetReason: '',
+      salvoMergedEvents: 0, edgeRecords: 0, maxQueueDelay: 0, oldestPendingSeconds: 0,
+      pooledNodes: 0, domContentWrites: this.classicFeedback.createdNodes, timersPerEvent: 2 };
+  }
+
+  clearFeedback(reason = 'reset'): void { this.numberPresentation?.clear(reason); }
+
+  hit(damage: number, critical = false, effect?: DamageEffect, position?: { x: number; y: number }, context?: DamageFeedbackContext): void {
+    if (this.numberPresentation) {
+      this.numberPresentation.push({ amount: damage, critical, effect, position: position ?? { x: .5, y: .46 },
+        targetId: context?.targetId ?? 'unidentified', kind: context?.kind ?? 'direct', at: context?.at ?? 0, head: context?.head });
+      return;
+    }
+    this.classicFeedback.receivedEvents++; this.classicFeedback.receivedDamage += damage;
+    this.classicFeedback.renderedEvents++; this.classicFeedback.renderedDamage += damage;
+    if (context?.kind === 'status') this.classicFeedback.statusEvents++; else this.classicFeedback.directEvents++;
+    if (critical) this.classicFeedback.criticalEvents++;
+    this.classicFeedback.visible++; this.classicFeedback.createdNodes++;
+    // The classic branch intentionally retains the original per-hit DOM,
+    // wall-clock timers, SVGs, random jitter and CSS animation for matched A/B.
     this.fields.crosshair.classList.add('hit');
     clearTimeout(this.hitTimeout);
     this.hitTimeout = setTimeout(() => this.fields.crosshair.classList.remove('hit'), 120);
@@ -1248,7 +1283,7 @@ export class GameUI {
       number.style.setProperty('--hit-jitter', `${(Math.random() - 0.5) * 18}px`);
     }
     this.numbers.append(number);
-    setTimeout(() => number.remove(), effect ? 1100 : 800);
+    setTimeout(() => { number.remove(); this.classicFeedback.visible--; }, effect ? 1100 : 800);
   }
 
   damage(): void {

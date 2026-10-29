@@ -4,3 +4,4 @@ dist/
 *.local
 /artifacts/
 /dist-quality/
+/dist-crowd/

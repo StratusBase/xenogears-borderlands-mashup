@@ -62,6 +62,8 @@ Controller sticks use a radial deadzone; button actions trigger once per press. 
 
 The normal game uses Enhanced reference weapons, flanker art, mech construction, elemental effects and sound. Pause → **Visuals** selects Enhanced or Legacy; **Sound** controls audio. See [visual/audio integration and verification](docs/quality/main-integration.md).
 
+Crowded hits and status ticks use compact totals near their targets. The [crowd-feedback validation](docs/crowd-feedback-verification.md) records matched gameplay checks and frame-cost measurements.
+
 ## Mechanics implemented
 
 - First-person pilot rifle and mech cannon with different scale, health, mobility, ammo, recoil, and heat behavior.

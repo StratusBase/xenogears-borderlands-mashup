@@ -6,6 +6,8 @@ import { GamepadInput, type GamepadFrame } from './input/gamepad';
 import { MouseLook } from './input/mouse';
 import { ComicRenderer } from './rendering/ComicRenderer';
 import { GamePresentation } from './rendering/quality/GamePresentation';
+import type { DamageFeedbackQuality, DamageHead } from './ui/damageNumbers';
+import { cacheDamageAnchors, primaryDamageAnchor, sampleDamageAnchor, type DamageAnchors } from './ui/damageAnchors';
 import { createComicMaterial } from './rendering/materials';
 import { createEnemyBars, type EnemyBars } from './rendering/enemyBars';
 import { applyEnemyDamage, shieldAdjustedDamage, type EnemyDamageResult, type EnemyVitals } from './core/combat';
@@ -69,6 +71,8 @@ interface Projectile { mesh: THREE.Mesh; velocity: THREE.Vector3; life: number; 
 export interface GameOptions {
   /** Normal gameplay uses quality presentation; legacy remains an explicit reversible option. */
   presentation?: 'quality' | 'legacy';
+  /** Same-build diagnostic selector; ordinary gameplay uses bounded crowd feedback. */
+  feedbackQuality?: DamageFeedbackQuality;
   initialProgression?: Progression;
   saveKey?: string;
   startingHealthFraction?: number;
@@ -110,6 +114,10 @@ export class Game {
   private presentationYaw = 0;
   private presentationGrounded = true;
   private reloadFoleyStage = 0;
+  private readonly damagePoint = new THREE.Vector3();
+  private readonly damageHead = new THREE.Vector3();
+  private readonly damageHeads: DamageHead[] = [];
+  private readonly damageAnchors = new WeakMap<THREE.Group, DamageAnchors>();
   private readonly mouse: MouseLook;
   private readonly ui: GameUI;
   private readonly world: ReturnType<typeof createWorld>;
@@ -243,6 +251,7 @@ export class Game {
     host.append(this.renderer.domElement);
     this.world = createWorld(this.scene);
     this.dummyVisual = createTestDummy(-1);
+    this.damageAnchors.set(this.dummyVisual.group, cacheDamageAnchors(this.dummyVisual.group));
     this.dummyVisual.group.position.set(0, 0, -12);
     this.scene.add(this.dummyVisual.group);
     this.testDummy = { id: -1, mesh: this.dummyVisual.group, heavy: false, shield: 0,
@@ -291,7 +300,7 @@ export class Game {
       heal: () => this.heal(),
       toggleSound: () => { this.soundEnabled = !this.soundEnabled; this.presentation?.setSoundEnabled(this.soundEnabled); if (this.soundEnabled) void this.presentation?.unlockAudio(); this.updateHUD(); this.ui.toast(`Sound ${this.soundEnabled ? 'on' : 'off'}`); },
       togglePresentation: () => this.setPresentationMode(this.presentationMode === 'quality' ? 'legacy' : 'quality'),
-    }, this.weaponBalance);
+    }, this.weaponBalance, options.feedbackQuality ?? 'crowd');
     this.mouse = new MouseLook(this.renderer.domElement, {
       look: (dx, dy) => {
         if (this.isRespawning || this.ledgeClimb) return;
@@ -337,7 +346,23 @@ export class Game {
       this.fps = Math.round(this.frames / this.hudTime);
       this.frames = 0; this.hudTime = 0; this.updateHUD();
     }
-    if (draw) this.comicRenderer.render();
+    if (draw) {
+      let count = 0;
+      if (this.ui.feedbackQuality === 'crowd') for (const target of this.combatTargets) {
+        const anchors = this.damageAnchors.get(target.mesh);
+        if (!anchors) continue;
+        const primary = primaryDamageAnchor(anchors, this.mode);
+        for (const anchor of anchors.all) {
+          const point = sampleDamageAnchor(anchor, this.damageHead).project(this.camera);
+          if (point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1) continue;
+          const head = this.damageHeads[count] ?? (this.damageHeads[count] = { targetId: target.mesh.uuid, x: 0, y: 0 });
+          head.targetId = target.mesh.uuid; head.x = (point.x + 1) / 2; head.y = (1 - point.y) / 2; head.primary = anchor === primary; count++;
+        }
+      }
+      this.damageHeads.length = count;
+      this.ui.updateFeedback(this.time, innerWidth, innerHeight, this.screen !== 'none' || this.isRespawning, this.damageHeads);
+      this.comicRenderer.render();
+    }
   }
 
   private updateSimulationPresentation(dt: number): void {
@@ -391,6 +416,8 @@ export class Game {
 
   get presentationMode(): 'quality' | 'legacy' { return this.presentation?.enabled ? 'quality' : 'legacy'; }
   get presentationDiagnostics() { return this.presentation?.diagnostics; }
+  get feedbackQuality(): DamageFeedbackQuality { return this.ui.feedbackQuality; }
+  get feedbackDiagnostics() { return this.ui.feedbackDiagnostics; }
 
   /** Switches presentation only. Active shots, combat state, equipment and saves remain authoritative. */
   setPresentationMode(mode: 'quality' | 'legacy'): void {
@@ -404,7 +431,10 @@ export class Game {
     this.presentation.setSoundEnabled(this.soundEnabled);
     if (this.soundEnabled) void this.presentation.unlockAudio();
     this.syncPresentationEquipment();
-    for (const enemy of this.enemies) this.presentation.enemy({ root: enemy.mesh, id: enemy.id, role: enemy.role, heavy: enemy.heavy });
+    for (const enemy of this.enemies) {
+      this.presentation.enemy({ root: enemy.mesh, id: enemy.id, role: enemy.role, heavy: enemy.heavy });
+      this.damageAnchors.set(enemy.mesh, cacheDamageAnchors(enemy.mesh));
+    }
     this.resetPresentationMotion();
     this.updateHUD();
   }
@@ -916,14 +946,24 @@ export class Game {
 
   private get combatTargets(): CombatTarget[] { return [...this.enemies, this.testDummy]; }
 
-  private showEnemyDamage(enemy: CombatTarget, amount: number, critical = false, effect?: DamageEffect, impact?: THREE.Vector3): void {
+  private showEnemyDamage(enemy: CombatTarget, amount: number, critical = false, effect?: DamageEffect, impact?: THREE.Vector3,
+    kind: 'direct' | 'status' = 'direct'): void {
     if (amount <= 0) return;
-    const point = impact?.clone().add(new THREE.Vector3(0, 0.2, 0))
-      ?? (enemy === this.testDummy ? enemy.mesh.localToWorld(this.dummyVisual.damageAnchor.clone()) : enemy.mesh.position.clone().setY(enemy.heavy ? 5.1 : 2.75));
+    const point = this.damagePoint;
+    if (impact) { point.copy(impact); point.y += .2; }
+    else if (enemy === this.testDummy) enemy.mesh.localToWorld(point.copy(this.dummyVisual.damageAnchor));
+    else point.copy(enemy.mesh.position).setY(enemy.heavy ? 5.1 : 2.75);
     this.camera.updateMatrixWorld();
     const projected = point.project(this.camera);
     if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1) return;
-    this.ui.hit(amount, critical, effect, { x: (projected.x + 1) / 2, y: (1 - projected.y) / 2 });
+    const x = (projected.x + 1) / 2, y = (1 - projected.y) / 2;
+    const anchors = this.damageAnchors.get(enemy.mesh);
+    // A killing hit disposes actor art before this callback. Detached art can
+    // no longer supply a world anchor; retain the actual impact/damage point.
+    const anchor = enemy.mesh.parent && anchors ? primaryDamageAnchor(anchors, this.mode) : undefined;
+    const head = anchor ? sampleDamageAnchor(anchor, this.damageHead).project(this.camera) : undefined;
+    this.ui.hit(amount, critical, effect, { x, y }, { targetId: enemy.mesh.uuid, kind, at: this.time,
+      head: head && head.z >= -1 && head.z <= 1 ? { x: (head.x + 1) / 2, y: (1 - head.y) / 2 } : undefined });
   }
 
   private displaceEnemy(enemy: Enemy, dx: number, dz: number): void {
@@ -963,6 +1003,7 @@ export class Game {
     bars.group.position.set(0, heavy ? boss ? 6 : 5.2 : 3.1, 0); group.add(bars.group);
     group.position.set(x, 0, z);
     this.presentation?.enemy({ root: group, id, role, heavy });
+    this.damageAnchors.set(group, cacheDamageAnchors(group));
     const health = heavy ? 260 : 100, shield = heavy ? 180 : 0;
     bars.update(health, health, shield, shield);
     return { id, mesh: group, health, maxHealth: health, shield, maxShield: shield, heavy, bars, home: group.position.clone(),
@@ -1124,7 +1165,7 @@ export class Game {
     for (const tick of advanceStatuses(enemy.statuses, this.time)) {
       const modifiers = getStatusModifiers(enemy.statuses, this.time);
       const result = this.hurtTarget(enemy, shieldAdjustedDamage(enemy.shield, tick.damage * modifiers.incomingDamage, modifiers.shieldDamage), tick.effect);
-      this.showEnemyDamage(enemy, result.healthDamage + result.shieldDamage, false, tick.effect as DamageEffect);
+      this.showEnemyDamage(enemy, result.healthDamage + result.shieldDamage, false, tick.effect as DamageEffect, undefined, 'status');
       if (enemy !== this.testDummy && !this.enemies.some(candidate => candidate === enemy)) return;
     }
     const active = activeStatusElements(enemy.statuses, this.time);
@@ -1468,7 +1509,10 @@ export class Game {
   }
 
   private nearbyVending() {
-    const station = this.focusedStation();
+    return this.vendingForStation(this.focusedStation());
+  }
+
+  private vendingForStation(station: ReturnType<typeof focusedStation>) {
     return station?.kind === 'vending' ? this.world.vendingMachines.find(vendor => vendor.id === station.vendor) : undefined;
   }
 
@@ -1700,6 +1744,7 @@ export class Game {
   }
 
   private resetTestDummy(): void {
+    this.ui?.clearFeedback?.('test-dummy-reset');
     for (const effect of this.testDummy.statusEffects.values()) effect.dispose();
     for (const coating of this.testDummy.statusCoatings.values()) coating.dispose();
     this.testDummy.statusEffects.clear(); this.testDummy.statusCoatings.clear();
@@ -1761,6 +1806,7 @@ export class Game {
   }
 
   private clearCombat(): void {
+    this.ui?.clearFeedback?.('combat-cleared');
     this.finishMeasurement('aborted');
     if (this.encounter.snapshot.phase !== 'complete') this.encounter.reset();
     this.ballistics.clear();
@@ -1825,7 +1871,9 @@ export class Game {
     const weapon = this.progression.inventory.find(item => item.id === this.progression.loadouts[this.mode].weapon);
     const focusedLoot = this.aimedDrop();
     const station = this.focusedStation();
-    const vendor = this.nearbyVending();
+    // These adjacent reads have no intervening scene/mode/input mutation.
+    // Reuse this HUD call's result only; interactions still perform fresh queries.
+    const vendor = this.feedbackQuality === 'crowd' ? this.vendingForStation(station) : this.nearbyVending();
     const cash = this.nearestCash();
     const health = this.nearestHealth();
     let interaction = '';

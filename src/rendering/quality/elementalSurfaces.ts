@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { EquipmentAppearance } from '../../core/appearance';
 import type { ElementType } from '../../core/arsenal';
 import { createBandTexture } from '../materials';
+import { getCrowdFeedbackMode } from './crowdFeedbackPolicy';
+import { sampleSurfaceRoot, sampleSurfaceSource, type SurfaceSourcePose } from './surfacePoseCache';
 
 export type SurfaceElement = Exclude<ElementType, 'kinetic'>;
 export const SURFACE_ELEMENTS: readonly SurfaceElement[] = ['fire','ice','corrosive','shock','radiation','gravity','adhesive'];
@@ -174,6 +176,8 @@ class SurfacePresentation {
   private readonly normalMatrix=new THREE.Matrix3();
   private readonly baseCenter=new THREE.Vector3();
   private readonly localMatrix=new THREE.Matrix4();
+  private readonly cachedPoses=getCrowdFeedbackMode()==='crowd';
+  private readonly sourcePoses=new Map<THREE.Mesh,SurfaceSourcePose>();
   constructor(protected readonly root:THREE.Object3D,name:string){
     this.group.name=name;this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;this.group.userData.elementalSurface=true;
     root.add(this.group);
@@ -197,10 +201,16 @@ class SurfacePresentation {
     geometry.setAttribute('elementalAlpha',alpha);geometry.setAttribute('elementalTint',tint);
     const material=new THREE.ShaderMaterial({name:`quality-${element}-surface-accents`,vertexShader:accentVertex,fragmentShader:accentFragment,transparent:true,depthTest:true,depthWrite:false,toneMapped:false});
     const mesh=new THREE.InstancedMesh(geometry,material,count);tagged(mesh,element);mesh.name=`quality-${element}-${equipment?'cartridge':'status'}-accents`;mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.group.add(mesh);
-    const sourcesBounds=new THREE.Box3();this.root.updateWorldMatrix(true,true);
-    for(const source of sources){source.updateWorldMatrix(true,false);sourcesBounds.union(localBounds(source).applyMatrix4(source.matrixWorld));}
+    const sourcesBounds=new THREE.Box3();
+    if(!this.cachedPoses)this.root.updateWorldMatrix(true,true);
+    for(const source of sources){
+      if(this.cachedPoses){const pose=sampleSurfaceSource(source);this.sourcePoses.set(source,pose);sourcesBounds.union(localBounds(source).applyMatrix4(pose.matrixWorld));}
+      else{source.updateWorldMatrix(true,false);sourcesBounds.union(localBounds(source).applyMatrix4(source.matrixWorld));}
+    }
     const worldSize=sourcesBounds.getSize(new THREE.Vector3());
-    const worldScale=this.root.getWorldScale(new THREE.Vector3());
+    const worldScale=new THREE.Vector3();
+    if(this.cachedPoses)sampleSurfaceRoot(this.root).matrixWorld.decompose(new THREE.Vector3(),new THREE.Quaternion(),worldScale);
+    else this.root.getWorldScale(worldScale);
     const size=equipment?.11:Math.min(1.2,Math.max(.5,worldSize.y/Math.max(.0001,worldScale.y)*.44));
     this.pools.push({mesh,alpha,tint,element,anchors:anchors(sources,count),size,equipment,delivery,variant});
     const color=new THREE.Color();
@@ -216,8 +226,13 @@ class SurfacePresentation {
   }
   private renderAt(time:number):void {
     if(this.disposed)return;
-    this.root.updateWorldMatrix(true,true);
-    this.localMatrix.copy(this.root.matrixWorld).invert();
+    if(this.cachedPoses){
+      this.localMatrix.copy(sampleSurfaceRoot(this.root).inverseMatrixWorld);
+      for(const source of this.sourcePoses.keys())sampleSurfaceSource(source);
+    }else{
+      this.root.updateWorldMatrix(true,true);
+      this.localMatrix.copy(this.root.matrixWorld).invert();
+    }
     for(const binding of this.bindings){binding.material.uniforms.time.value=time;binding.material.uniforms.presence.value=this.intensity*(binding.material.uniforms.equipment.value?1:.18+.82*Math.min(1,this.elapsed/.5));}
     for(const pool of this.pools){
       const {mesh,element,equipment,anchors,size,variant,delivery}=pool;
@@ -225,13 +240,14 @@ class SurfacePresentation {
       const radius=size*(equipment?(element==='gravity'?1.22:.62):.95)*pressure;
       // Stable central torso/chamber center, in the presentation root's coordinate space.
       this.baseCenter.set(0,0,0);
-      for(const anchor of anchors){this.point.copy(anchor.center).applyMatrix4(anchor.source.matrixWorld).applyMatrix4(this.localMatrix);this.baseCenter.add(this.point);}
+      for(const anchor of anchors){this.point.copy(anchor.center).applyMatrix4(this.sourcePoses.get(anchor.source)?.matrixWorld??anchor.source.matrixWorld).applyMatrix4(this.localMatrix);this.baseCenter.add(this.point);}
       this.baseCenter.multiplyScalar(1/anchors.length);
       for(let i=0;i<anchors.length;i++){
         const anchor=anchors[i],seed=i*.61803398875+variant*.137;
         const age=(time*(element==='adhesive'?.48:element==='ice'?.35:1)+seed)%1;
-        this.point.copy(anchor.point).applyMatrix4(anchor.source.matrixWorld).applyMatrix4(this.localMatrix);
-        this.normalMatrix.getNormalMatrix(anchor.source.matrixWorld);
+        const pose=this.sourcePoses.get(anchor.source);
+        this.point.copy(anchor.point).applyMatrix4(pose?.matrixWorld??anchor.source.matrixWorld).applyMatrix4(this.localMatrix);
+        if(pose)this.normalMatrix.copy(pose.normalMatrix);else this.normalMatrix.getNormalMatrix(anchor.source.matrixWorld);
         this.normal.copy(anchor.normal).applyMatrix3(this.normalMatrix).transformDirection(this.localMatrix).normalize();
         this.point.addScaledVector(this.normal,equipment?.007:.009);
         this.dummy.position.copy(this.point);this.dummy.quaternion.identity();this.dummy.scale.setScalar(1);
@@ -245,7 +261,7 @@ class SurfacePresentation {
           }
           case 'ice':{
             this.dummy.position.addScaledVector(this.normal,equipment?.009:.02);
-            this.dummy.quaternion.setFromUnitVectors(UP,this.normal.clone().addScaledVector(UP,.7).normalize());
+            this.dummy.quaternion.setFromUnitVectors(UP,this.target.copy(this.normal).addScaledVector(UP,.7).normalize());
             const growth=equipment?1:.35+.65*Math.min(1,this.elapsed/.5);
             this.dummy.scale.set((equipment?.008:.018)*growth,(equipment?.027:.065)*growth,(equipment?.007:.016)*growth);
             alpha*=.65+.22*Math.sin(time*.7+i);break;
@@ -264,7 +280,7 @@ class SurfacePresentation {
           }
           case 'radiation':{
             const angle=time*.7+i*2.399;
-            this.dummy.position.add(new THREE.Vector3(Math.cos(angle)*radius*.14,age*(equipment?.035:.16),Math.sin(angle)*radius*.14));
+            this.target.set(Math.cos(angle)*radius*.14,age*(equipment?.035:.16),Math.sin(angle)*radius*.14);this.dummy.position.add(this.target);
             this.dummy.rotation.set(time*.4+i,time*.6+i*.3,0);this.dummy.scale.setScalar(equipment?.005:.012);alpha*=Math.sin(age*Math.PI)*.8;break;
           }
           case 'gravity':{
@@ -296,7 +312,7 @@ class SurfacePresentation {
     for(const binding of this.bindings){binding.mesh.removeFromParent();binding.material.dispose();}
     this.bindings.length=0;this.overlays.length=0;
     for(const pool of this.pools){pool.mesh.removeFromParent();pool.mesh.geometry.dispose();(pool.mesh.material as THREE.Material).dispose();pool.mesh.dispose();}
-    this.pools.length=0;this.group.removeFromParent();
+    this.pools.length=0;this.sourcePoses.clear();this.group.removeFromParent();
   }
 }
 

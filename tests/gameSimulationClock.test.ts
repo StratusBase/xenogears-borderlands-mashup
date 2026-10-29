@@ -10,6 +10,11 @@ import { createEncounterEnemy } from '../src/rendering/encounterEnemy.ts';
 import { PlayerBallistics } from '../src/rendering/PlayerBallistics.ts';
 import { GamePresentation } from '../src/rendering/quality/GamePresentation.ts';
 import { SimulationWeaponPose } from '../src/rendering/SimulationWeaponPose.ts';
+import { decorateEnemy } from '../src/rendering/quality/actors.ts';
+import { cacheDamageAnchors } from '../src/ui/damageAnchors.ts';
+import type { DamageFeedbackContext, DamagePoint } from '../src/ui/damageNumbers.ts';
+import { DamageNumberModel } from '../src/ui/damageNumbers.ts';
+import type { DamageEffect } from '../src/core/feedback.ts';
 
 // Browser styles have no effect on this headless Game orchestration regression.
 const { Game } = await (async () => {
@@ -21,8 +26,14 @@ const { Game } = await (async () => {
 })();
 
 let originalDocument: PropertyDescriptor | undefined;
+let originalWidth: PropertyDescriptor | undefined;
+let originalHeight: PropertyDescriptor | undefined;
 before(() => {
   originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  originalWidth = Object.getOwnPropertyDescriptor(globalThis, 'innerWidth');
+  originalHeight = Object.getOwnPropertyDescriptor(globalThis, 'innerHeight');
+  Object.defineProperty(globalThis, 'innerWidth', { configurable: true, value: 1280 });
+  Object.defineProperty(globalThis, 'innerHeight', { configurable: true, value: 720 });
   Object.defineProperty(globalThis, 'document', { configurable: true, value: {
     createElement: () => ({ width: 0, height: 0, getContext: () => ({ fillRect() {} }) }),
   } });
@@ -30,6 +41,8 @@ before(() => {
 after(() => {
   if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
   else Reflect.deleteProperty(globalThis, 'document');
+  if (originalWidth) Object.defineProperty(globalThis, 'innerWidth', originalWidth); else Reflect.deleteProperty(globalThis, 'innerWidth');
+  if (originalHeight) Object.defineProperty(globalThis, 'innerHeight', originalHeight); else Reflect.deleteProperty(globalThis, 'innerHeight');
 });
 
 /** Uses Game's actual stepping, firing, pose and render methods without a browser
@@ -74,7 +87,8 @@ function gameHarness(mode: Mode, quality: boolean) {
     screen: 'none', time: 0, respawnUntil: 0, shooting: true, reloadUntil: 0, reloadStartedAt: 0, reloadFoleyStage: 0,
     nextShot: 0, lastFiredAt: -Infinity, emptyAt: -Infinity, lastDryClickAt: -Infinity, lastMuzzleIndex: 0, shotSequence: 0,
     soundEnabled: false, frames: 0, hudTime: 0, fps: 0, evaluationDriver: true,
-    gamepad: { moveX: 0, moveY: 0, fire: false }, ui: { toast() {} }, comicRenderer: { render() {} },
+    damageHeads: [], damageHead: new THREE.Vector3(), gamepad: { moveX: 0, moveY: 0, fire: false },
+    ui: { toast() {}, updateFeedback() {} }, comicRenderer: { render() {} },
     onEvaluationShot: (shot: EvaluationShot) => shots.push(structuredClone(shot)),
     updatePlayer(dt: number) { bodies[mode].heat = Math.max(0, bodies[mode].heat - getStats(progression, mode).cooling * dt); },
     updateEncounter() {}, updateEnemies() {}, updateTargetEffects() {}, updateProjectiles() {}, updateDrops() {},
@@ -121,3 +135,77 @@ for (const mode of ['pilot', 'mech'] as const) {
     }
   });
 }
+
+test('crowd HUD reuses the adjacent station query while classic keeps both queries and identical prompts', () => {
+  const updateHUD = (Game.prototype as unknown as Record<string, (this: GameInstance) => void>).updateHUD;
+  for (const focus of [undefined, { kind: 'workbench' }, { kind: 'service' }, { kind: 'vending', vendor: 'weapons' }, { kind: 'vending', vendor: 'unknown' }]) {
+    const results = [];
+    for (const quality of ['classic', 'crowd']) {
+      const fixture = gameHarness('pilot', false); let queries = 0, displayed: unknown;
+      const vendor = { id: 'weapons' };
+      Object.assign(fixture.state, {
+        world: { parkedMech: new THREE.Group(), vendingMachines: [vendor] },
+        focusedStation() { queries++; return focus; }, aimedDrop() {}, nearestCash() {}, nearestHealth() {},
+        targetedEnemy() {}, shopAvailable() { return true; }, encounterHUD() {},
+        encounter: { snapshot: { phase: 'idle', activeRelayIds: [] } }, activeInput: 'keyboard', mouse: { locked: false },
+        healReadyAt: 0, healingUntil: 0, lastHealingAmount: 0, fps: 60,
+        ui: { feedbackQuality: quality, update(data: unknown) { displayed = data; }, setShop() {}, setLootComparison() {}, setTestDummy() {}, setTargetStatuses() {} },
+      });
+      try { updateHUD.call(fixture.game); assert.equal(queries, quality === 'classic' ? 2 : 1); results.push(displayed); }
+      finally { fixture.dispose(); }
+    }
+    assert.deepEqual(results[0], results[1], `Station ${JSON.stringify(focus)} changed the actual HUD output`);
+  }
+});
+
+test('actual Game killing-hit feedback ignores disposed art anchors and retains the nonzero world impact/status position', () => {
+  const fixture = gameHarness('pilot', false), visual = createEncounterEnemy(88, 'flanker');
+  visual.group.position.set(8, 0, -12); (fixture.state.scene as THREE.Scene).add(visual.group);
+  const art = decorateEnemy(visual.group, 88), anchors = cacheDamageAnchors(visual.group);
+  const calls: { amount: number; critical: boolean; effect?: DamageEffect; position?: DamagePoint; context?: DamageFeedbackContext }[] = [];
+  Object.assign(fixture.state, { damagePoint: new THREE.Vector3(), damageAnchors: new WeakMap([[visual.group, anchors]]), time: 3.25,
+    ui: { hit(amount: number, critical: boolean, effect?: DamageEffect, position?: DamagePoint, context?: DamageFeedbackContext) {
+      calls.push({ amount, critical, effect, position, context });
+    } } });
+  const show = (Game.prototype as unknown as { showEnemyDamage(this: GameInstance, target: unknown, amount: number,
+    critical?: boolean, effect?: DamageEffect, impact?: THREE.Vector3, kind?: 'direct' | 'status'): void }).showEnemyDamage;
+  const target = { id: 88, mesh: visual.group, heavy: false }, impact = new THREE.Vector3(8, 2.2, -11.7);
+  try {
+    show.call(fixture.game, target, 10, false, undefined, impact);
+    assert.ok(calls.at(-1)!.context!.head, 'A live actor must use its actual cached head');
+    art.dispose(); visual.dispose(); assert.equal(visual.group.parent, null);
+    show.call(fixture.game, target, 42.75, true, undefined, impact);
+    const killed = calls.at(-1)!, camera = fixture.state.camera as THREE.PerspectiveCamera;
+    const projected = impact.clone().add(new THREE.Vector3(0, .2, 0)).project(camera);
+    assert.equal(killed.context!.head, undefined); assert.equal(killed.amount, 42.75); assert.equal(killed.critical, true);
+    assert.equal(killed.effect, undefined); assert.equal(killed.context!.kind, 'direct'); assert.equal(killed.context!.at, 3.25);
+    assert.equal(killed.context!.targetId, visual.group.uuid);
+    assert.deepEqual(killed.position, { x: (projected.x + 1) / 2, y: (1 - projected.y) / 2 });
+    show.call(fixture.game, target, 3.5, false, 'fire', undefined, 'status');
+    const status = calls.at(-1)!, fallback = new THREE.Vector3(8, 2.75, -12).project(camera);
+    assert.equal(status.context!.head, undefined); assert.equal(status.context!.kind, 'status');
+    assert.equal(status.amount, 3.5); assert.equal(status.critical, false); assert.equal(status.effect, 'fire');
+    assert.deepEqual(status.position, { x: (fallback.x + 1) / 2, y: (1 - fallback.y) / 2 });
+  } finally { art.dispose(); visual.dispose(); fixture.dispose(); }
+});
+
+test('actual dummy/combat reset boundaries explicitly clear feedback without resetting cumulative amounts or record IDs', () => {
+  const fixture = gameHarness('pilot', false), model = new DamageNumberModel(), reasons: string[] = [];
+  const dummy = fixture.state.testDummy as { statusEffects: Map<unknown, unknown>; statusCoatings: Map<unknown, unknown>; statuses: object };
+  Object.assign(dummy, { statusEffects: new Map(), statusCoatings: new Map(), statuses: {} });
+  Object.assign(fixture.state, { dummyMeter: { clear() {} }, finishMeasurement() {},
+    encounter: { snapshot: { phase: 'idle' }, reset() {} }, projectiles: [],
+    ui: { clearFeedback(reason: string) { reasons.push(reason); model.clear(reason); } } });
+  const methods = Game.prototype as unknown as { resetTestDummy(this: GameInstance): void; clearCombat(this: GameInstance): void };
+  try {
+    const push = (amount: number, at: number) => model.push({ amount, at, targetId: 'dummy', kind: 'status', effect: 'fire', critical: false, position: { x: .5, y: .5 } });
+    push(7, 0); const firstId = model.records[0].id;
+    methods.resetTestDummy.call(fixture.game); assert.equal(model.records.length, 0); assert.equal(model.diagnostics.resetCancelledDamage, 7);
+    push(10, .1); assert.ok(model.records[0].id > firstId);
+    methods.clearCombat.call(fixture.game); assert.equal(model.records.length, 0);
+    assert.deepEqual(reasons, ['test-dummy-reset', 'combat-cleared']);
+    assert.equal(model.diagnostics.receivedDamage, 17); assert.equal(model.diagnostics.resetCancelledDamage, 17);
+    push(5, .2); assert.equal(model.records[0].amount, 5); assert.equal(model.records[0].events, 1);
+    assert.equal(model.diagnostics.receivedDamage, model.diagnostics.renderedDamage + model.diagnostics.unpresentedDamage + model.diagnostics.resetCancelledDamage);
+  } finally { fixture.dispose(); }
+});
