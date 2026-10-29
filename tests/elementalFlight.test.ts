@@ -5,7 +5,7 @@ import { createWeaponSpec, type ElementType, type ProjectileType, type WeaponSpe
 import { createElementalProjectile, createElementalTrail, createElementalBeam, updateElementalProjectile, ELEMENTAL_FLIGHT_STYLES } from '../src/rendering/quality/elementalFlight.ts';
 
 const elements:ElementType[]=['kinetic','fire','ice','corrosive','shock','radiation','gravity','adhesive'];
-const deliveries:ProjectileType[]=['bullet','slug','spike','ricochet','homing','sticky','orb','scatter','rocket','disc'];
+const deliveries:ProjectileType[]=['bullet','slug','spike','ricochet','homing','sticky','orb','scatter','rocket','cluster','disc'];
 function meshes(root:THREE.Object3D):THREE.Mesh[]{const result:THREE.Mesh[]=[];root.traverse(object=>{if(object instanceof THREE.Mesh)result.push(object);});return result;}
 function dispose(root:THREE.Object3D):void{
  const geometry=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();
@@ -46,6 +46,25 @@ test('delivery construction and elemental materials/shapes are genuinely distinc
  for(const projectile of deliveries){const spec={...createWeaponSpec(projectile,'corrosive'),weaponType:'rifle' as const};const root=createElementalProjectile(spec);deliveryShapes.add(fingerprint(root.getObjectByName('quality-physical-carrier')!));dispose(root);}
  assert.equal(deliveryShapes.size,deliveries.length);
  assert.equal(new Set(Object.values(ELEMENTAL_FLIGHT_STYLES).map(style=>style.wake)).size,elements.length);
+});
+
+test('cluster segmented carrier stays physical across independent primary and secondary payloads',()=>{
+ const carrierShapes:string[]=[];
+ for(const element of elements){
+  const spec={...createWeaponSpec('cluster',element),secondaryElement:element==='shock'?'ice':'shock' as ElementType};
+  const root=createElementalProjectile(spec,'cindergrid');assertSafe(root,16);
+  const carrier=root.getObjectByName('quality-physical-carrier')!;
+  const parts=meshes(carrier).flatMap(mesh=>mesh.userData.authoredParts as string[]);
+  assert.equal(parts.filter(part=>part==='cluster-segmented-submunition-casing').length,6);
+  assert.equal(parts.filter(part=>part==='cluster-separation-band').length,2);
+  assert.ok(root.getObjectByName(`quality-primary-${element}-payload`));
+  assert.ok(root.getObjectByName(`quality-secondary-${spec.secondaryElement}-payload`));
+  carrierShapes.push(fingerprint(carrier));dispose(root);
+ }
+ assert.equal(new Set(carrierShapes).size,1,'element channels must not replace or reshape the physical cluster casing');
+ const spec=createWeaponSpec('cluster','kinetic','mech'),root=createElementalProjectile(spec);
+ const parts=meshes(root.getObjectByName('quality-physical-carrier')!).flatMap(mesh=>mesh.userData.authoredParts as string[]);
+ assert.equal(parts.filter(part=>part==='cluster-segmented-submunition-casing').length,spec.split!.count);dispose(root);
 });
 
 test('world endpoints stay exact for all elements/styles, vertical shots and dual channels',()=>{

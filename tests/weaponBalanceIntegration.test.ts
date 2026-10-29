@@ -34,7 +34,7 @@ function delivered(projectile: ProjectileType, rules: WeaponBalanceRules) {
   if (projectile === 'scatter') target(1, [0, 1, -4], [5, 5, 1]);
   else {
     target(1, [0, 1, -4], [1, 1, 1], projectile === 'bullet');
-    if (['rocket', 'sticky', 'arc'].includes(projectile)) target(2, [1.5, 1, -4], [0.8, 0.8, 0.8]);
+    if (['rocket', 'sticky', 'arc', 'cluster'].includes(projectile)) target(2, [1.5, 1, -4], [0.8, 0.8, 0.8]);
     if (projectile === 'arc') target(3, [4, 1, -4], [0.8, 0.8, 0.8]);
   }
   const ballistics = new PlayerBallistics(scene, {
@@ -74,7 +74,7 @@ function near(actual: number, expected: number) {
   assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} differs from ${expected}`);
 }
 
-for (const projectile of ['bullet', 'scatter', 'rocket', 'sticky', 'arc'] as const) {
+for (const projectile of ['bullet', 'scatter', 'rocket', 'sticky', 'arc', 'cluster'] as const) {
   test(`secondary cost travels once through actual ${projectile} contacts and delayed/secondary damage`, () => {
     const baseline = delivered(projectile, BASELINE_WEAPON_BALANCE);
     const combined = delivered(projectile, DEFAULT_WEAPON_BALANCE);
@@ -91,6 +91,17 @@ for (const projectile of ['bullet', 'scatter', 'rocket', 'sticky', 'arc'] as con
       assert.deepEqual(combined.hits.map(hit => hit.id), [1, 2]);
       near(combined.hits[0].damage, 85);
       assert.ok(combined.hits[1].damage < 85, 'The nearby target retains actual splash falloff');
+    }
+    if (projectile === 'cluster') {
+      const count = combined.spec.split!.count;
+      const contacts = combined.hits.filter(hit => hit.id === 1);
+      const splash = combined.hits.filter(hit => hit.id === 2);
+      assert.equal(contacts.length, count, 'The carrier contributes no extra full-damage contact');
+      near(contacts.reduce((sum, hit) => sum + hit.damage, 0), 85);
+      contacts.forEach(hit => near(hit.damage, 85 / count));
+      assert.equal(splash.length, count, 'Each physical bomblet produces its own cover-tested splash');
+      assert.ok(splash.every(hit => hit.damage < 85 / count), 'Each splash retains bomblet-level falloff');
+      assert.ok(combined.active.some(({ state }) => state.fire) && combined.active.some(({ state }) => state.shock), 'Both saved elemental channels produce real statuses after splitting');
     }
     if (projectile === 'sticky') {
       near(combined.hits[0].damage, 17);

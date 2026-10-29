@@ -150,7 +150,18 @@ export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ir
   const variant=variantOf(spec),type=spec.projectile, p=new Parts('kinetic',brand), scale=familyScale(spec);
   root.scale.setScalar(scale);
   let radius=.052,z=.16;
-  if(type==='rocket'||type==='homing'){
+  if(type==='cluster'){
+    const pods=Math.max(2,Math.min(12,Math.floor(Number.isFinite(spec.split?.count)?spec.split!.count:6)));
+    radius=.061;z=.24;
+    p.tube('dark','cluster-carrier-spine',new THREE.Vector3(0,0,-.21),new THREE.Vector3(0,0,.18),.043,.043,6);
+    for(let i=0;i<pods;i++){
+      const a=i/pods*Math.PI*2,x=Math.cos(a)*.08,y=Math.sin(a)*.08;
+      p.tube('metal','cluster-segmented-submunition-casing',new THREE.Vector3(x,y,-.17),new THREE.Vector3(x,y,.13+variant*.012),.035,.032,5);
+      p.cone('dark','cluster-submunition-nose',.032,.075,[x,y,.17+variant*.012],FORWARD,5);
+    }
+    for(const z of[-.11,.09])p.ring('metal','cluster-separation-band',.12,.012,[0,0,z]);
+    moving(root,carrier,[0,0,.8]);
+  }else if(type==='rocket'||type==='homing'){
     radius=.085;z=.23;
     p.tube('metal','ordnance-pressure-shell',new THREE.Vector3(0,0,-.18),new THREE.Vector3(0,0,.13+variant*.01),.073,.061,8);
     p.tube('dark','ordnance-nozzle',new THREE.Vector3(0,0,-.23),new THREE.Vector3(0,0,-.16),.078,.055,8);
@@ -209,7 +220,7 @@ function pathPoint(start:THREE.Vector3,delta:THREE.Vector3,side:THREE.Vector3,up
 export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId='ironvale'):THREE.Group{
  const root=rootGroup('quality-elemental-trail',spec,brand),basis=axes(start,end);root.userData.start=start.toArray();root.userData.end=end.toArray();if(!basis)return root;
  const {delta,distance,direction,side,up}=basis,type=spec.projectile,style=spec.trail??'tracer',variant=variantOf(spec);
- const energy=['orb','rocket','homing','sticky'].includes(type),scale=familyScale(spec);
+ const energy=['orb','rocket','homing','sticky','cluster'].includes(type),scale=familyScale(spec);
  const width=(type==='scatter'?.0034:energy?.013:.0055)*scale;
  const elements=getWeaponElements(spec);
  for(const[channel,element]of elements.entries()){

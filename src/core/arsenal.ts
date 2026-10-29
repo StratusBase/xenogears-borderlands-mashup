@@ -2,7 +2,7 @@ import type { Item, Mode, Slot, Stats } from './index';
 
 export type BrandId = 'ironvale' | 'prism' | 'kestrel' | 'rebound' | 'tackwork' | 'nullward' | 'cindergrid' | 'voltaic';
 export type ElementType = 'kinetic' | 'fire' | 'ice' | 'radiation' | 'gravity' | 'corrosive' | 'shock' | 'adhesive';
-export type ProjectileType = 'bullet' | 'slug' | 'spike' | 'ricochet' | 'homing' | 'sticky' | 'orb' | 'beam' | 'scatter' | 'rocket' | 'disc' | 'arc';
+export type ProjectileType = 'bullet' | 'slug' | 'spike' | 'ricochet' | 'homing' | 'sticky' | 'orb' | 'beam' | 'scatter' | 'rocket' | 'disc' | 'arc' | 'cluster';
 export type WeaponType = 'pistol' | 'smg' | 'rifle' | 'shotgun' | 'sniper' | 'launcher';
 export type ProjectileTrail = 'clean' | 'tracer' | 'helix' | 'pulse' | 'comet' | 'ribbon';
 
@@ -23,6 +23,8 @@ export interface WeaponSpec {
   tracking: number;
   blastRadius: number;
   fuse: number;
+  /** One carrier releases children after this delay or on contact; damage is shared among them. */
+  split?: { count: number; delay: number; spread: number };
   statusChance: number;
   /** Multiplies weapon damage to produce absolute status tick strength. */
   statusPower: number;
@@ -49,7 +51,7 @@ export const elementColors: Readonly<Record<ElementType, string>> = Object.freez
   kinetic: '#ffe7a4', fire: '#ff8a24', ice: '#58e5f2', radiation: '#b7f34a', gravity: '#ad86ff', corrosive: '#67e04b', shock: '#4ca3ff', adhesive: '#ffc94f',
 });
 export const projectileLabels: Readonly<Record<ProjectileType, string>> = Object.freeze({
-  bullet: 'Bullet', slug: 'Slug', spike: 'Spike', ricochet: 'Ricochet', homing: 'Homing round', sticky: 'Sticky charge', orb: 'Orb', beam: 'Beam', scatter: 'Scatter', rocket: 'Rocket', disc: 'Disc', arc: 'Arc',
+  bullet: 'Bullet', slug: 'Slug', spike: 'Spike', ricochet: 'Ricochet', homing: 'Homing round', sticky: 'Sticky charge', orb: 'Orb', beam: 'Beam', scatter: 'Scatter', rocket: 'Rocket', disc: 'Disc', arc: 'Arc', cluster: 'Cluster',
 });
 export const weaponTypeLabels: Readonly<Record<WeaponType, string>> = Object.freeze({
   pistol: 'Pistol', smg: 'SMG', rifle: 'Rifle', shotgun: 'Shotgun', sniper: 'Sniper', launcher: 'Launcher',
@@ -60,7 +62,7 @@ export const projectileTrailLabels: Readonly<Record<ProjectileTrail, string>> = 
 
 export function defaultWeaponType(projectile: ProjectileType): WeaponType {
   if (projectile === 'scatter') return 'shotgun';
-  if (projectile === 'rocket' || projectile === 'orb' || projectile === 'sticky') return 'launcher';
+  if (projectile === 'rocket' || projectile === 'orb' || projectile === 'sticky' || projectile === 'cluster') return 'launcher';
   if (projectile === 'slug' || projectile === 'spike') return 'sniper';
   if (projectile === 'ricochet' || projectile === 'arc') return 'smg';
   return 'rifle';
@@ -129,6 +131,10 @@ export function createWeaponSpec(projectile: ProjectileType, element: ElementTyp
   if (projectile === 'rocket') { spec.speed = 58; spec.blastRadius = mode === 'mech' ? 6 : 4.2; spec.spread = 0.018; }
   if (projectile === 'disc') { spec.speed = 88; spec.bounces = 2; spec.spread = 0.005; }
   if (projectile === 'arc') { spec.speed = 180; spec.tracking = 1.2; spec.spread = 0.015; }
+  if (projectile === 'cluster') {
+    spec.speed = 58; spec.spread = 0.018; spec.blastRadius = mode === 'mech' ? 3.2 : 2.2; spec.fuse = 0.65;
+    spec.split = { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 };
+  }
   return spec;
 }
 
@@ -155,6 +161,15 @@ export function normalizeWeaponSpec(raw: unknown, mode: Mode = 'pilot'): WeaponS
   result.trail = isProjectileTrail(value.trail) ? value.trail : 'tracer';
   result.visualVariant = typeof value.visualVariant === 'number' && Number.isInteger(value.visualVariant) && value.visualVariant >= 0 && value.visualVariant <= 3 ? value.visualVariant : 0;
   if (isElementType(value.secondaryElement) && value.secondaryElement !== 'kinetic' && value.secondaryElement !== result.element) result.secondaryElement = value.secondaryElement;
+  const split = value.split;
+  if (split && typeof split === 'object' && !Array.isArray(split)) {
+    const { count, delay, spread } = split as Record<string, unknown>;
+    if (typeof count === 'number' && Number.isInteger(count) && count >= 2 && count <= 12
+      && typeof delay === 'number' && Number.isFinite(delay) && delay >= 0.05 && delay <= 5
+      && typeof spread === 'number' && Number.isFinite(spread) && spread >= 0 && spread <= 0.4) result.split = { count, delay, spread };
+  }
+  // Cluster always retains its defining behavior; legacy profiles gain no new fields.
+  if (result.projectile === 'cluster' && !result.split) result.split = createWeaponSpec('cluster', result.element, mode).split;
   return result;
 }
 

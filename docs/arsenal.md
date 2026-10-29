@@ -2,7 +2,7 @@
 
 Every item has a brand, rarity, level, and rolled combat stats. Weapon family, delivery, elemental channels, flight style, and design variant are separate saved choices. A rifle can fire corrosive spikes, icy beams, or bouncing shock rounds without making those payloads the same weapon. Inventory sorts by rarity descending, then level descending, then name and item ID.
 
-The compact comparison card puts direct DPS and five icon stats first. Damage is shown per pellet with a multiplier for scatter; its comparison uses total damage per trigger. Green/up is an improvement, red/down is worse. Reload and spread improve when their numbers fall. Direct DPS excludes reloads, heat, criticals, splash, chains, and statuses; the tooltip also shows reload-aware DPS. The colored elemental strip prominently shows base **DMG/s**, chance, and duration separately. Control-only effects say **CONTROL**. Exact values and full property names are available in tooltips. Yellow equipped outlines appear only in the backpack.
+The compact comparison card puts direct DPS and five icon stats first. Damage is shown per pellet with a multiplier for scatter, or per child with a multiplier for cluster; its comparison uses total damage per trigger. Green/up is an improvement, red/down is worse. Reload and spread improve when their numbers fall. Direct DPS excludes reloads, heat, criticals, splash, chains, and statuses; the tooltip also shows reload-aware DPS. The colored elemental strip prominently shows base **DMG/s**, chance, and duration separately. Control-only effects say **CONTROL**. Exact values and full property names are available in tooltips. Yellow equipped outlines appear only in the backpack.
 
 ## Brands
 
@@ -23,7 +23,7 @@ These tendencies modify actual rolled stats. They are not brand labels applied t
 
 Press **K**, use **Weapon workbench** in the pause menu, or aim at the physical workbench beside the service pad and press **E**. E opens a station only when its actual mesh is focused and in range; empty space has no fallback menu action.
 
-The workbench offers eight manufacturers; pistol, SMG, rifle, shotgun, sniper, and launcher families; all twelve delivery profiles; primary and optional secondary elements; six flight styles (**Clean, Tracer, Helix, Pulse, Comet, Ribbon**); and four design variants. Assembly, rarity, and level are also adjustable. Twelve curated examples cover every make, family, delivery, element, and flight style. The **Guaranteed status** toggle sets applicable proc chances to 100% for testing; it does not increase status damage strength.
+The workbench offers eight manufacturers; pistol, SMG, rifle, shotgun, sniper, and launcher families; all thirteen delivery profiles; primary and optional secondary elements; six flight styles (**Clean, Tracer, Helix, Pulse, Comet, Ribbon**); and four design variants. Assembly, rarity, and level are also adjustable. Thirteen curated examples cover every make, family, delivery, element, and flight style. The **Guaranteed status** toggle sets applicable proc chances to 100% for testing; it does not increase status damage strength.
 
 The live preview uses your other equipped parts. **Equip & Test** equips one reusable, zero-resale test weapon per form and moves you to the permanent dummy with replenished ammunition and no spawned enemies. Editing a build replaces that form's test weapon rather than filling the backpack. **Reset Dummy** clears measurements and active conditions. **K** returns to the retained draft. **N** or **Start Live Encounter** starts an optional live encounter. Copy the build code with feedback, or paste it and select **Load** to reproduce a permutation.
 
@@ -47,8 +47,13 @@ Receiver design and paint stay stable when changing only elements or flight styl
 | Rocket | Physical flight and an explosion with distance falloff |
 | Disc | Spinning projectile with surface bounces |
 | Arc | Short-range instant electrical path, with up to three weaker, cover-tested chain hops |
+| Cluster | One carrier releases smaller explosive rounds after a delay or on contact; its damage budget is shared among the children |
 
 Moving rounds use swept mesh collision. Explosions and chain hops check cover. Sticky charges follow the target's local attachment point and fall away if the target disappears. Simulation time controls flight, fuses, effects, and statuses, so opening a menu pauses them.
+
+Cluster fires one carrier, which deals no damage itself. It splits after **0.45 seconds**, or earlier on contact, into **six pilot children** or **eight mech children**. Children spread from the carrier's direction, travel at 65% of its speed, and detonate on collision or after their own **0.65-second fuse**. Their blast radius is **2.2m** for pilot weapons and **3.2m** for mech weapons. Children do not split again. Unlike scatter, these rounds separate after the carrier has traveled rather than at the muzzle.
+
+Cluster preserves the selected manufacturer, primary/secondary elements, flight style, and variant. Its effective carrier damage is divided among the children before direct hits, splash, or status-power calculations; card damage and per-proc rates describe that child damage. Child count, split delay, child fuse, and child blast radius appear as projectile properties. Cluster is available explicitly through the workbench and arsenal fixture; ordinary loot pools and their RNG draw sequence remain unchanged. Optional saved split metadata also supports other physical carrier profiles without adding fields to legacy weapons.
 
 ## Damage and status effects
 
@@ -77,4 +82,4 @@ Each element has pooled particle shapes, impact bursts, and animated surface tre
 
 ## Try the arsenal
 
-The normal sandbox includes the workbench and live encounter controls above. For an isolated development fixture, open `/arsenal-lab.html`: twelve example deliveries in both forms, a separate save, and non-attacking targets. Press **I** to equip a weapon, **N** to reset targets, and **F** to switch forms near the parked frame. Reloading resets this fixture.
+The normal sandbox includes the workbench and live encounter controls above. For an isolated development fixture, open `/arsenal-lab.html`: thirteen example deliveries in both forms, a separate save, and non-attacking targets. Press **I** to equip a weapon, **N** to reset targets, and **F** to switch forms near the parked frame. Reloading resets this fixture.

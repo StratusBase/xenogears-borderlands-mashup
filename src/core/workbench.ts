@@ -113,7 +113,7 @@ export function parseWorkbenchCode(raw: string): WorkbenchConfig | null {
 }
 
 export interface WorkbenchPreset { readonly id: string; readonly label: string; readonly config: Readonly<Partial<WorkbenchConfig>> }
-/** Twelve curated examples cover all makes, families, deliveries, elements and trail styles. */
+/** Thirteen curated examples cover all makes, families, deliveries, elements and trail styles. */
 export const WORKBENCH_PRESETS: readonly WorkbenchPreset[] = Object.freeze(([
   { id: 'foundry-sidearm', label: 'Ironvale / Foundry sidearm', config: { brand: 'ironvale', weaponType: 'pistol', projectile: 'bullet', element: 'kinetic', trail: 'tracer' } },
   { id: 'kiln-slugger', label: 'Cindergrid / Kiln slugger', config: { brand: 'cindergrid', weaponType: 'sniper', projectile: 'slug', element: 'fire', trail: 'comet', affix: 'heavy' } },
@@ -127,4 +127,5 @@ export const WORKBENCH_PRESETS: readonly WorkbenchPreset[] = Object.freeze(([
   { id: 'acid-siege', label: 'Ironvale / Acid siege', config: { brand: 'ironvale', weaponType: 'launcher', projectile: 'rocket', element: 'corrosive', secondaryElement: 'fire', trail: 'ribbon', affix: 'heavy' } },
   { id: 'orbit-cutter', label: 'Rebound / Orbit cutter', config: { brand: 'rebound', weaponType: 'rifle', projectile: 'disc', element: 'kinetic', trail: 'pulse' } },
   { id: 'storm-repeater', label: 'Voltaic / Storm repeater', config: { brand: 'voltaic', weaponType: 'smg', projectile: 'arc', element: 'shock', trail: 'helix', affix: 'rapid' } },
+  { id: 'ember-cluster', label: 'Cindergrid / Ember cluster', config: { brand: 'cindergrid', weaponType: 'launcher', projectile: 'cluster', element: 'fire', secondaryElement: 'corrosive', trail: 'comet' } },
 ] satisfies WorkbenchPreset[]).map((preset, index) => Object.freeze({ ...preset, config: Object.freeze({ ...DEFAULT_WORKBENCH_CONFIG, visualVariant: index % 4, ...preset.config }) })));

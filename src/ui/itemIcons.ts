@@ -1,5 +1,5 @@
 export type ItemIconName = 'damage' | 'spread' | 'reload' | 'fireRate' | 'magazine' | 'dps'
-  | 'health' | 'shield' | 'moveSpeed' | 'heatCapacity' | 'cooling' | 'speed' | 'bounces' | 'tracking' | 'fuse' | 'blastRadius'
+  | 'health' | 'shield' | 'moveSpeed' | 'heatCapacity' | 'cooling' | 'speed' | 'bounces' | 'tracking' | 'fuse' | 'blastRadius' | 'splitCount' | 'splitDelay'
   | 'kinetic' | 'fire' | 'ice' | 'radiation' | 'gravity' | 'corrosive' | 'shock' | 'adhesive' | 'bleed' | 'up' | 'down' | 'module' | 'favorite' | 'junk';
 
 /**
@@ -7,7 +7,7 @@ export type ItemIconName = 'damage' | 'spread' | 'reload' | 'fireRate' | 'magazi
  * Unmodified 24px path geometry; provenance and contributor notices: ./icons/NOTICE.md.
  * Filled glyphs retain their designed weight and negative space at the card's 18px size.
  */
-const glyphs: Record<ItemIconName, { source: string; path: string }> = {
+const glyphs: Record<Exclude<ItemIconName, 'splitCount' | 'splitDelay'>, { source: string; path: string }> = {
   bleed: { source: 'water', path: 'M12,20A6,6 0 0,1 6,14C6,10 12,3.25 12,3.25C12,3.25 18,10 18,14A6,6 0 0,1 12,20Z' },
   favorite: { source: 'star', path: 'M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z' },
   junk: { source: 'delete', path: 'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z' },
@@ -42,7 +42,7 @@ const glyphs: Record<ItemIconName, { source: string; path: string }> = {
 
 /** Native inline SVG: inherits the surrounding stat/element color and keeps a readable label. */
 export function createItemIcon(name: ItemIconName, label: string): SVGSVGElement {
-  const glyph = glyphs[name];
+  const glyph = glyphs[name === 'splitCount' ? 'damage' : name === 'splitDelay' ? 'fuse' : name];
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('item-icon', `item-icon-${name}`);
   svg.setAttribute('data-icon-source', `mdi-${glyph.source}`);

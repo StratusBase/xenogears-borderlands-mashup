@@ -5,7 +5,7 @@ import { createProgression, deserializeProgression, equipItem, getStats, rollIte
 import { describeItemAppearance } from '../src/core/appearance.ts';
 import { getDamageColor } from '../src/core/feedback.ts';
 
-test('generated equipment carries valid branded metadata, and weapon pools cover every supported delivery and element', () => {
+test('generated equipment carries valid branded metadata, and established weapon pools retain every ordinary delivery and element', () => {
   const random = seededRandom(84021);
   const projectiles = new Set<string>(), elements = new Set<string>(), seenBrands = new Set<string>();
   for (const brand of brandList) {
@@ -26,7 +26,8 @@ test('generated equipment carries valid branded metadata, and weapon pools cover
     }
   }
   assert.deepEqual([...seenBrands].sort(), brandList.map(brand => brand.id).sort());
-  assert.deepEqual([...projectiles].sort(), Object.keys(projectileLabels).sort());
+  assert.deepEqual([...projectiles].sort(), Object.keys(projectileLabels).filter(projectile => projectile !== 'cluster').sort());
+  assert.ok(!projectiles.has('cluster'), 'Cluster is an explicit workbench/demo profile; normal loot pools and RNG remain unchanged');
   assert.deepEqual([...elements].sort(), Object.keys(elementLabels).sort());
 });
 
@@ -130,6 +131,47 @@ test('starter weapons retain their established balance and safe kinetic delivery
   assert.equal(getWeaponSpec(pilot).element, 'kinetic');
   const spec = getWeaponSpec(pilot); spec.element = 'fire';
   assert.equal(pilot.weapon!.element, 'kinetic', 'Safe getters return independent metadata');
+});
+
+test('cluster defaults split one launcher carrier and retain independent elemental channels', () => {
+  for (const mode of ['pilot', 'mech'] as const) {
+    for (const element of Object.keys(elementLabels) as ElementType[]) {
+      const spec = createWeaponSpec('cluster', element, mode);
+      assert.equal(spec.weaponType, 'launcher');
+      assert.equal(spec.projectile, 'cluster');
+      assert.equal(spec.element, element);
+      assert.equal(spec.pellets, 1);
+      assert.equal(spec.speed, 58);
+      assert.equal(spec.fuse, 0.65);
+      assert.equal(spec.blastRadius, mode === 'mech' ? 3.2 : 2.2);
+      assert.deepEqual(spec.split, { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 });
+      assert.deepEqual(normalizeWeaponSpec(spec, mode), spec);
+    }
+  }
+});
+
+test('optional split metadata is bounded, copied and safely repaired without changing legacy weapon stats', () => {
+  const legacy = createWeaponSpec('rocket', 'corrosive');
+  assert.deepEqual(normalizeWeaponSpec(legacy), legacy);
+  assert.ok(!Object.hasOwn(normalizeWeaponSpec(legacy), 'split'));
+  const configured = { ...legacy, split: { count: 4, delay: 0.8, spread: 0.2 } };
+  const normalized = normalizeWeaponSpec(configured);
+  assert.deepEqual(normalized, configured);
+  assert.notEqual(normalized.split, configured.split, 'Saved metadata must not alias a caller-owned nested object');
+  for (const split of [null, [], {}, { count: 1, delay: 1, spread: 0.2 }, { count: 13, delay: 1, spread: 0.2 },
+    { count: 2.5, delay: 1, spread: 0.2 }, { count: 4, delay: 0, spread: 0.2 }, { count: 4, delay: 6, spread: 0.2 },
+    { count: 4, delay: NaN, spread: 0.2 }, { count: 4, delay: 1, spread: -0.1 }, { count: 4, delay: 1, spread: 0.5 },
+    { count: 4, delay: 1, spread: Infinity }]) {
+    assert.deepEqual(normalizeWeaponSpec({ ...legacy, split }), legacy);
+    const cluster = createWeaponSpec('cluster', 'fire', 'mech');
+    assert.deepEqual(normalizeWeaponSpec({ ...cluster, split }, 'mech'), cluster, 'Cluster always retains a safe split recipe');
+  }
+  for (const split of [{ count: 2, delay: 0.05, spread: 0 }, { count: 12, delay: 5, spread: 0.4 }]) {
+    assert.deepEqual(normalizeWeaponSpec({ ...legacy, split }).split, split);
+  }
+  const cluster = createWeaponSpec('cluster', 'kinetic');
+  const { split: _, ...missing } = cluster;
+  assert.deepEqual(normalizeWeaponSpec(missing), cluster);
 });
 
 test('appearance identity includes actual brand and weapon behavior while resale values stay cosmetic', () => {

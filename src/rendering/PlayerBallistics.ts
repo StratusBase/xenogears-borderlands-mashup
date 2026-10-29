@@ -47,6 +47,8 @@ interface Projectile {
   hits: Set<number>;
   stuck?: { targetId?: number; localPoint?: THREE.Vector3 };
   fuse?: number;
+  /** Present only on a carrier; its children never acquire another split timer. */
+  splitDelay?: number;
   presenter?: BallisticPresentation;
   visualContact?: { normal: THREE.Vector3; target?: THREE.Group };
 }
@@ -154,7 +156,8 @@ export class PlayerBallistics {
 
   fire(origin: THREE.Vector3, direction: THREE.Vector3, spec: WeaponSpec, damage: number, range = 100, brand: BrandId = 'ironvale'): void {
     if (!finite(origin) || !finite(direction) || direction.lengthSq() < 1e-12 || !Number.isFinite(damage) || damage <= 0 || damage > 1e9) return;
-    const recipe = Object.freeze({ ...normalizeWeaponSpec(spec), visualBrand: brand });
+    const normalized = normalizeWeaponSpec(spec);
+    const recipe = Object.freeze({ ...normalized, ...(normalized.split ? { split: Object.freeze({ ...normalized.split }) } : {}), visualBrand: brand });
     const distance = THREE.MathUtils.clamp(Number.isFinite(range) ? range : 100, 0.1, 250);
     this.refreshWorld();
     const directions = recipe.pellets === 1
@@ -167,27 +170,38 @@ export class PlayerBallistics {
         this.rayShot(origin, aim, recipe, damage, recipe.projectile === 'arc' ? Math.min(distance, 24) : distance);
         continue;
       }
-      while (this.projectiles.size >= MAX_PROJECTILES) this.remove(this.projectiles.values().next().value!);
-      const visual = this.presentation?.projectile(recipe, brand) ?? createProjectileVisual(recipe, brand);
-      visual.position.copy(origin);
-      visual.quaternion.setFromUnitVectors(forward, aim);
-      this.scene.add(visual);
-      const projectile: Projectile = { visual, spec: recipe, velocity: aim.clone().multiplyScalar(recipe.speed), damage, age: 0, life: Math.min(10, distance / recipe.speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter: this.presentation, fuse: recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
-      this.projectiles.add(projectile);
-      const payloadElements = getWeaponElements(recipe).filter(element => element !== 'kinetic');
-      if (!this.presentation && payloadElements.length && ['orb', 'sticky', 'rocket', 'homing'].includes(recipe.projectile)) {
-        while (this.elementPayloads.size >= MAX_ELEMENT_PAYLOADS) {
-          const oldest = this.elementPayloads.entries().next().value!;
-          oldest[1].forEach(effect => effect.dispose()); this.elementPayloads.delete(oldest[0]);
-        }
-        const payloads = payloadElements.map((element, index) => {
-          const payload = new ElementEffects(visual, element, { style: 'equipment', scale: recipe.projectile === 'orb' ? 1.15 : recipe.projectile === 'rocket' ? .85 : .65, intensity: .8, variant: (recipe.visualVariant ?? 0) + index });
-          payload.group.position.set(index ? .06 : -.025, 0, -.12);
-          return payload;
-        });
-        this.elementPayloads.set(projectile, payloads);
-      }
+      this.spawnProjectile(origin, aim, recipe, damage, distance, this.presentation);
     }
+  }
+
+  private spawnProjectile(origin: THREE.Vector3, aim: THREE.Vector3, recipe: VisualRecipe, damage: number, distance: number, presenter?: BallisticPresentation, child = false): Projectile | undefined {
+    while (this.projectiles.size >= MAX_PROJECTILES) this.remove(this.projectiles.values().next().value!);
+    const brand = recipe.visualBrand ?? 'ironvale';
+    const epoch = this.epoch;
+    const visual = presenter?.projectile(recipe, brand) ?? createProjectileVisual(recipe, brand);
+    if (this.epoch !== epoch) { disposeVisual(visual); return; }
+    visual.position.copy(origin);
+    visual.quaternion.setFromUnitVectors(forward, aim);
+    if (child) visual.scale.multiplyScalar(.42);
+    this.scene.add(visual);
+    const speed = recipe.speed * (child ? .65 : 1);
+    const splitDelay = !child ? recipe.split?.delay : undefined;
+    const projectile: Projectile = { visual, spec: recipe, velocity: aim.clone().multiplyScalar(speed), damage, age: 0, life: Math.min(10, distance / speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter, splitDelay, fuse: splitDelay !== undefined || recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
+    this.projectiles.add(projectile);
+    const payloadElements = getWeaponElements(recipe).filter(element => element !== 'kinetic');
+    if (!presenter && payloadElements.length && ['orb', 'sticky', 'rocket', 'homing', 'cluster'].includes(recipe.projectile)) {
+      while (this.elementPayloads.size >= MAX_ELEMENT_PAYLOADS) {
+        const oldest = this.elementPayloads.entries().next().value!;
+        oldest[1].forEach(effect => effect.dispose()); this.elementPayloads.delete(oldest[0]);
+      }
+      const payloads = payloadElements.map((element, index) => {
+        const payload = new ElementEffects(visual, element, { style: 'equipment', scale: recipe.projectile === 'orb' ? 1.15 : recipe.projectile === 'rocket' ? .85 : .65, intensity: .8, variant: (recipe.visualVariant ?? 0) + index });
+        payload.group.position.set(index ? .06 : -.025, 0, -.12);
+        return payload;
+      });
+      this.elementPayloads.set(projectile, payloads);
+    }
+    return projectile;
   }
 
   update(dt: number): void {
@@ -319,6 +333,13 @@ export class PlayerBallistics {
   }
 
   private advance(projectile: Projectile, dt: number): void {
+    const stepTime = dt;
+    // Move the carrier up to its release time, even when a frame straddles it.
+    if (projectile.splitDelay !== undefined) {
+      if (projectile.splitDelay < 1e-7) { this.splitProjectile(projectile, projectile.visual.position, dt); return; }
+      dt = Math.min(dt, projectile.splitDelay);
+      projectile.splitDelay = Math.max(0, projectile.splitDelay - dt);
+    }
     projectile.age += dt;
     projectile.life -= dt;
     if (projectile.stuck?.targetId !== undefined) {
@@ -331,7 +352,7 @@ export class PlayerBallistics {
       if (projectile.fuse <= 0) { this.explode(projectile, projectile.visual.position, undefined, projectile.spec.projectile === 'sticky' ? 0.80 : 1); this.remove(projectile); return; }
     }
     if (projectile.age >= 16 || projectile.life <= 0) {
-      if (projectile.spec.blastRadius > 0) this.explode(projectile, projectile.visual.position);
+      if (projectile.splitDelay === undefined && projectile.spec.blastRadius > 0) this.explode(projectile, projectile.visual.position);
       this.remove(projectile); return;
     }
     if (projectile.stuck) return;
@@ -363,12 +384,21 @@ export class PlayerBallistics {
       else if (type === 'orb') projectile.visual.rotateZ(projectile.age * (1 + (projectile.spec.visualVariant ?? 0) * .3));
       this.trail(prior, point, projectile.spec, projectile.presenter ?? null);
       if (!collision) {
-        if (projectile.traveled >= projectile.range - 1e-7) { if (projectile.spec.blastRadius > 0) this.explode(projectile, point); this.remove(projectile); }
+        if (projectile.traveled >= projectile.range - 1e-7) { if (projectile.splitDelay === undefined && projectile.spec.blastRadius > 0) this.explode(projectile, point); this.remove(projectile); }
+        else if (projectile.splitDelay === 0) this.splitProjectile(projectile, point, stepTime - dt);
         return;
       }
       const target = collision.target;
       projectile.visualContact = { normal: collision.normal.clone(), target: target?.root };
       projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact'});
+      if (!this.projectiles.has(projectile)) return;
+      if (projectile.splitDelay !== undefined) {
+        // Release on the near side of the surface. Children still sweep against
+        // that surface, so neither their contacts nor splash can skip cover.
+        const contactTime = dt - remaining + prior.distanceTo(point) / Math.max(speed, 0.0001);
+        this.splitProjectile(projectile, point.clone().addScaledVector(collision.normal, EPSILON), Math.max(0, stepTime - contactTime));
+        return;
+      }
       if (type === 'sticky') {
         if (target && !projectile.hits.has(target.id)) {
           projectile.hits.add(target.id);
@@ -406,9 +436,35 @@ export class PlayerBallistics {
     }
   }
 
+  private splitProjectile(projectile: Projectile, point: THREE.Vector3, remainingTime = 0): void {
+    const split = projectile.spec.split;
+    if (!split || !this.projectiles.has(projectile)) return;
+    const range = projectile.range - projectile.traveled;
+    const directions = ballisticPelletDirections(projectile.velocity, split.count, split.spread);
+    const epoch = this.epoch;
+    this.remove(projectile);
+    this.flash(point, projectile.spec, .3, projectile.presenter ?? null);
+    if (range <= 1e-7) return;
+    // Reuse the captured recipe and presenter. Resource costs were paid by the
+    // original shot; child damage divides its budget and never splits again.
+    const children: Projectile[] = [];
+    for (const aim of directions) {
+      if (this.epoch !== epoch) break;
+      const child = this.spawnProjectile(point, aim, projectile.spec, projectile.damage / split.count, range, projectile.presenter, true);
+      if (child) children.push(child);
+    }
+    // The release does not consume the rest of the simulation step. New
+    // children are absent from update()'s snapshot, so advance them here once.
+    for (const child of children) if (remainingTime > 1e-7 && this.projectiles.has(child)) {
+      this.advance(child, remainingTime);
+      if (this.projectiles.has(child)) child.presenter?.updateProjectile?.(child.visual, remainingTime, child.age);
+    }
+  }
+
   private explode(projectile: Projectile, point: THREE.Vector3, excludeId?: number, multiplier = 1): void {
     const radius = projectile.spec.blastRadius;
     projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate'});
+    if (!this.projectiles.has(projectile)) return;
     this.flash(point, projectile.spec, Math.max(0.35, radius), projectile.presenter ?? null);
     if (radius <= 0) return;
     this.refreshWorld();
