@@ -21,7 +21,7 @@ export function createCorrosiveSplashGeometry():THREE.BufferGeometry{
 }
 
 /** Advects the liquid along unequal streams. The tail follows the head instead of scaling about a fixed center. */
-export function animateCorrosiveRupture(geometry:THREE.BufferGeometry,age:number,seed:number,gravity=new THREE.Vector3(0,-1,0)):void{
+export function animateCorrosiveRupture(geometry:THREE.BufferGeometry,age:number,seed:number,gravity=new THREE.Vector3(0,-1,0),surfaceLift=0):void{
  const positions=geometry.attributes.position as THREE.BufferAttribute,uv=geometry.attributes.uv,lanes=geometry.attributes.stream;
  const time=Number.isFinite(age)?Math.max(0,Math.min(.6,age)):0,phase=Number.isFinite(seed)?seed:0;
  for(let i=0;i<positions.count;i++){
@@ -31,10 +31,16 @@ export function animateCorrosiveRupture(geometry:THREE.BufferGeometry,age:number
   const roll=.30+q*1.9+t*(lane===0?6.5:-7)+phase*.15;
   const fold=Math.sin(q*Math.PI*1.35+t*12+phase*.4)*q*q;
   const sag=3.1*t*t*q;
+  let outward=.012+s.z*travel*q+Math.sin(q*Math.PI)*t*.25+across*width*Math.sin(roll)+across*across*width*.35+gravity.z*sag;
+  if(surfaceLift>0){
+   outward+=surfaceLift*.48*(1-Math.exp(-t*28))*Math.exp(-t*3.4)*(.18+.82*q);
+   // Compress the returning fold smoothly onto the contact plane rather than through it.
+   const clearance=outward-.006;outward=.006+(clearance+Math.sqrt(clearance*clearance+.0001))*.5;
+  }
   positions.setXYZ(i,
    s.x*travel*q+fold*.055+across*width*Math.sin(roll)*.14+gravity.x*sag,
    s.y*travel*q+fold*.10+across*width*Math.cos(roll)+gravity.y*sag,
-   .012+s.z*travel*q+Math.sin(q*Math.PI)*t*.25+across*width*Math.sin(roll)+across*across*width*.35+gravity.z*sag);
+   outward);
  }
  positions.needsUpdate=true;
 }

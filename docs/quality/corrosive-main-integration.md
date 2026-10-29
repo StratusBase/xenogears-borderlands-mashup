@@ -1,5 +1,7 @@
 # Approved corrosion in the normal game
 
+The later [horizontal-surface correction](corrosive-horizontal-surfaces.md) fixes floor clipping and elevated-surface settling while retaining the approved wall response. The integration receipt below remains its earlier build.
+
 29 October 2026. The approved directional response is now selected by the normal Enhanced presentation. Previously it was enabled only by the corrosive review lab's custom factory, so approving and committing its assets did not enable them in the user's normal game.
 
 `GamePresentation` now constructs its default `ElementalPresentation` with `corrosiveAB:true`. The normal `/` entry already enables Enhanced presentation; no edits to `game.ts`, `world.ts`, `ui.ts` or `main.ts` are required. Refresh an existing game page and keep **VISUALS / ENHANCED** selected. Low-level standalone presentation defaults and explicit lab factories remain available for comparisons. The existing Legacy toggle remains reversible.

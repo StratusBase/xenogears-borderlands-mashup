@@ -24,6 +24,8 @@ export interface BallisticPresentationImpact {
   target?: THREE.Group; phase: 'contact' | 'detonate';
   /** Presentation-only actual shot energy and propagated contact fraction. */
   energy?: number; exposure?: number;
+  /** Visual support for settling effects; never participates in authoritative collision. */
+  hitSurface?: THREE.Object3D;
 }
 export interface BallisticPresentationSplash extends BallisticPresentationImpact {
   target:THREE.Group;origin:THREE.Vector3;energy:number;exposure:number;primary:boolean;
@@ -57,7 +59,7 @@ interface Projectile {
   /** Present only on a carrier; its children never acquire another split timer. */
   splitDelay?: number;
   presenter?: BallisticPresentation;
-  visualContact?: { normal: THREE.Vector3; target?: THREE.Group };
+  visualContact?: { normal: THREE.Vector3; target?: THREE.Group; hitSurface?:THREE.Object3D };
 }
 interface Effect { visual: THREE.Group; life: number; duration: number; growth: number; opacities: Map<THREE.Material, number> }
 interface ElementBurst { effect: ElementEffects; life: number }
@@ -316,7 +318,7 @@ export class PlayerBallistics {
     const collision = this.trace(origin, end);
     const point = collision?.intersection.point ?? end;
     this.beam(origin, point, spec, spec.projectile === 'arc');
-    if (collision) this.presentation?.impact({ point: point.clone(), normal: collision.normal.clone(), spec, radius: .3, target: collision.target?.root, phase: 'contact',energy:damage });
+    if (collision) this.presentation?.impact({ point: point.clone(), normal: collision.normal.clone(), spec, radius: .3, target: collision.target?.root, phase: 'contact',energy:damage,hitSurface:collision.intersection.object });
     if (!collision?.target) { if (collision) this.flash(point, spec, 0.2); return; }
     const primary = collision.target;
     if (!this.emit(primary, point, direction, damage, spec, collision.intersection.object.userData.critical === true)) return;
@@ -396,8 +398,8 @@ export class PlayerBallistics {
         return;
       }
       const target = collision.target;
-      projectile.visualContact = { normal: collision.normal.clone(), target: target?.root };
-      projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact',energy:projectile.damage*(type==='sticky'?.20:1)});
+      projectile.visualContact = { normal: collision.normal.clone(), target: target?.root,hitSurface:collision.intersection.object };
+      projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact',energy:projectile.damage*(type==='sticky'?.20:1),hitSurface:collision.intersection.object});
       if (!this.projectiles.has(projectile)) return;
       if (projectile.splitDelay !== undefined) {
         // Release on the near side of the surface. Children still sweep against
@@ -470,7 +472,7 @@ export class PlayerBallistics {
 
   private explode(projectile: Projectile, point: THREE.Vector3, excludeId?: number, multiplier = 1): void {
     const radius = projectile.spec.blastRadius;
-    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier});
+    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier,hitSurface:projectile.visualContact?.hitSurface});
     if (!this.projectiles.has(projectile)) return;
     this.flash(point, projectile.spec, Math.max(0.35, radius), projectile.presenter ?? null);
     if (radius <= 0) return;
