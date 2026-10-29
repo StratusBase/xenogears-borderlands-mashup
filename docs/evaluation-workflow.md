@@ -1,5 +1,7 @@
 # Arsenal evaluation workflow
 
+The [Cluster balance pass](cluster-balance.md) adds matched Cluster/Rocket/Scatter actual-game encounters, separate range/cover geometry, and manufacturer-loot compatibility checks. Its weapon-only route disables offensive abilities; keep those results separate from the original three-build pacing baseline.
+
 For real-controller testing, use the [physical gamepad playtest plan](physical-gamepad-playtest.md): fixed combined/v3 settings, 36 encounter attempts and 18 dummy samples per profile, with explicit acceptance gates and tester attestations. Physical testing remains **NOT RUN** until recorded.
 
 The [current v3 repeat and retained-v2 comparison](balance-v3-current-comparison.md) runs the same four-arm matrix without changing balance or pacing, including the shared simulation-clock integration. The [initial v3 snapshot comparison](balance-v3-comparison.md) remains preserved separately. Each report identifies its exact tested source.
@@ -24,6 +26,8 @@ The command writes evaluation artifacts under `artifacts/evaluation`. Its dummy 
 Open `/evaluation-lab.html` on the local development server for instrumented runs against the actual game. This lab is development-only. Its run controls use the combat lead's [encounter interface](encounter-integration.md). Export a record for each run and retain its build codes, complete equipped-item snapshot, seed, encounter configuration/version, source fingerprint, input device, protocol, and outcome. A seed alone is insufficient to reproduce a changed encounter or different gear.
 
 ### Browser controls and saved evidence
+
+Evaluation pages start muted, including every fresh game in scripted encounter loops. Normal gameplay keeps sound enabled. Use the existing in-game sound control for listening checks, or pass `soundEnabled: true` when creating a diagnostic `Game`; pass `soundEnabled: false` to mute any game explicitly.
 
 - Select a build, dummy/live scenario, seed, and dummy form, then choose **Load fresh configuration**. Start directly with **Begin measurement**, before entering or playing the game. The lab rejects pages whose gameplay clock/run has already advanced or whose equipped fixture changed.
 - For the fixed-step actual encounter check, select **Live encounter**, then **Run scripted encounter**. It uses real game controls at 1/60s, ordinary movement around cover, body aim within 18m, normal abilities/healing, relay interaction, boarding and reward collection. It changes no stats, health, enemies or stages. A run stops at its explicit outcome or 480s timeout. Its provenance is **simulated**.

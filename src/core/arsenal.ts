@@ -33,13 +33,13 @@ export interface WeaponSpec {
 export interface BrandDefinition { readonly id: BrandId; readonly name: string; readonly color: string; readonly description: string }
 
 export const brands: Readonly<Record<BrandId, BrandDefinition>> = Object.freeze({
-  ironvale: Object.freeze({ id: 'ironvale', name: 'Ironvale', color: '#c47a4c', description: 'Hard-hitting slower guns; heavier shields, capacitors and armored locomotion. Kinetic bullets, slugs and heavy ordnance.' }),
+  ironvale: Object.freeze({ id: 'ironvale', name: 'Ironvale', color: '#c47a4c', description: 'Hard-hitting slower guns; heavier shields, capacitors and armored locomotion. Kinetic bullets, slugs, rockets and cluster ordnance.' }),
   prism: Object.freeze({ id: 'prism', name: 'Prism', color: '#c6a9ff', description: 'Fast cycling and cooling; shield-efficient precision hardware. Energy beams, orbs and discs with cold or gravity control.' }),
   kestrel: Object.freeze({ id: 'kestrel', name: 'Kestrel', color: '#5cc9bd', description: 'Rapid fire, quick reloads and nimble legs trade away damage and protection. Light bullets, guided rounds and scatter weapons.' }),
   rebound: Object.freeze({ id: 'rebound', name: 'Rebound', color: '#f0ba59', description: 'Larger magazines and balanced durable modules. Ricochets and bouncing discs specialize in kinetic and electric fire.' }),
   tackwork: Object.freeze({ id: 'tackwork', name: 'Tackwork', color: '#e49b68', description: 'Punchy, slower-handling weapons and reinforced modules. Sticky charges, spikes and adhesive or corrosive payloads.' }),
   nullward: Object.freeze({ id: 'nullward', name: 'Nullward', color: '#9a8fd4', description: 'High-capacity shields and reactors support deliberate fire. Orbs, guided rounds and discs carry gravity and ice control.' }),
-  cindergrid: Object.freeze({ id: 'cindergrid', name: 'Cindergrid', color: '#ff824b', description: 'High damage and aggressive cooling. Rockets, slugs and scatter payloads spread fire, radiation and corrosion.' }),
+  cindergrid: Object.freeze({ id: 'cindergrid', name: 'Cindergrid', color: '#ff824b', description: 'High damage and aggressive cooling. Rockets, clusters, slugs and scatter payloads spread fire, radiation and corrosion.' }),
   voltaic: Object.freeze({ id: 'voltaic', name: 'Voltaic', color: '#73baff', description: 'Accelerated firing, cooling and servo response. Arcs, beams and spikes specialize in electric and radioactive payloads.' }),
 });
 export const brandList: readonly BrandDefinition[] = Object.freeze(Object.values(brands));
@@ -68,14 +68,16 @@ export function defaultWeaponType(projectile: ProjectileType): WeaponType {
   return 'rifle';
 }
 
+/** Duplicate entries preserve every nonrocket selection interval and RNG draw count.
+ * Cluster takes half the existing rocket weight for the two heavy-ordnance makes. */
 const profiles: Record<BrandId, { projectiles: readonly ProjectileType[]; elements: readonly ElementType[] }> = {
-  ironvale: { projectiles: ['bullet', 'slug', 'scatter', 'rocket'], elements: ['kinetic', 'kinetic', 'corrosive'] },
+  ironvale: { projectiles: ['bullet', 'bullet', 'slug', 'slug', 'scatter', 'scatter', 'rocket', 'cluster'], elements: ['kinetic', 'kinetic', 'corrosive'] },
   prism: { projectiles: ['beam', 'orb', 'disc'], elements: ['ice', 'gravity', 'kinetic'] },
   kestrel: { projectiles: ['bullet', 'homing', 'scatter'], elements: ['kinetic', 'ice'] },
   rebound: { projectiles: ['ricochet', 'disc', 'bullet'], elements: ['kinetic', 'shock'] },
   tackwork: { projectiles: ['sticky', 'spike', 'rocket'], elements: ['adhesive', 'corrosive'] },
   nullward: { projectiles: ['orb', 'homing', 'disc'], elements: ['gravity', 'ice'] },
-  cindergrid: { projectiles: ['rocket', 'scatter', 'slug'], elements: ['fire', 'radiation', 'corrosive'] },
+  cindergrid: { projectiles: ['rocket', 'cluster', 'scatter', 'scatter', 'slug', 'slug'], elements: ['fire', 'radiation', 'corrosive'] },
   voltaic: { projectiles: ['arc', 'beam', 'spike'], elements: ['shock', 'radiation'] },
 };
 
@@ -132,8 +134,8 @@ export function createWeaponSpec(projectile: ProjectileType, element: ElementTyp
   if (projectile === 'disc') { spec.speed = 88; spec.bounces = 2; spec.spread = 0.005; }
   if (projectile === 'arc') { spec.speed = 180; spec.tracking = 1.2; spec.spread = 0.015; }
   if (projectile === 'cluster') {
-    spec.speed = 58; spec.spread = 0.018; spec.blastRadius = mode === 'mech' ? 3.2 : 2.2; spec.fuse = 0.65;
-    spec.split = { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 };
+    spec.speed = 58; spec.spread = 0.018; spec.blastRadius = mode === 'mech' ? 4 : 3; spec.fuse = 0.65;
+    spec.split = { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: mode === 'mech' ? 0.08 : 0.12 };
   }
   return spec;
 }
@@ -177,6 +179,32 @@ export function normalizeWeaponSpec(raw: unknown, mode: Mode = 'pilot'): WeaponS
 export function getWeaponElements(spec: WeaponSpec): ElementType[] {
   const primary = isElementType(spec.element) ? spec.element : 'kinetic';
   return isElementType(spec.secondaryElement) && spec.secondaryElement !== 'kinetic' && spec.secondaryElement !== primary ? [primary, spec.secondaryElement] : [primary];
+}
+
+function physicalSplitCount(spec: WeaponSpec): number {
+  const count = spec.split?.count;
+  return spec.projectile !== 'beam' && spec.projectile !== 'arc' && count !== undefined
+    && Number.isInteger(count) && count >= 2 && count <= 12 ? count : 1;
+}
+
+/** A successful child proc uses the carrier's status strength. The shared
+ * probability prevents multiplying control reliability; restoring strength
+ * avoids weakening nonstacking periodic effects a second time. Splash falloff
+ * and the upstream secondary-element cost remain included in hit damage. */
+export function getHitStatusPower(damage: number, spec: WeaponSpec): number {
+  if (!Number.isFinite(damage) || damage <= 0 || !Number.isFinite(spec.statusPower) || spec.statusPower <= 0) return 0;
+  const power = damage * spec.statusPower * physicalSplitCount(spec);
+  return Number.isFinite(power) ? power : 0;
+}
+
+/** Children share the saved carrier chance. All children connecting to one
+ * target in one impact stage retain that chance of at least one proc, independently per element.
+ * Instant rays never spawn children even if optional split metadata is present. */
+export function getHitStatusChance(spec: WeaponSpec): number {
+  const chance = Number.isFinite(spec.statusChance) ? Math.max(0, Math.min(1, spec.statusChance)) : 0;
+  if (chance === 0 || chance === 1 || spec.projectile === 'beam' || spec.projectile === 'arc') return chance;
+  const count = physicalSplitCount(spec);
+  return count === 1 ? chance : -Math.expm1(Math.log1p(-chance) / count);
 }
 
 export function getWeaponSpec(item?: Item): WeaponSpec {

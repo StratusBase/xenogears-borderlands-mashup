@@ -46,7 +46,7 @@ test('cluster build codes and normal saves preserve split metadata and independe
       const loaded = deserializeProgression(serializeProgression(state))!;
       const restored = loaded.inventory.find(entry => entry.id === item.id)!;
       assert.deepEqual(restored, item);
-      assert.deepEqual(restored.weapon!.split, { count: target === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 });
+      assert.deepEqual(restored.weapon!.split, { count: target === 'mech' ? 8 : 6, delay: 0.45, spread: target === 'mech' ? 0.08 : 0.12 });
       assert.deepEqual(getWeaponElements(restored.weapon!), secondaryElement === 'none' ? [element] : [element, secondaryElement]);
       assert.equal(restored.weapon!.statusChance, 1);
     }
