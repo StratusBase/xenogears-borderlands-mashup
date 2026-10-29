@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import * as THREE from 'three';
 import { createWorld, getZone, isWalkable } from '../src/world.ts';
+import { findLedgeGrab, pilotBodyClear, pilotSupportHeight } from '../src/core/ledgeClimb';
 
 const PILOT_RADIUS = 0.48;
 const MECH_RADIUS = 1.4;
@@ -109,4 +110,25 @@ test('supply-container walls stop shots at their visible surface without outline
   assert.ok(hits.length > 0, 'The supply container must be part of weapon occlusion');
   assert.ok(hits[0].object instanceof THREE.Mesh, 'Decorative outlines must not intercept weapon rays');
   assert.ok(Math.abs(hits[0].point.z - (-7.95)) < 0.00001);
+});
+
+test('real yard cover supports pilot climbs while the old mech/navigation footprint stays blocking', () => {
+  const grab = findLedgeGrab({ x: 23, y: 0, z: 18.98 }, { x: 0, z: -1 }, world.traversalColliders);
+  assert.ok(grab); assert.equal(grab.top, 1.3);
+  assert.equal(pilotBodyClear(grab.landing.x, grab.landing.z, grab.top, world.traversalColliders), true);
+  assert.equal(pilotSupportHeight(grab.landing.x, grab.landing.z, grab.top, world.traversalColliders), grab.top);
+  assert.equal(isWalkable(grab.landing.x, grab.landing.z, MECH_RADIUS, world.colliders), false);
+});
+
+test('airborne container climbs use the visible roof cap and cannot start from the ground', () => {
+  assert.equal(findLedgeGrab({ x: -15, y: 0, z: -7 }, { x: 0, z: -1 }, world.traversalColliders), undefined);
+  const grab = findLedgeGrab({ x: -15, y: 1.35, z: -7 }, { x: 0, z: -1 }, world.traversalColliders);
+  assert.ok(grab); assert.ok(Math.abs(grab.top - 3.37) < 1e-10);
+  assert.equal(grab.collider.minY, 3.19);
+});
+
+test('a gate crown blocks a post pull-up without closing the ground-level doorway', () => {
+  const grab = findLedgeGrab({ x: -33.55, y: 1.6, z: -10.5 }, { x: -1, z: 0 }, world.traversalColliders);
+  assert.equal(grab, undefined);
+  assert.equal(pilotBodyClear(-35, 0, 0, world.traversalColliders), true);
 });

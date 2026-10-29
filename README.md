@@ -19,6 +19,8 @@ For development review, `/equipment-lab.html` starts the actual game with determ
 
 `/field-services-lab.html` starts with eight real gear drops, favorite/junk samples, spending credits, and injured bodies. It uses an isolated save and no automatic encounters, and resets on reload. All three vending machines and both jump charges use the normal game implementation.
 
+On foot, face a flat ledge within arm's reach and press **Space / controller A** to climb. Jump toward higher ledges to catch them in the air. The pilot plants both hands, pulls up, transfers weight, and stands; ledges need room for the full body and clear headroom. Walking off a top drops you back down. `/ledge-climb-lab.html` provides isolated low-cover and airborne-container replays with pose controls for animation review.
+
 Native capture and Escape release have been verified in the active Chrome game window. The in-app preview returned a Chromium capture error, so use Chrome for mouse capture if that preview still rejects it. Browser-local saves are separate between browsers.
 
 The sandbox starts quietly with a permanent, indestructible test dummy straight ahead in the central firing lane. Fire immediately: normal hits, critical spots at pilot/mech height, and elemental ticks use the real combat and colored-number systems. Aimed readouts show the last damage event, total damage, and damage over the trailing five seconds divided by five. The anchored dummy has no health pool, enemy AI, rewards, or effect on encounter completion. It remains available through encounters and death returns.
@@ -27,7 +29,7 @@ Press **K** for the sandbox weapon workbench, or aim at its physical table besid
 
 | Control | Action |
 | --- | --- |
-| WASD / Shift / Space | Move / sprint / jump; press Space again in the air to double jump |
+| WASD / Shift / Space | Move / sprint / jump; press again in the air to double jump; face a reachable ledge and press Space to climb |
 | Captured mouse / right-drag fallback / arrow keys | Aim |
 | Right mouse while captured | Aim with zoom and lower sensitivity |
 | Left mouse / R | Fire / reload |
@@ -47,7 +49,7 @@ Press **K** for the sandbox weapon workbench, or aim at its physical table besid
 | Left stick / click left stick | Analog movement / sprint |
 | Right stick / LT | Look / aim with zoom and lower sensitivity |
 | RT / X | Fire / reload; X takes and equips targeted loot |
-| A / Y | Jump (press again in air) / take loot or interact |
+| A / Y | Jump or climb a reachable ledge (press again in air to double jump) / take loot or interact |
 | B during play | Med injector / mech field repair |
 | LB / RB | Mount or dismount mech / ability |
 | Back / Start | Loadout / pause |

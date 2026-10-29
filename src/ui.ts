@@ -179,7 +179,7 @@ function cardMetric(metric: CardMetric): HTMLElement {
 
 function controllerHelp(className = ''): HTMLElement {
   const help = el('div', `controller-help ${className}`);
-  help.append(el('span', 'eyebrow', 'CONTROLLER'), el('p', '', 'Left stick move · Right stick aim · RT fire · LT aim · A double jump · B heal / menu back · X reload · Y interact · LB mech · RB ability · Back loadout · Start pause · D-pad ↑ next encounter'));
+  help.append(el('span', 'eyebrow', 'CONTROLLER'), el('p', '', 'Left stick move · Right stick aim · RT fire · LT aim · A jump / climb ledge · B heal / menu back · X reload · Y interact · LB mech · RB ability · Back loadout · Start pause · D-pad ↑ next encounter'));
   return help;
 }
 
@@ -593,7 +593,7 @@ export class GameUI {
     panel.append(title, description, detail, tags, launch, el('p', 'launch-note', 'CLICK TO CAPTURE MOUSE · ESC TO RELEASE'),
       el('p', 'mouse-fallback-note', 'If your browser blocks capture, right-drag to look. Controller aiming works independently.'));
     const controls = el('div', 'start-controls');
-    [['WASD / SHIFT', 'Move / sprint'], ['MOUSE', 'Mouse aim / left fire'], ['F', 'Enter / exit mech'], ['E', 'Pick up gear / health'], ['I', 'Loadout'], ['Q', 'Dash / pulse'], ['H', 'Heal / field repair'], ['SPACE', 'Double jump']].forEach(([key, label]) => {
+    [['WASD / SHIFT', 'Move / sprint'], ['MOUSE', 'Mouse aim / left fire'], ['F', 'Enter / exit mech'], ['E', 'Pick up gear / health'], ['I', 'Loadout'], ['Q', 'Dash / pulse'], ['H', 'Heal / field repair'], ['SPACE', 'Jump / climb ledge']].forEach(([key, label]) => {
       const row = el('div'); row.append(keycap(key), el('span', '', label)); controls.append(row);
     });
     panel.append(controls, el('p', 'sandbox-note', 'MECHANICS FIRST. NO STORY REQUIRED.'));
@@ -622,7 +622,7 @@ export class GameUI {
     panel.append(resume, workbench, encounter, mode, sound, presentation);
     this.renderShop(panel);
     const controls = el('div', 'pause-controls');
-    [['WASD', 'Move'], ['SHIFT', 'Sprint'], ['SPACE', 'Double jump'], ['MOUSE', 'Mouse aim / left fire'], ['R', 'Reload'], ['E', 'Interact / loot / health'], ['F', 'Enter / exit mech'], ['I', 'Open loadout'], ['Q', 'Dash / pulse'], ['H', 'Heal / field repair'], ['ESC', 'Pause / release mouse']].forEach(([key, label]) => {
+    [['WASD', 'Move'], ['SHIFT', 'Sprint'], ['SPACE', 'Jump / double jump / climb'], ['MOUSE', 'Mouse aim / left fire'], ['R', 'Reload'], ['E', 'Interact / loot / health'], ['F', 'Enter / exit mech'], ['I', 'Open loadout'], ['Q', 'Dash / pulse'], ['H', 'Heal / field repair'], ['ESC', 'Pause / release mouse']].forEach(([key, label]) => {
       const row = el('div'); row.append(keycap(key), el('span', '', label)); controls.append(row);
     });
     panel.append(controls, el('p', 'mouse-fallback-note', 'Mouse capture blocked? Right-drag to look. Controllers aim independently.'), controllerHelp('pause-controller-help'), reset);

@@ -13,8 +13,11 @@ export class JumpMotion {
     return true;
   }
 
-  update(dt: number): void {
-    if (!Number.isFinite(dt) || dt <= 0 || (!this.velocity && !this.height)) return;
+  update(dt: number, floor = 0, ceiling = Infinity): void {
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    floor = Number.isFinite(floor) ? Math.max(0, floor) : 0;
+    ceiling = Math.max(floor, Number.isFinite(ceiling) ? ceiling : Infinity);
+    if (!this.velocity && this.height === floor) return;
     // Integrate in small steps so a slow frame cannot skip a landing.
     let remaining = Math.min(dt, 1);
     while (remaining > 0) {
@@ -22,7 +25,8 @@ export class JumpMotion {
       this.height += this.velocity * step - 9 * step * step;
       this.velocity -= 18 * step;
       remaining -= step;
-      if (this.height <= 0) { this.reset(); break; }
+      if (this.height > ceiling) { this.height = ceiling; this.velocity = Math.min(0, this.velocity); }
+      if (this.height <= floor) { this.height = floor; this.velocity = 0; this.used = 0; break; }
     }
   }
 

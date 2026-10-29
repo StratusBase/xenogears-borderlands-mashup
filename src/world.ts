@@ -11,6 +11,7 @@ import type { VendingType } from './core/vending';
 import { createWeaponWorkbenchStation } from './rendering/weaponWorkbenchStation';
 import { createEncounterObjective, type EncounterObjectiveVisual } from './rendering/encounterObjectives';
 import { ENCOUNTER } from './encounter/encounter';
+import type { TraversalCollider } from './core/ledgeClimb';
 
 export interface Bounds {
   minX: number;
@@ -108,6 +109,7 @@ export function createMech(color?: number): THREE.Group {
 
 export function createWorld(scene: THREE.Scene): {
   colliders: Bounds[];
+  traversalColliders: TraversalCollider[];
   parkedMech: THREE.Group;
   occluders: THREE.Object3D[];
   checkpointStations: Map<CheckpointId, CheckpointStationVisual>;
@@ -120,6 +122,8 @@ export function createWorld(scene: THREE.Scene): {
   root.name = 'proving-ground';
   scene.add(root);
   const colliders: Bounds[] = [];
+  const traversalColliders: TraversalCollider[] = [];
+  const heightMapped = new Set<Bounds>();
   const occluders: THREE.Object3D[] = [];
   const checkpointStations = new Map<CheckpointId, CheckpointStationVisual>();
   const vendingMachines: { id: VendingType; group: THREE.Group; position: THREE.Vector3 }[] = [];
@@ -140,12 +144,14 @@ export function createWorld(scene: THREE.Scene): {
     if (!materials.has(key)) materials.set(key, toon(color, gradient, finish === 'plain' || color === INK ? undefined : paint.get(finish)));
     return materials.get(key)!;
   };
-  function box(x: number, y: number, z: number, w: number, h: number, d: number, color: number, solid = true, outline = true): THREE.Mesh {
+  function box(x: number, y: number, z: number, w: number, h: number, d: number, color: number, solid = true, outline = true, climbable = solid): THREE.Mesh {
     const mesh = outlinedMesh(new THREE.BoxGeometry(w, h, d), material(color, h < 0.25 ? 'plain' : 'armor'), outline);
     mesh.position.set(x, y, z);
     root.add(mesh);
+    const bounds = { minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 };
+    if (solid || climbable) traversalColliders.push({ ...bounds, minY: y - h / 2, maxY: y + h / 2, climbable });
     if (solid) {
-      colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
+      colliders.push(bounds); heightMapped.add(bounds);
       occluders.push(mesh);
     }
     return mesh;
@@ -164,6 +170,8 @@ export function createWorld(scene: THREE.Scene): {
       box(px, postHeight / 2, pz, pw, postHeight, pd, color).name = `${name}-gate-post-${index === 0 ? 'left' : 'right'}`;
     });
     box(x, y, z, width, height, depth, INK, false).name = `${name}-gate-beam`;
+    traversalColliders.push({ minX: x - width / 2, maxX: x + width / 2, minZ: z - depth / 2,
+      maxZ: z + depth / 2, minY: y - height / 2, maxY: y + height / 2, climbable: false });
   }
   function cylinder(x: number, y: number, z: number, radius: number, height: number, color: number, sides = 8, solid = false) {
     const mesh = outlinedMesh(facetedCylinder(radius, radius * 1.05, height, sides), material(color, height < 0.3 ? 'plain' : 'armor'));
@@ -234,10 +242,10 @@ export function createWorld(scene: THREE.Scene): {
 
   // Industrial cover stays out of the spawn, central cross-route, and zone gates.
   box(-15, 1.6, -10, 7.5, 3.2, 4.1, TEAL);
-  box(-15, 3.28, -10, 7.8, 0.18, 4.4, INK, false);
+  box(-15, 3.28, -10, 7.8, 0.18, 4.4, INK, false, true, true);
   box(-18, 1.25, -9.98, 0.14, 2.05, 4.22, CREAM, false);
   box(15, 1.6, -22, 8.5, 3.2, 4.1, RUST);
-  box(15, 3.28, -22, 8.8, 0.18, 4.4, INK, false);
+  box(15, 3.28, -22, 8.8, 0.18, 4.4, INK, false, true, true);
   sign('02', 'RANGE SUPPLY', 15, 1.9, -19.91, 2.4, 1.8);
   box(-20, 0.65, 22, 5, 1.3, 2.4, 0x867d64);
   box(23, 0.65, 17, 4.5, 1.3, 2.4, TEAL);
@@ -290,7 +298,7 @@ export function createWorld(scene: THREE.Scene): {
   gate('mech', [35, 9.5, 0, 1.8, 1.0, 26], [[35, -12, 1.8, 1.8], [35, 12, 1.8, 1.8]], RUST);
   sign('MECH ACCESS', 'HEAVY RANGE / 03', 33.99, 7.5, 0, 17, 2.7, -Math.PI / 2);
   box(62, 3.5, -22, 10, 7, 5.5, RUST);
-  box(62, 7.2, -22, 10.6, 0.4, 6, INK, false);
+  box(62, 7.2, -22, 10.6, 0.4, 6, INK, false, true, true);
   sign('H-03', 'HEAVY SYSTEMS', 62, 4.3, -19.2, 7.1, 3.1);
   box(73, 2.1, 22, 12, 4.2, 6, TEAL);
   box(49, 1.3, 20, 6.5, 2.6, 3.8, 0x867d64);
@@ -388,8 +396,13 @@ export function createWorld(scene: THREE.Scene): {
     });
   }
 
+  // Irregular props and interactive assemblies retain their original blocking
+  // footprints. Only explicitly measured flat surfaces supply a landing top.
+  for (const bounds of colliders) if (!heightMapped.has(bounds)) traversalColliders.push({ ...bounds });
+
   return {
     colliders,
+    traversalColliders,
     parkedMech,
     occluders,
     checkpointStations,

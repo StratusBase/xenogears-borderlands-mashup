@@ -24,6 +24,9 @@ import { createStatusState, applyStatus, advanceStatuses, getStatusDps, getStatu
 import { PlayerBallistics, type BallisticHit } from './rendering/PlayerBallistics';
 import type { DamageEffect } from './core/feedback';
 import { JumpMotion } from './core/jump';
+import { findLedgeGrab, sampleLedgeClimb, pilotBodyClear, pilotSupportHeight, pilotCeilingHeight,
+  PILOT_TRAVERSAL, LEDGE_CLIMB_DURATION, type LedgeGrab } from './core/ledgeClimb';
+import { createClimbVisual, type ClimbVisual } from './rendering/climbVisual';
 import { ammoReserveCapacity, fitMagazine, reloadAmmo } from './core/ammo';
 import { getVendingOffers, getVendingServicePrices, purchaseVendingItem, type VendingType } from './core/vending';
 import { createDroppedItemModel } from './rendering/dropModels';
@@ -92,7 +95,7 @@ export interface EvaluationShot {
 }
 export interface EvaluationInput {
   moveX?: number; moveY?: number; yaw?: number; pitch?: number; sprint?: boolean; fire?: boolean;
-  interact?: boolean; switchMode?: boolean; ability?: boolean; heal?: boolean; reload?: boolean;
+  interact?: boolean; switchMode?: boolean; ability?: boolean; heal?: boolean; reload?: boolean; jump?: boolean;
 }
 
 /** Presentation/orchestration only. Equipment and progression have no renderer or story dependency. */
@@ -142,6 +145,9 @@ export class Game {
   private yaw = 0;
   private pitch = 0;
   private readonly jumpMotion = new JumpMotion();
+  private ledgeClimb?: { grab: LedgeGrab; startedAt: number; pitch: number; yaw: number };
+  private climbVisual?: ClimbVisual;
+  private climbIntentUntil = -Infinity;
   private activeVending: VendingType | null = null;
   private lastVendingView = '';
   private shooting = false;
@@ -243,11 +249,12 @@ export class Game {
       statuses: createStatusState(), statusEffects: new Map(), statusCoatings: new Map() };
     this.dummyVisual.group.updateWorldMatrix(true, true);
     const dummyBounds = new THREE.Box3().setFromObject(this.dummyVisual.group);
-    this.world.colliders.push({ minX: dummyBounds.min.x, maxX: dummyBounds.max.x, minZ: dummyBounds.min.z, maxZ: dummyBounds.max.z });
+    const dummyCollider = { minX: dummyBounds.min.x, maxX: dummyBounds.max.x, minZ: dummyBounds.min.z, maxZ: dummyBounds.max.z };
+    this.world.colliders.push(dummyCollider); this.world.traversalColliders.push({ ...dummyCollider });
     this.dummyVisual.group.traverse(object => {
       if (object instanceof THREE.Mesh && object.userData.enemyId !== this.testDummy.id) this.world.occluders.push(object);
     });
-    window.addEventListener('pagehide', () => { this.presentation?.dispose(); this.resetTestDummy(); this.dummyVisual.dispose(); });
+    window.addEventListener('pagehide', () => { this.climbVisual?.dispose(); this.presentation?.dispose(); this.resetTestDummy(); this.dummyVisual.dispose(); });
     this.ballistics = new PlayerBallistics(this.scene, {
       targets: () => this.combatTargets.map(target => ({ id: target.id, root: target.mesh, radius: target === this.testDummy ? this.dummyVisual.radius : target.heavy ? 1.6 : 0.85 })),
       occluders: () => this.world.occluders,
@@ -257,6 +264,7 @@ export class Game {
     this.placeAtCheckpoint();
     this.updateCheckpointStations();
     this.scene.add(this.camera);
+    this.climbVisual = createClimbVisual(); this.scene.add(this.climbVisual.group);
     this.makeWeapons();
     this.comicRenderer = new ComicRenderer(this.renderer, this.scene, this.camera);
     this.comicRenderer.resize(innerWidth, innerHeight, this.renderer.getPixelRatio());
@@ -286,7 +294,7 @@ export class Game {
     }, this.weaponBalance);
     this.mouse = new MouseLook(this.renderer.domElement, {
       look: (dx, dy) => {
-        if (this.isRespawning) return;
+        if (this.isRespawning || this.ledgeClimb) return;
         this.activeInput = 'mouse';
         const sensitivity = this.mouseAiming && this.mouse.locked ? 0.0012 : 0.0022;
         this.yaw -= dx * sensitivity;
@@ -333,7 +341,7 @@ export class Game {
   }
 
   private updateSimulationPresentation(dt: number): void {
-    const grounded = this.jumpMotion.height <= 0.001;
+    const grounded = this.playerGrounded;
     const presentationDelta = this.screen === 'none' && !this.isRespawning ? Math.max(0, this.time - this.presentationTime) : 0;
     const item = this.progression.inventory.find(entry => entry.id === this.progression.loadouts[this.mode].weapon);
     this.presentation?.update({ dt: presentationDelta, time: this.time, paused: this.screen !== 'none' || this.isRespawning,
@@ -345,14 +353,15 @@ export class Game {
     if (this.mode === 'pilot') updateEquipmentEffects(this.world.parkedMech, fxDelta, this.time);
     for (const vendor of this.world.vendingMachines) updateEquipmentEffects(vendor.group, fxDelta, this.time);
     this.healingVisual.update(this.mode, this.recoveryAction.progress(this.time), this.recoveryAction.active);
-    this.muzzle.visible = !this.presentation?.enabled && this.screen === 'none' && !this.isRespawning && !this.recoveryAction.active && this.time - this.lastFiredAt < 0.055;
+    this.climbVisual?.update(this.ledgeClimb?.grab, this.climbProgress, this.camera);
+    this.muzzle.visible = !this.ledgeClimb && !this.presentation?.enabled && this.screen === 'none' && !this.isRespawning && !this.recoveryAction.active && this.time - this.lastFiredAt < 0.055;
     if (this.muzzle.visible) {
       const rig = this.mode === 'pilot' ? this.pilotRig : this.mechRig;
       const socket = rig.muzzles[this.lastMuzzleIndex % rig.muzzles.length];
       if (socket) this.muzzle.position.copy(this.weapon.worldToLocal(socket.getWorldPosition(new THREE.Vector3())));
       else this.muzzle.visible = false;
     }
-    this.pilotGun.visible = this.mode === 'pilot';
+    this.pilotGun.visible = this.mode === 'pilot' && (!this.ledgeClimb || this.climbProgress < .14 || this.climbProgress > .88);
     this.mechGuns.visible = this.mode === 'mech';
     this.world.parkedMech.visible = this.mode !== 'mech';
   }
@@ -408,7 +417,7 @@ export class Game {
 
   private resetPresentationMotion(): void {
     this.presentationTime = this.time; this.presentationPosition.copy(this.camera.position);
-    this.presentationYaw = this.yaw; this.presentationGrounded = this.jumpMotion.height <= 0.001;
+    this.presentationYaw = this.yaw; this.presentationGrounded = this.playerGrounded;
   }
 
   private updateReloadFoley(): void {
@@ -421,8 +430,55 @@ export class Game {
   private get stats() { return getStats(this.progression, this.mode); }
   private get body() { return this.bodies[this.mode]; }
   private get isRespawning() { return this.time < this.respawnUntil; }
+  private get climbProgress(): number {
+    return this.ledgeClimb ? THREE.MathUtils.clamp((this.time - this.ledgeClimb.startedAt) / LEDGE_CLIMB_DURATION, 0, 1) : 0;
+  }
+  private get playerGrounded(): boolean {
+    if (this.ledgeClimb) return false;
+    const floor = this.mode === 'pilot' ? pilotSupportHeight(this.camera.position.x, this.camera.position.z,
+      this.jumpMotion.height, this.world.traversalColliders ?? []) : 0;
+    return this.jumpMotion.height <= floor + .001 && !(this.jumpMotion.velocity > 0);
+  }
+
+  private resetTraversal(): void {
+    this.ledgeClimb = undefined; this.climbIntentUntil = -Infinity;
+    this.jumpMotion.reset(); this.climbVisual?.update(undefined, 0, this.camera);
+  }
+
+  private nearbyLedge(): LedgeGrab | undefined {
+    if (this.mode !== 'pilot' || this.ledgeClimb || this.isRespawning || this.recoveryAction.active) return;
+    return findLedgeGrab({ x: this.camera.position.x, y: this.jumpMotion.height, z: this.camera.position.z },
+      { x: -Math.sin(this.yaw), z: -Math.cos(this.yaw) }, this.world.traversalColliders ?? [],
+      (x, z) => checkZoneAccess('pilot', getZone(x, z).allowed));
+  }
+
+  private tryClimb(): boolean {
+    const grab = this.nearbyLedge();
+    if (!grab) return false;
+    this.ledgeClimb = { grab, startedAt: this.time, pitch: this.pitch, yaw: this.yaw };
+    this.jumpMotion.velocity = 0; this.climbIntentUntil = -Infinity;
+    this.reloadUntil = 0; this.dashUntil = 0; this.mouseAiming = false;
+    return true;
+  }
+
+  private advanceClimb(): void {
+    const climb = this.ledgeClimb;
+    if (!climb) return;
+    const progress = this.climbProgress, pose = sampleLedgeClimb(climb.grab, progress);
+    this.jumpMotion.height = pose.position.y; this.jumpMotion.velocity = 0;
+    this.camera.position.set(pose.position.x, pose.position.y + pose.eyeHeight, pose.position.z);
+    const look = THREE.MathUtils.lerp(climb.pitch, 0, THREE.MathUtils.smoothstep(progress, 0, .2));
+    const faceYaw = Math.atan2(climb.grab.normal.x, climb.grab.normal.z);
+    const turn = Math.atan2(Math.sin(faceYaw - climb.yaw), Math.cos(faceYaw - climb.yaw));
+    this.yaw = climb.yaw + turn * THREE.MathUtils.smoothstep(progress, 0, .2);
+    this.camera.rotation.set(look + pose.pitch, this.yaw, pose.roll);
+    if (progress >= 1) {
+      this.pitch = look; this.jumpMotion.used = 0; this.ledgeClimb = undefined;
+    }
+  }
 
   private placeAtCheckpoint(): void {
+    this.resetTraversal();
     const saved = normalizeCheckpoint(this.progression.checkpoint);
     this.progression.checkpoint = saved;
     const checkpoint = getCheckpoint(saved.id)!;
@@ -640,15 +696,17 @@ export class Game {
 
   private updatePlayer(dt: number): void {
     const stats = this.stats;
-    const aiming = !this.recoveryAction.active && (this.gamepad.aim || (this.mouse.locked && this.mouseAiming));
-    this.yaw -= this.gamepad.lookX * dt * 2.5 * (aiming ? 0.5 : 1);
-    this.pitch = THREE.MathUtils.clamp(this.pitch - this.gamepad.lookY * dt * 1.9 * (aiming ? 0.5 : 1), -1.3, 1.3);
+    const aiming = !this.ledgeClimb && !this.recoveryAction.active && (this.gamepad.aim || (this.mouse.locked && this.mouseAiming));
+    if (!this.ledgeClimb) {
+      this.yaw -= this.gamepad.lookX * dt * 2.5 * (aiming ? 0.5 : 1);
+      this.pitch = THREE.MathUtils.clamp(this.pitch - this.gamepad.lookY * dt * 1.9 * (aiming ? 0.5 : 1), -1.3, 1.3);
+      if (this.keys.has('ArrowLeft')) this.yaw += dt * 1.7;
+      if (this.keys.has('ArrowRight')) this.yaw -= dt * 1.7;
+      if (this.keys.has('ArrowUp')) this.pitch = Math.min(1.3, this.pitch + dt);
+      if (this.keys.has('ArrowDown')) this.pitch = Math.max(-1.3, this.pitch - dt);
+    }
     const fov = THREE.MathUtils.damp(this.camera.fov, aiming ? 52 : 72, 12, dt);
     if (Math.abs(this.camera.fov - fov) > 0.01) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
-    if (this.keys.has('ArrowLeft')) this.yaw += dt * 1.7;
-    if (this.keys.has('ArrowRight')) this.yaw -= dt * 1.7;
-    if (this.keys.has('ArrowUp')) this.pitch = Math.min(1.3, this.pitch + dt);
-    if (this.keys.has('ArrowDown')) this.pitch = Math.max(-1.3, this.pitch - dt);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
     const forward = Number(this.keys.has('KeyW')) - Number(this.keys.has('KeyS'));
     const right = Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA'));
@@ -658,8 +716,11 @@ export class Game {
     const sprint = this.gamepad.sprint || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
     const speed = stats.moveSpeed * (sprint ? 1.55 : 1) * (this.time < this.dashUntil ? 3 : 1);
     const radius = this.mode === 'mech' ? 1.4 : 0.48;
+    const traversal = this.world.traversalColliders ?? this.world.colliders;
+    const obstacles = this.mode === 'pilot' ? traversal.filter(bounds => (bounds.maxY ?? Infinity) > this.jumpMotion.height + .0001
+      && (bounds.minY ?? -Infinity) < this.jumpMotion.height + PILOT_TRAVERSAL.height - .0001) : this.world.colliders;
     const canMove = (x: number, z: number) => {
-      if (!isWalkable(x, z, radius, this.world.colliders)) return false;
+      if (this.mode === 'pilot' ? !pilotBodyClear(x, z, this.jumpMotion.height, traversal) : !isWalkable(x, z, radius, obstacles)) return false;
       const zone = getZone(x, z);
       if (!checkZoneAccess(this.mode, zone.allowed)) {
         if (this.time - this.lastZoneWarning > 2) { this.ui.toast(zone.allowed === 'pilot' ? 'Pilot access only. Dismount in the proving ground.' : 'Heavy range: a mech is required.'); this.lastZoneWarning = this.time; }
@@ -667,13 +728,21 @@ export class Game {
       }
       return true;
     };
-    const x = this.camera.position.x + direction.x * speed * dt;
-    const worldBounds = { minX: -90, maxX: 90, minZ: -55, maxZ: 55 };
-    if (canMove(x, this.camera.position.z) && segmentClear(this.camera.position, { x, z: this.camera.position.z }, radius, this.world.colliders, worldBounds)) this.camera.position.x = x;
-    const z = this.camera.position.z + direction.z * speed * dt;
-    if (canMove(this.camera.position.x, z) && segmentClear(this.camera.position, { x: this.camera.position.x, z }, radius, this.world.colliders, worldBounds)) this.camera.position.z = z;
-    this.jumpMotion.update(dt);
-    this.camera.position.y = (this.mode === 'mech' ? 4.4 : 1.8) + this.jumpMotion.height;
+    if (this.ledgeClimb) this.advanceClimb();
+    else {
+      const x = this.camera.position.x + direction.x * speed * dt;
+      const worldBounds = { minX: -90, maxX: 90, minZ: -55, maxZ: 55 };
+      if (canMove(x, this.camera.position.z) && segmentClear(this.camera.position, { x, z: this.camera.position.z }, radius, obstacles, worldBounds)) this.camera.position.x = x;
+      const z = this.camera.position.z + direction.z * speed * dt;
+      if (canMove(this.camera.position.x, z) && segmentClear(this.camera.position, { x: this.camera.position.x, z }, radius, obstacles, worldBounds)) this.camera.position.z = z;
+      const floor = this.mode === 'pilot' ? pilotSupportHeight(this.camera.position.x, this.camera.position.z, this.jumpMotion.height, traversal) : 0;
+      const ceiling = this.mode === 'pilot' ? pilotCeilingHeight(this.camera.position.x, this.camera.position.z, this.jumpMotion.height, traversal) - PILOT_TRAVERSAL.height : Infinity;
+      this.jumpMotion.update(dt, floor, ceiling);
+      this.camera.position.y = (this.mode === 'mech' ? 4.4 : 1.8) + this.jumpMotion.height;
+      const forwardMotion = -direction.x * Math.sin(this.yaw) - direction.z * Math.cos(this.yaw);
+      if ((this.time < this.climbIntentUntil || this.keys.has('Space') || this.jumpMotion.used > 0 && forwardMotion > .15)
+        && this.tryClimb()) this.advanceClimb();
+    }
     for (const mode of ['pilot', 'mech'] as const) {
       const body = this.bodies[mode], modeStats = getStats(this.progression, mode);
       body.heat = Math.max(0, body.heat - modeStats.cooling * dt);
@@ -690,6 +759,7 @@ export class Game {
 
   private switchMode(): void {
     if (!this.hasStarted || this.isRespawning) return;
+    if (this.ledgeClimb || this.jumpMotion.height > .01) { this.ui.toast('Return to the ground before changing form.'); return; }
     if (this.recoveryAction.active) { this.ui.toast('Finish recovery before changing form.'); return; }
     const next: Mode = this.mode === 'pilot' ? 'mech' : 'pilot';
     if (next === 'mech' && ['infiltration', 'defenses'].includes(this.encounter.snapshot.phase)) {
@@ -716,7 +786,7 @@ export class Game {
     if (this.trainingTargets) this.spawnWave();
     this.healingUntil = 0; this.lastHealingAmount = 0;
     this.reloadUntil = 0; this.nextShot = this.time + 0.3; this.lastFiredAt = -Infinity;
-    this.jumpMotion.reset();
+    this.resetTraversal();
     this.ui.toast(next === 'mech' ? 'MECH ONLINE · cannon / heat management / Q shockwave' : 'PILOT ACTIVE · rifle / sprint / Q dash');
     if (this.screen !== 'none') this.ui.setScreen(this.screen, this.progression, this.mode);
     this.applyWeaponPose(); this.scene.updateMatrixWorld(true);
@@ -724,7 +794,7 @@ export class Game {
   }
 
   private reload(): void {
-    if (this.isRespawning || this.recoveryAction.active || this.reloadUntil || this.body.ammo === this.stats.magazine) return;
+    if (this.ledgeClimb || this.isRespawning || this.recoveryAction.active || this.reloadUntil || this.body.ammo === this.stats.magazine) return;
     if (this.body.reserve <= 0) {
       if (this.time - this.lastAmmoWarning > 3) { this.ui.toast('No reserve ammo. Restock at Weapons & Ammo.'); this.lastAmmoWarning = this.time; }
       return;
@@ -736,6 +806,9 @@ export class Game {
   }
 
   private jump(): void {
+    if (this.screen !== 'none' || this.ledgeClimb || this.isRespawning) return;
+    this.climbIntentUntil = this.time + .22;
+    if (this.tryClimb()) return;
     if (!this.jumpMotion.request(this.mode)) return;
     if (this.jumpMotion.used === 2) {
       this.burst(this.camera.position.clone().add(new THREE.Vector3(0, -1, 0)), this.mode === 'mech' ? 0xffc857 : 0x74e2d5, 8);
@@ -744,7 +817,7 @@ export class Game {
   }
 
   private fire(): void {
-    if (this.screen !== 'none' || this.isRespawning || this.recoveryAction.active || this.time < this.nextShot || this.reloadUntil || this.body.overheated) return;
+    if (this.ledgeClimb || this.screen !== 'none' || this.isRespawning || this.recoveryAction.active || this.time < this.nextShot || this.reloadUntil || this.body.overheated) return;
     if (this.body.ammo <= 0) {
       if (this.time - this.lastDryClickAt > 0.4) {
         this.lastDryClickAt = this.time; this.emptyAt = this.time;
@@ -912,7 +985,7 @@ export class Game {
     this.bodies = this.freshBodies(); this.mode = 'pilot';
     this.weaponPose.reset(); this.shotSequence = 0;
     this.reloadUntil = 0; this.nextShot = this.time + 0.3; this.respawnUntil = 0;
-    this.recoveryAction.cancel(); this.jumpMotion.reset(); this.dashUntil = 0;
+    this.recoveryAction.cancel(); this.resetTraversal(); this.dashUntil = 0;
     this.abilityUntil = { pilot: 0, mech: 0 }; this.healReadyAt = this.time;
     this.camera.position.set(0, 1.8, 0); this.yaw = Math.PI / 2; this.pitch = 0;
     this.camera.rotation.set(this.pitch, this.yaw, 0);
@@ -942,6 +1015,9 @@ export class Game {
         weaponPosition: { x: this.weapon.position.x, y: this.weapon.position.y, z: this.weapon.position.z },
         weaponRotation: { x: this.weapon.rotation.x, y: this.weapon.rotation.y, z: this.weapon.rotation.z } },
       yaw: this.yaw, pitch: this.pitch, parkedMech: { x: this.world.parkedMech.position.x, z: this.world.parkedMech.position.z },
+      traversal: { climbing: !!this.ledgeClimb, progress: this.climbProgress, feet: this.jumpMotion.height, grounded: this.playerGrounded,
+        phase: this.ledgeClimb ? sampleLedgeClimb(this.ledgeClimb.grab, this.climbProgress).phase : undefined,
+        landing: this.ledgeClimb?.grab.landing },
       navigation: this.evaluationDriver ? this.world.colliders.map(bounds => ({ ...bounds })) : undefined,
       position: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
       enemies: this.enemies.map(e => ({ id: e.id, position: { x: e.mesh.position.x, z: e.mesh.position.z },
@@ -961,6 +1037,7 @@ export class Game {
     if (input.ability) this.ability();
     if (input.heal) this.heal();
     if (input.reload) this.reload();
+    if (input.jump) this.jump();
   }
 
   public stepEvaluation(dt = 1 / 60): void {
@@ -1234,7 +1311,7 @@ export class Game {
   }
 
   private ability(): void {
-    if (this.isRespawning || this.recoveryAction.active) return;
+    if (this.ledgeClimb || this.isRespawning || this.recoveryAction.active) return;
     const remaining = this.abilityUntil[this.mode] - this.time;
     if (remaining > 0) { this.ui.toast(`Ability ready in ${Math.ceil(remaining)} s`); return; }
     this.abilityUntil[this.mode] = this.time + (this.mode === 'mech' ? 9 : 4);
@@ -1259,7 +1336,7 @@ export class Game {
   }
 
   private heal(): void {
-    if (this.screen !== 'none' || this.isRespawning || this.recoveryAction.active) return;
+    if (this.ledgeClimb || this.screen !== 'none' || this.isRespawning || this.recoveryAction.active) return;
     const target = { health: this.body.health, maxHealth: this.stats.maxHealth };
     const result = trySelfHeal(target, this.time, this.healReadyAt);
     if (result.healed <= 0) {
@@ -1566,7 +1643,7 @@ export class Game {
   }
 
   private interact(): void {
-    if (this.screen !== 'none' || this.isRespawning) return;
+    if (this.ledgeClimb || this.screen !== 'none' || this.isRespawning) return;
     const relay = ENCOUNTER.relays.find(r => Math.hypot(r.x - this.camera.position.x, r.z - this.camera.position.z) <= r.radius
       && this.encounter.snapshot.activeRelayIds.includes(r.id));
     if (relay && this.clearLine(this.camera.position, new THREE.Vector3(relay.x, 3.2, relay.z))
@@ -1610,7 +1687,7 @@ export class Game {
     if (!this.hasStarted || this.isRespawning) return;
     this.trainingTargets = false;
     this.clearCombat(); this.resetTestDummy(); this.workbenchTesting = true;
-    this.jumpMotion.reset();
+    this.resetTraversal();
     this.camera.position.set(0, this.mode === 'mech' ? 4.4 : 1.8, 7);
     this.yaw = 0; this.pitch = 0;
     this.camera.rotation.set(this.pitch, this.yaw, 0);
@@ -1680,7 +1757,7 @@ export class Game {
     this.placeAtCheckpoint(); this.updateCheckpointStations(); this.respawnUntil = 0;
     this.reloadUntil = 0; this.nextShot = 0; this.lastFiredAt = -Infinity; this.abilityUntil = { pilot: 0, mech: 0 };
     this.healReadyAt = 0; this.healingUntil = 0; this.lastHealingAmount = 0;
-    this.jumpMotion.reset(); this.save(); this.resume(); this.spawnWave();
+    this.resetTraversal(); this.save(); this.resume(); this.spawnWave();
   }
 
   private clearCombat(): void {
@@ -1763,8 +1840,10 @@ export class Game {
     const nearbyRelay = ENCOUNTER.relays.find(r => this.encounter.snapshot.activeRelayIds.includes(r.id)
       && Math.hypot(r.x - this.camera.position.x, r.z - this.camera.position.z) <= r.radius);
     if (nearbyRelay && !focusedLoot) interaction = `[E] Disable ${nearbyRelay.name}`;
+    if (this.ledgeClimb) interaction = 'CLIMBING';
+    else if (this.screen === 'none' && this.nearbyLedge()) interaction = '[SPACE] Climb ledge';
     const usingGamepad = this.activeInput === 'gamepad' && this.gamepad.connected;
-    if (usingGamepad) interaction = interaction.replace('[E]', '[Y]').replace('[F]', '[LB]');
+    if (usingGamepad) interaction = interaction.replace('[E]', '[Y]').replace('[F]', '[LB]').replace('[SPACE]', '[A]');
     const data: HUDData = {
       mode: this.mode, soundEnabled: this.soundEnabled, presentationMode: this.presentationMode, health: Math.max(0, this.body.health), maxHealth: stats.maxHealth,
       shield: this.body.shield, maxShield: stats.maxShield, ammo: this.body.ammo, magazine: stats.magazine, ammoReserve: this.body.reserve,
@@ -1784,7 +1863,7 @@ export class Game {
       ammoEmpty: this.body.ammo === 0,
       healCooldownRemaining: getHealCooldownRemaining(this.time, this.healReadyAt),
       healCooldownDuration: HEAL_COOLDOWN,
-      healEnabled: this.screen === 'none',
+      healEnabled: this.screen === 'none' && !this.ledgeClimb,
       healingActive: this.time < this.healingUntil,
       healingAmount: this.lastHealingAmount,
       healingInProgress: this.recoveryAction.active,
@@ -1809,13 +1888,20 @@ export class Game {
 
   private applyWeaponPose(): void {
     if (!this.pilotRig || !this.mechRig) return;
-    const moving = this.screen === 'none' && !this.isRespawning && ([...this.keys].some(key => ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(key))
+    const moving = this.screen === 'none' && !this.isRespawning && !this.ledgeClimb && ([...this.keys].some(key => ['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(key))
       || Math.abs(this.gamepad.moveX) + Math.abs(this.gamepad.moveY) > 0);
     this.weaponPose.apply({ mode: this.mode, time: this.time, moving,
       reloadProgress: this.reloadUntil > 0 ? (this.time - this.reloadStartedAt) / this.stats.reload : 0,
       reloading: this.reloadUntil > 0, recoveryProgress: this.recoveryAction.progress(this.time), recoveryActive: this.recoveryAction.active,
       pilotAmmo: this.bodies.pilot.ammo, mechAmmo: this.bodies.mech.ammo, emptyAge: this.time - this.emptyAt,
     }, this.weapon, this.pilotRig, this.mechRig);
+    if (this.ledgeClimb) {
+      const progress = this.climbProgress;
+      const lower = THREE.MathUtils.smoothstep(progress, 0, .14) * (1 - THREE.MathUtils.smoothstep(progress, .88, 1));
+      this.weapon.position.y -= lower * 1.05;
+      this.weapon.rotation.x -= lower * .4;
+      this.weapon.rotation.z += lower * .08;
+    }
   }
 
   private makeWeapons(): void {
