@@ -1,0 +1,106 @@
+{
+  "protocol": "physical-gamepad-playtest-v1",
+  "hardwareStatus": "NOT RUN",
+  "externalAttemptId": null,
+  "profileId": null,
+  "sessionId": null,
+  "testerId": null,
+  "localDateTime": null,
+  "timezone": "America/New_York",
+  "device": {
+    "model": null,
+    "browserGamepadId": null,
+    "mapping": null,
+    "connection": null,
+    "firmwareIfKnown": null,
+    "osVersion": null,
+    "browserVersion": null,
+    "displayRefreshHz": null
+  },
+  "candidate": {
+    "gitCommit": null,
+    "dirtySourceFingerprint": null,
+    "sourceArchivePath": null,
+    "encounterVersion": "relay-break-v3",
+    "balanceVariant": "combined",
+    "balanceRules": {
+      "secondaryElementCost": true,
+      "mechHeat": true
+    },
+    "fixtureReference": "gamepad-fixtures.json",
+    "equippedFixtureMatches": null
+  },
+  "run": {
+    "scenario": null,
+    "buildId": null,
+    "seed": null,
+    "repeat": null,
+    "form": null,
+    "rawRunId": null,
+    "outcome": null,
+    "observerStopReason": null,
+    "activeSeconds": null,
+    "wallSeconds": null,
+    "controllerOnlyDuringGameplay": null,
+    "setupAssistance": null,
+    "gameplayAssistance": [],
+    "administrativeActions": [],
+    "disconnects": [],
+    "pauses": []
+  },
+  "dummyWindow": {
+    "firstShotAt": null,
+    "triggerReleaseAt": null,
+    "finishAt": null,
+    "triggerSeconds": null,
+    "drainSeconds": null,
+    "timingWithinTolerance": null,
+    "appliedDamage": null,
+    "shots": null,
+    "ammo": null,
+    "heatBlockedSeconds": null,
+    "reloadSeconds": null,
+    "pendingEffects": null,
+    "observedWindowSeconds": null,
+    "practicalDps": null,
+    "releaseEvidencePath": null,
+    "activeClockAlignment": null
+  },
+  "encounterMetrics": {
+    "appliedDamage": null,
+    "practicalDps": null,
+    "kills": null,
+    "ttkFirstDamageMean": null,
+    "ttkKilledDenominator": null,
+    "ttkObservedDenominator": null,
+    "receivedHealth": null,
+    "receivedShield": null,
+    "ammoPilot": null,
+    "ammoMech": null,
+    "heatBlockedSeconds": null,
+    "reloadSeconds": null,
+    "relaysCompleted": null,
+    "rewardCollected": null
+  },
+  "evidence": {
+    "originalExportPath": null,
+    "originalExportSha256": null,
+    "videoPath": null,
+    "observerNotesPath": null,
+    "individualReplayCheckPath": null
+  },
+  "criteriaResults": [],
+  "issues": [],
+  "attestation": {
+    "testerNameOrId": null,
+    "confirmedPhysicalDeviceUsed": null,
+    "confirmedScriptedControlsUnused": null,
+    "confirmedAssistanceRecorded": null,
+    "signedAt": null
+  },
+  "review": {
+    "reviewerId": null,
+    "decision": null,
+    "reason": null
+  }
+}

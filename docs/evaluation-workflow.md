@@ -1,5 +1,9 @@
 # Arsenal evaluation workflow
 
+For real-controller testing, use the [physical gamepad playtest plan](physical-gamepad-playtest.md): fixed combined/v3 settings, 36 encounter attempts and 18 dummy samples per profile, with explicit acceptance gates and tester attestations. Physical testing remains **NOT RUN** until recorded.
+
+The [current v3 repeat and retained-v2 comparison](balance-v3-current-comparison.md) runs the same four-arm matrix without changing balance or pacing, including the shared simulation-clock integration. The [initial v3 snapshot comparison](balance-v3-comparison.md) remains preserved separately. Each report identifies its exact tested source.
+
 For the approved secondary-element and mech heat changes, use the four-arm comparison in [balance-implementation-results.md](balance-implementation-results.md). Ordinary gameplay uses both changes; the development lab's **Balance** selector reproduces baseline, secondary-only, heat-only, and combined rules without altering saved equipment or encounter definitions. Historical evidence below retains its original source version.
 
 Use `arsenal-evaluation-v1` to reproduce a build and scenario. Keep dummy measurements, browser combat, and physical controller results in separate records. Findings and proposed tuning belong in [evaluation-findings.md](evaluation-findings.md); this workflow does not change balance.

@@ -1,0 +1,689 @@
+{
+  "protocol": "physical-gamepad-playtest-v1",
+  "hardwareStatus": "NOT RUN",
+  "purpose": "Read-only fixture and mechanic reference; importing this document does not alter gameplay.",
+  "balanceVariant": "combined",
+  "balanceRules": {
+    "secondaryElementCost": true,
+    "mechHeat": true
+  },
+  "lockedMechanics": {
+    "secondaryDamageMultiplier": 0.85,
+    "mechHeatPerConsumedShot": "min(31, 120 / fireRate)",
+    "mechUnlock": "strictly below 45% capacity",
+    "pilotHeat": 8,
+    "pilotUnlock": "strictly below 30% capacity",
+    "mechAbilityVent": 40,
+    "mechAbilityCooldownSeconds": 9
+  },
+  "encounter": {
+    "name": "BREACH / BREAK / SALVAGE",
+    "recommendedSeconds": [
+      180,
+      300
+    ],
+    "version": "relay-break-v3",
+    "vitalityScale": 1.3,
+    "battleGroups": 6,
+    "relays": [
+      {
+        "id": "vault-relay-a",
+        "name": "West defense relay",
+        "x": -59,
+        "z": 8,
+        "radius": 3.5
+      },
+      {
+        "id": "vault-relay-b",
+        "name": "South defense relay",
+        "x": -70,
+        "z": 18,
+        "radius": 3.5
+      }
+    ],
+    "boarding": {
+      "x": -29,
+      "z": 0
+    },
+    "battleEntry": {
+      "x": 44,
+      "z": 0,
+      "radius": 10
+    },
+    "reward": {
+      "x": 69,
+      "z": -8
+    },
+    "expectedTargets": 24,
+    "expectedAppliedHealthPlusShield": 37951
+  },
+  "referenceSimulation": {
+    "sourceFingerprint": "sha256:182cca6874e40549b2ff5cd174d663874cd9142e9619eeab64e6ffa23111db13",
+    "provenance": "simulated",
+    "hardwareStatus": "NOT RUN",
+    "seeds": [
+      7,
+      8,
+      41,
+      97
+    ],
+    "meanCombinedCompletionSeconds": {
+      "mobile-precision": 205.81250000005593,
+      "elemental-pressure": 212.12083333339427,
+      "heavy-control": 259.91250000008324
+    },
+    "use": "Context only. Human acceptance gates are declared in physical-gamepad-playtest.md; do not treat these as hardware results."
+  },
+  "lockedFiles": [
+    {
+      "path": "src/core/weaponBalance.ts",
+      "sha256": "sha256:b9305622c22acb9d9b2aa6c45cce92215ea6706d2430083605d9d2bbe2091e2f"
+    },
+    {
+      "path": "src/encounter/encounter.ts",
+      "sha256": "sha256:faed8bb393f279a09ffe563643c49240df3e99050a9cf091f5a8ef89bdbf831a"
+    },
+    {
+      "path": "src/diagnostics/fixtures.ts",
+      "sha256": "sha256:4e3c7f263d6cf0a62ded4555d86d92934d20a56668ff220f12b4a919384584b7"
+    },
+    {
+      "path": "src/core/workbench.ts",
+      "sha256": "sha256:f081df47fa6a187bbb36fa7c179f7a54009d50f9222e2bb7c70d600d33ff64a1"
+    }
+  ],
+  "builds": [
+    {
+      "id": "mobile-precision",
+      "label": "Mobile precision",
+      "codes": {
+        "pilot": "WS1:pilot:kestrel:sniper:bullet:kinetic:none:tracer:0:compact:5:rare:rolled",
+        "mech": "WS1:mech:kestrel:sniper:slug:kinetic:none:tracer:0:compact:5:rare:rolled"
+      },
+      "equipment": {
+        "pilot": [
+          {
+            "id": "sandbox-workbench-pilot",
+            "name": "Test Sniper",
+            "target": "pilot",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "kestrel",
+            "stats": {
+              "damage": 111.7,
+              "fireRate": 1.38,
+              "magazine": 7,
+              "reload": 1.13
+            },
+            "weapon": {
+              "weaponType": "sniper",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "bullet",
+              "element": "kinetic",
+              "speed": 155,
+              "pellets": 1,
+              "spread": 0.008,
+              "bounces": 0,
+              "tracking": 0,
+              "blastRadius": 0,
+              "fuse": 0,
+              "statusChance": 0,
+              "statusPower": 0
+            },
+            "affix": "Quickdraw",
+            "value": 0
+          },
+          {
+            "id": "evaluation-pilot-shield",
+            "name": "Lightweight Field Shield",
+            "slot": "shield",
+            "target": "pilot",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 85,
+              "maxHealth": 12.6,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "kestrel"
+          },
+          {
+            "id": "evaluation-pilot-reactor",
+            "name": "Cooling Module",
+            "slot": "reactor",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 24.48,
+              "cooling": 11.65
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "kestrel"
+          },
+          {
+            "id": "evaluation-pilot-legs",
+            "name": "Runner Boots",
+            "slot": "legs",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.95,
+              "maxHealth": 4
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "kestrel"
+          }
+        ],
+        "mech": [
+          {
+            "id": "sandbox-workbench-mech",
+            "name": "Test Sniper / Mech",
+            "target": "mech",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "kestrel",
+            "stats": {
+              "damage": 425.37,
+              "fireRate": 0.52,
+              "magazine": 4,
+              "reload": 1.41
+            },
+            "weapon": {
+              "weaponType": "sniper",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "slug",
+              "element": "kinetic",
+              "speed": 105,
+              "pellets": 1,
+              "spread": 0.003,
+              "bounces": 0,
+              "tracking": 0,
+              "blastRadius": 0,
+              "fuse": 0,
+              "statusChance": 0,
+              "statusPower": 0
+            },
+            "affix": "Quickdraw",
+            "value": 0
+          },
+          {
+            "id": "evaluation-mech-shield",
+            "name": "Lightweight Bulwark Plating",
+            "slot": "shield",
+            "target": "mech",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 249.05,
+              "maxHealth": 55.8,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "kestrel"
+          },
+          {
+            "id": "evaluation-mech-reactor",
+            "name": "Flux Reactor",
+            "slot": "reactor",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 24.48,
+              "cooling": 11.65
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "kestrel"
+          },
+          {
+            "id": "evaluation-mech-legs",
+            "name": "Servo Legs",
+            "slot": "legs",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.95,
+              "maxHealth": 20.8
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "kestrel"
+          }
+        ]
+      },
+      "stats": {
+        "pilot": {
+          "damage": 111.7,
+          "fireRate": 1.38,
+          "magazine": 7,
+          "reload": 1.13,
+          "maxHealth": 116.6,
+          "maxShield": 85,
+          "moveSpeed": 8.45,
+          "heatCapacity": 124.48,
+          "cooling": 41.65
+        },
+        "mech": {
+          "damage": 425.37,
+          "fireRate": 0.52,
+          "magazine": 4,
+          "reload": 1.41,
+          "maxHealth": 496.6,
+          "maxShield": 249.05,
+          "moveSpeed": 6.95,
+          "heatCapacity": 124.48,
+          "cooling": 33.65
+        }
+      }
+    },
+    {
+      "id": "elemental-pressure",
+      "label": "Sustained elemental pressure",
+      "codes": {
+        "pilot": "WS1:pilot:voltaic:smg:arc:shock:corrosive:tracer:0:rapid:5:rare:rolled",
+        "mech": "WS1:mech:voltaic:smg:arc:shock:corrosive:tracer:0:rapid:5:rare:rolled"
+      },
+      "equipment": {
+        "pilot": [
+          {
+            "id": "sandbox-workbench-pilot",
+            "name": "Test SMG",
+            "target": "pilot",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "voltaic",
+            "stats": {
+              "damage": 17.55,
+              "fireRate": 16.56,
+              "magazine": 49,
+              "reload": 1.44
+            },
+            "weapon": {
+              "weaponType": "smg",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "arc",
+              "element": "shock",
+              "speed": 180,
+              "pellets": 1,
+              "spread": 0.015,
+              "bounces": 0,
+              "tracking": 1.2,
+              "blastRadius": 0,
+              "fuse": 0,
+              "statusChance": 0.35,
+              "statusPower": 0.25,
+              "secondaryElement": "corrosive"
+            },
+            "affix": "Rapid",
+            "value": 0
+          },
+          {
+            "id": "evaluation-pilot-shield",
+            "name": "Lightweight Field Shield",
+            "slot": "shield",
+            "target": "pilot",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 112,
+              "maxHealth": 14.42,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "voltaic"
+          },
+          {
+            "id": "evaluation-pilot-reactor",
+            "name": "Cooling Module",
+            "slot": "reactor",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 29.38,
+              "cooling": 12.27
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "voltaic"
+          },
+          {
+            "id": "evaluation-pilot-legs",
+            "name": "Runner Boots",
+            "slot": "legs",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.85,
+              "maxHealth": 5.1
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "voltaic"
+          }
+        ],
+        "mech": [
+          {
+            "id": "sandbox-workbench-mech",
+            "name": "Test SMG / Mech",
+            "target": "mech",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "voltaic",
+            "stats": {
+              "damage": 59.67,
+              "fireRate": 6.95,
+              "magazine": 30,
+              "reload": 1.8
+            },
+            "weapon": {
+              "weaponType": "smg",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "arc",
+              "element": "shock",
+              "speed": 180,
+              "pellets": 1,
+              "spread": 0.015,
+              "bounces": 0,
+              "tracking": 1.2,
+              "blastRadius": 0,
+              "fuse": 0,
+              "statusChance": 0.35,
+              "statusPower": 0.25,
+              "secondaryElement": "corrosive"
+            },
+            "affix": "Rapid",
+            "value": 0
+          },
+          {
+            "id": "evaluation-mech-shield",
+            "name": "Lightweight Bulwark Plating",
+            "slot": "shield",
+            "target": "mech",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 328.16,
+              "maxHealth": 63.86,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "voltaic"
+          },
+          {
+            "id": "evaluation-mech-reactor",
+            "name": "Flux Reactor",
+            "slot": "reactor",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 29.38,
+              "cooling": 12.27
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "voltaic"
+          },
+          {
+            "id": "evaluation-mech-legs",
+            "name": "Servo Legs",
+            "slot": "legs",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.85,
+              "maxHealth": 26.52
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "voltaic"
+          }
+        ]
+      },
+      "stats": {
+        "pilot": {
+          "damage": 17.55,
+          "fireRate": 16.56,
+          "magazine": 49,
+          "reload": 1.44,
+          "maxHealth": 119.52,
+          "maxShield": 112,
+          "moveSpeed": 8.35,
+          "heatCapacity": 129.38,
+          "cooling": 42.269999999999996
+        },
+        "mech": {
+          "damage": 59.67,
+          "fireRate": 6.95,
+          "magazine": 30,
+          "reload": 1.8,
+          "maxHealth": 510.38,
+          "maxShield": 328.16,
+          "moveSpeed": 6.85,
+          "heatCapacity": 129.38,
+          "cooling": 34.269999999999996
+        }
+      }
+    },
+    {
+      "id": "heavy-control",
+      "label": "Heavy explosive / control",
+      "codes": {
+        "pilot": "WS1:pilot:ironvale:launcher:rocket:gravity:fire:tracer:0:heavy:5:rare:rolled",
+        "mech": "WS1:mech:ironvale:launcher:rocket:gravity:fire:tracer:0:heavy:5:rare:rolled"
+      },
+      "equipment": {
+        "pilot": [
+          {
+            "id": "sandbox-workbench-pilot",
+            "name": "Test Launcher",
+            "target": "pilot",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "ironvale",
+            "stats": {
+              "damage": 246.44,
+              "fireRate": 0.44,
+              "magazine": 4,
+              "reload": 2.92
+            },
+            "weapon": {
+              "weaponType": "launcher",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "rocket",
+              "element": "gravity",
+              "speed": 58,
+              "pellets": 1,
+              "spread": 0.018,
+              "bounces": 0,
+              "tracking": 0,
+              "blastRadius": 4.2,
+              "fuse": 0,
+              "statusChance": 0.35,
+              "statusPower": 0.25,
+              "secondaryElement": "fire"
+            },
+            "affix": "Heavy",
+            "value": 0
+          },
+          {
+            "id": "evaluation-pilot-shield",
+            "name": "Lightweight Field Shield",
+            "slot": "shield",
+            "target": "pilot",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 118,
+              "maxHealth": 16.1,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "ironvale"
+          },
+          {
+            "id": "evaluation-pilot-reactor",
+            "name": "Cooling Module",
+            "slot": "reactor",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 32.1,
+              "cooling": 9.36
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "ironvale"
+          },
+          {
+            "id": "evaluation-pilot-legs",
+            "name": "Runner Boots",
+            "slot": "legs",
+            "target": "pilot",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.63,
+              "maxHealth": 6.5
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "ironvale"
+          }
+        ],
+        "mech": [
+          {
+            "id": "sandbox-workbench-mech",
+            "name": "Test Launcher / Mech",
+            "target": "mech",
+            "slot": "weapon",
+            "rarity": "rare",
+            "level": 5,
+            "brand": "ironvale",
+            "stats": {
+              "damage": 837.9,
+              "fireRate": 0.19,
+              "magazine": 2,
+              "reload": 3.65
+            },
+            "weapon": {
+              "weaponType": "launcher",
+              "trail": "tracer",
+              "visualVariant": 0,
+              "projectile": "rocket",
+              "element": "gravity",
+              "speed": 58,
+              "pellets": 1,
+              "spread": 0.018,
+              "bounces": 0,
+              "tracking": 0,
+              "blastRadius": 6,
+              "fuse": 0,
+              "statusChance": 0.35,
+              "statusPower": 0.25,
+              "secondaryElement": "fire"
+            },
+            "affix": "Heavy",
+            "value": 0
+          },
+          {
+            "id": "evaluation-mech-shield",
+            "name": "Lightweight Bulwark Plating",
+            "slot": "shield",
+            "target": "mech",
+            "rarity": "rare",
+            "level": 5,
+            "stats": {
+              "maxShield": 345.74,
+              "maxHealth": 71.3,
+              "moveSpeed": 0.5
+            },
+            "affix": "Lightweight",
+            "value": 245,
+            "brand": "ironvale"
+          },
+          {
+            "id": "evaluation-mech-reactor",
+            "name": "Flux Reactor",
+            "slot": "reactor",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "heatCapacity": 32.1,
+              "cooling": 9.36
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "ironvale"
+          },
+          {
+            "id": "evaluation-mech-legs",
+            "name": "Servo Legs",
+            "slot": "legs",
+            "target": "mech",
+            "rarity": "common",
+            "level": 5,
+            "stats": {
+              "moveSpeed": 0.63,
+              "maxHealth": 33.8
+            },
+            "affix": null,
+            "value": 60,
+            "brand": "ironvale"
+          }
+        ]
+      },
+      "stats": {
+        "pilot": {
+          "damage": 246.44,
+          "fireRate": 0.44,
+          "magazine": 4,
+          "reload": 2.92,
+          "maxHealth": 122.6,
+          "maxShield": 118,
+          "moveSpeed": 8.13,
+          "heatCapacity": 132.1,
+          "cooling": 39.36
+        },
+        "mech": {
+          "damage": 837.9,
+          "fireRate": 0.19,
+          "magazine": 2,
+          "reload": 3.65,
+          "maxHealth": 525.1,
+          "maxShield": 345.74,
+          "moveSpeed": 6.63,
+          "heatCapacity": 132.1,
+          "cooling": 31.36
+        }
+      }
+    }
+  ]
+}
