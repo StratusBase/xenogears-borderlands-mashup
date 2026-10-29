@@ -1,6 +1,6 @@
 # Elemental presentation integration
 
-`game.ts`, `world.ts`, and `ui.ts` remain combat-lead owned. The working `qualityLab.ts` bridge demonstrates the exact integration using the real Game; its structural access to private fields is development-only.
+The combat lead has integrated the pass into the normal Game through `GamePresentation`; Enhanced is the default and Legacy remains selectable. `game.ts`, `world.ts`, and `ui.ts` remain combat-lead owned. See [production ownership and lifecycle](integration.md) and [current main-game validation](main-integration.md). The older `qualityLab.ts` bridge remains a development-only comparison tool.
 
 ## Public interface
 

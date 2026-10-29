@@ -27,6 +27,7 @@ async function run(page,prefix,{stopAfterMechShot=false,screenshots=true}={}){
    if(screenshots&&!captured.has(milestone)){captured.add(milestone);await capture(page,`${prefix}-${milestone}`);}
    if(stopAfterMechShot&&milestone==='first-mech-shot'){await page.evaluate(()=>window.integratedEncounter.game.driveEvaluation({}));return{...state,stoppedAtMechShot:true,capturedMilestones:[...captured],wallClockMs:Date.now()-wallClockStarted};}
   }
+  const boss=state.snapshot.enemies.find(enemy=>enemy.boss);if(screenshots&&boss&&state.snapshot.phase==='boss'&&state.reason.startsWith(`Engage heavy ${boss.id} `)&&!captured.has('boss-engaged')){captured.add('boss-engaged');await capture(page,`${prefix}-boss-engaged`);}
   // Give the real renderer/presentation a frame between deterministic input batches.
   await settle(page);
  }

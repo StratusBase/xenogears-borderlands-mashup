@@ -229,7 +229,9 @@ g.comicRenderer.render=()=>{
   syncAssets();g.muzzle.visible=false;
   const distance=Math.hypot(g.camera.position.x-previousPosition.x,g.camera.position.z-previousPosition.z);
   const grounded=g.jumpMotion.height<=.001;
-  quality.update({dt,time:g.time,paused:g.screen!=='none',mode:g.mode,distance,grounded,landed:grounded&&!wasGrounded,weaponRoot:g.weapon,turn:g.yaw-previousYaw});
+  // The game publishes the authoritative socket pose on simulation ticks.
+  // Keep the comparison lab on the same contract as the production controller.
+  quality.update({dt,time:g.time,paused:g.screen!=='none',mode:g.mode,distance,grounded,landed:grounded&&!wasGrounded,turn:g.yaw-previousYaw});
   if(g.reloadUntil>0){const p=(g.time-g.reloadStartedAt)/getStats(g.progression,g.mode).reload;
    if(p>=.64&&lastReloadProgress<.64)quality.reload(g.mode,'in');if(p>=.82&&lastReloadProgress<.82)quality.reload(g.mode,'bolt');lastReloadProgress=p;}
   previousPosition.copy(g.camera.position);previousYaw=g.yaw;wasGrounded=grounded;

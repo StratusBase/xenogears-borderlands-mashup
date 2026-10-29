@@ -1,6 +1,8 @@
 # Visual and audio reference
 
-The playable reference is **`/quality-lab.html`**. It uses the actual `Game`, proving ground, input, equipment, projectiles, damage, collision, and reload animation. The normal `/` entry remains available with its existing presentation. No story or faction canon is introduced.
+The normal **`/`** entry now uses the reference assets and complete elemental presentation. Pause → **Visuals** switches Enhanced/Legacy; **Sound** controls both audio layers. `/quality-lab.html` and `/elemental-lab.html` remain isolated comparison tools using the actual Game, combat and collision. No story or faction canon is introduced.
+
+See [main-game integration and validation](main-integration.md) for the full combat/loot/equip loop, compatibility checks, screenshots and crowded-scene measurements.
 
 ## Target
 

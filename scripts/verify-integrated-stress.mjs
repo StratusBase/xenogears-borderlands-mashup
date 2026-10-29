@@ -27,7 +27,7 @@ const report={
  protocol:'integrated-crowd-capacity-v1',status:'running',capturedAt:new Date().toISOString(),url:base,
  provenance:'synthetic-capacity-fixture',bundle,source,existingManifest,platform:process.platform,node:process.version,
  viewportCss:[1440,900],simulationStep:1/60,sampleFrames:120,warmupFrames:30,expectedSimulationFrames:150,
- capacitySetup:'3 or 12 high-health live targets with actual enemy AI and all seven initial real status states. Normal player fire/heat/reload/heal plus 18 direct actual-ballistic sticky shots in three volleys. Extra volley shots consume no player ammo.',
+ capacitySetup:'3 or 12 high-health live targets with actual enemy AI and all seven initial real status states. All seven are re-procced through the real status API at 1 and 2 seconds to remain stacked throughout. Normal player fire/heat/reload/heal plus 18 direct actual-ballistic sticky shots in three volleys. Extra volley shots consume no player ammo.',
  limits:[
   'Synthetic capacity evidence; not an ordinary encounter, campaign balance, or clear-time result.',
   'Renderer runs on the recorded local GPU. DPR 1.75 increases drawing-buffer work but does not emulate a different GPU.',
@@ -66,16 +66,17 @@ function summarize(profile){
 }
 async function runArm(profile,label,presentation){
  const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:profile.dpr});
- const page=await context.newPage(),errors=[];
+ const page=await context.newPage(),errors=[],consoleMessages=[];
  let cdp;
  page.on('pageerror',error=>errors.push({type:'pageerror',message:error.message}));
- page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('404'))errors.push({type:'console',message:message.text()});});
+ page.on('console',message=>{consoleMessages.push({type:message.type(),message:message.text()});if(message.type()==='error'&&!message.text().includes('404'))errors.push({type:'console',message:message.text()});});
+ page.on('requestfailed',request=>{if(!new URL(request.url()).pathname.endsWith('/favicon.ico'))errors.push({type:'network',url:request.url(),message:request.failure()?.errorText});});
  page.on('response',response=>{if(response.status()>=400&&!new URL(response.url()).pathname.endsWith('/favicon.ico'))errors.push({type:'http',status:response.status(),url:response.url()});});
  try{
   cdp=await context.newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:profile.cpuRate});
   const url=new URL(base);url.searchParams.set('crowd',String(profile.targets));if(presentation==='legacy')url.searchParams.set('presentation','legacy');
   const response=await page.goto(url.href);assert.equal(response?.status(),200,`${profile.id}/${label} must load the compiled lab`);
-  await page.waitForFunction(()=>window.integratedStress,{timeout:30000});
+  await page.waitForFunction(()=>window.integratedStress,undefined,{timeout:30000});
   const initial=await page.evaluate(()=>{
    const{game}=window.integratedStress,canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2')??canvas.getContext('webgl');
    const ext=gl.getExtension('WEBGL_debug_renderer_info');
@@ -87,11 +88,12 @@ async function runArm(profile,label,presentation){
   assert.equal(initial.snapshot.enemies.length,profile.targets);assert.equal(initial.hardware.devicePixelRatio,profile.dpr);
   assert.deepEqual(initial.canvas,{width:Math.floor(1440*profile.dpr),height:Math.floor(900*profile.dpr)});
   await page.locator('#stress-enable').click();
-  if(presentation==='quality')await page.waitForFunction(()=>{const d=window.integratedStress.game.presentationDiagnostics;return d?.qualityAudioUnlocked&&d?.elementalAudioUnlocked;},{timeout:10000});
+  if(presentation==='quality')await page.waitForFunction(()=>{const d=window.integratedStress.game.presentationDiagnostics;return d?.qualityAudioUnlocked&&d?.elementalAudioUnlocked;},undefined,{timeout:10000});
   const started=Date.now();const result=await page.evaluate(()=>window.integratedStress.measure());
   assert.equal(result.frames,150,`${profile.id}/${label} must drive exactly 150 simulation frames`);
   assert.equal(result.sample.frames,120);assert.ok(Math.abs(result.simulationSeconds-2.5)<1e-9);
   assert.equal(result.targets.length,profile.targets);assert.equal(result.snapshot.enemies.length,profile.targets);assert.equal(result.syntheticVolleys.length,18);
+  for(const target of result.targets)assert.deepEqual([...target.statuses].sort(),['adhesive','corrosive','fire','gravity','ice','radiation','shock'],`target ${target.id} must retain all seven stacked statuses`);
   assert.equal(result.mode,presentation);assert.equal(result.diagnostics.mode,presentation);assert.equal(result.diagnostics.soundEnabled,true);
   if(presentation==='quality'){assert.equal(result.diagnostics.qualityAudioUnlocked,true);assert.equal(result.diagnostics.elementalAudioUnlocked,true);assert.equal(result.diagnostics.audioError,null);assert.ok(result.diagnostics.trackedEnemies>=profile.targets);}
   assert.deepEqual(result.sample.viewport,[Math.floor(1440*profile.dpr),Math.floor(900*profile.dpr)]);assert.equal(result.sample.dpr,profile.dpr);
@@ -99,7 +101,7 @@ async function runArm(profile,label,presentation){
   if(initial.hardware.timer)assert.ok(result.sample.gpuMs&&result.sample.gpuMs.median>0,'hardware GPU queries should produce samples');
   const screenshot=`stress-${profile.id}-${label}.png`;await page.screenshot({path:join(out,screenshot)});
   assert.equal(errors.length,0,`${profile.id}/${label}: ${JSON.stringify(errors)}`);
-  return{label,presentation,url:url.href,cpuPressureProxy:profile.cpuRate>1,initial,result,screenshot,wallClockMs:Date.now()-started,errors};
+  return{label,presentation,url:url.href,cpuPressureProxy:profile.cpuRate>1,initial,result,screenshot,wallClockMs:Date.now()-started,console:consoleMessages,errors};
  }catch(error){
   report.errors.push({profile:profile.id,label,message:String(error),errors});await persist();throw error;
  }finally{try{await cdp?.send('Emulation.setCPUThrottlingRate',{rate:1});}catch{/* Page may have closed after a renderer error. */}await context.close();}
@@ -111,6 +113,12 @@ try{
    const arm=await runArm(profile,label,mode);evidence.arms.push(arm);await persist();
    const s=arm.result.sample;console.log('STRESS',profile.id,label,JSON.stringify({frames:arm.result.frames,frame:s.frameMs.median,p95:s.frameMs.p95,cpu:s.submitMs.median,gpu:s.gpuMs?.median,calls:s.calls.median,triangles:s.triangles.median,geometries:s.geometries,textures:s.textures}));
   }
+  const sceneSignatures=evidence.arms.map(arm=>{const s=arm.initial.snapshot;return JSON.stringify({mode:s.mode,position:s.position,yaw:s.yaw,pitch:s.pitch,parkedMech:s.parkedMech,body:s.body,weaponBalance:s.weaponBalance,simulationPose:s.simulationPose,enemies:s.enemies,navigation:s.navigation,loadouts:s.progression.loadouts});});
+  assert.equal(sceneSignatures[0],sceneSignatures[1],`${profile.id} legacy/quality scenes must match`);assert.equal(sceneSignatures[0],sceneSignatures[2],`${profile.id} repeated legacy scene must match`);
+  evidence.sceneParity={initialStatesIdentical:true,sha256:createHash('sha256').update(sceneSignatures[0]).digest('hex')};
+  const finalSignatures=evidence.arms.map(arm=>JSON.stringify({targets:arm.result.targets,body:arm.result.snapshot.body,simulationPose:arm.result.snapshot.simulationPose}));
+  assert.equal(finalSignatures[0],finalSignatures[1],`${profile.id} quality must preserve final target/body/weapon state`);assert.equal(finalSignatures[0],finalSignatures[2],`${profile.id} repeated legacy must preserve final state`);
+  evidence.simulationParity={finalStatesIdentical:true,sha256:createHash('sha256').update(finalSignatures[0]).digest('hex')};
   report.summary.push(summarize(evidence));await persist();
  }
  // Verify no build artifact changed between arms of the matched run.

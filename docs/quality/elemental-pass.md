@@ -1,5 +1,7 @@
 # Complete elemental VFX and audio pass
 
+This records the earlier isolated quality pass and its original build. For the subsequently integrated normal game, use [main-game validation](main-integration.md). Measurements from these different builds must remain separate.
+
 Delivered as an opt-in presentation layer in the actual Game. Open `/elemental-lab.html` on the local server, click **Enable sound**, then use **Review controls → Payload** or **K** for the full weapon workbench. The normal game entry and legacy renderers remain available for the combat lead's adoption.
 
 - [Visual and audio gallery](../../artifacts/elemental/gallery.html); served locally at `http://127.0.0.1:5197/artifacts/elemental/gallery.html`.

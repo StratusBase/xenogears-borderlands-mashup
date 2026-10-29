@@ -58,6 +58,8 @@ Press **K** for the sandbox weapon workbench, or aim at its physical table besid
 
 Controller sticks use a radial deadzone; button actions trigger once per press. Disconnecting the active controller pauses combat. Controllers must be reported by the browser with the standard mapping; unmapped devices show a clear notice.
 
+The normal game uses Enhanced reference weapons, flanker art, mech construction, elemental effects and sound. Pause → **Visuals** selects Enhanced or Legacy; **Sound** controls audio. See [visual/audio integration and verification](docs/quality/main-integration.md).
+
 ## Mechanics implemented
 
 - First-person pilot rifle and mech cannon with different scale, health, mobility, ammo, recoil, and heat behavior.

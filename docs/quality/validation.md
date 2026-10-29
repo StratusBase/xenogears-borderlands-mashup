@@ -1,5 +1,7 @@
 # Gameplay, visual and performance verification
 
+This records the earlier isolated quality pass and its original build. For the subsequently integrated normal game, use [main-game validation](main-integration.md). Measurements from these different builds must remain separate.
+
 Captured from the compiled local review build on October 29, 2026. All screenshots show the actual Game and proving ground. None are generated concept images.
 
 ## Results
