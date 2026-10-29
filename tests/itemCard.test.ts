@@ -30,6 +30,30 @@ test('scatter compares damage per trigger and calculates direct DPS using its ac
   assert.equal(card.status?.dps, 2.5, 'A proc uses one pellet hit, without multiplying pellets, fire rate or chance');
 });
 
+test('cluster cards share the trigger budget among children and show per-child proc damage and fuse properties', () => {
+  const selected = weapon({ weapon: { ...createWeaponSpec('cluster', 'fire'), secondaryElement: 'corrosive', statusPower: 0.4, statusChance: 0.5 }, stats: { damage: 120, fireRate: 2, magazine: 4, reload: 2 } });
+  const card = buildItemCard(selected, weapon({ stats: { damage: 120, fireRate: 2, magazine: 4, reload: 2 } }));
+  assert.equal(card.weapon!.damagePerTrigger, 102, 'Secondary cost applies once to the shared carrier budget');
+  assert.equal(card.weapon!.damagePerPellet, 17);
+  assert.equal(card.weapon!.pellets, 6);
+  assert.equal(metric(card, 'damage').display, '17×6');
+  assert.equal(metric(card, 'damage').delta!.amount, -18);
+  assert.equal(card.weapon!.burstDps.value, 204);
+  assert.equal(card.weapon!.sustainedDps.value, 102);
+  assert.match(metric(card, 'damage').description, /Carrier deals no damage.*shared across 6 children/);
+  assert.deepEqual(card.secondary.map(spec => [spec.key, spec.label, spec.value, spec.unit]), [
+    ['speed', 'Velocity', 58, 'm/s'], ['splitCount', 'Children', 6, ''], ['splitDelay', 'Split delay', 0.45, 's'],
+    ['fuse', 'Child fuse', 0.65, 's'], ['blastRadius', 'Child blast radius', 2.2, 'm'],
+  ]);
+  assert.deepEqual(card.statuses.map(status => [status.element, Number(status.dps!.toFixed(9)), status.chancePercent]), [['fire', 6.8, 50], ['corrosive', 4.08, 50]]);
+  assert.ok(card.statuses.every(status => /one child hit/.test(status.description)));
+  const kinetic = buildItemCard(weapon({ weapon: { ...createWeaponSpec('cluster', 'kinetic'), secondaryElement: 'shock', statusPower: 0.4, statusChance: 0.25 }, stats: { damage: 120 } }));
+  assert.equal(kinetic.statuses[0].dps, null);
+  assert.equal(kinetic.statuses[0].chancePercent, 0);
+  assert.equal(Number(kinetic.statuses[1].dps!.toFixed(9)), 5.44);
+  assert.equal(kinetic.statuses[1].chancePercent, 25);
+});
+
 test('reload-cycle DPS uses a complete magazine and explicitly remains separate from burst DPS', () => {
   const card = buildItemCard(weapon());
   assert.equal(card.weapon?.burstDps.value, 100);

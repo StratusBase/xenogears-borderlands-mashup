@@ -38,7 +38,18 @@ export function createProjectileVisual(spec: WeaponSpec, brand: BrandId = 'ironv
   const familyScale = ({ pistol: .8, smg: .7, rifle: 1, shotgun: .82, sniper: 1.3, launcher: 1.45 } as const)[spec.weaponType ?? 'rifle'];
   root.scale.setScalar(familyScale);
   const add = (geometry: THREE.BufferGeometry, material: THREE.Material = bright, name = 'projectile-payload') => mesh(root, geometry, material, name);
-  if (type === 'rocket' || type === 'homing') {
+  if (type === 'cluster') {
+    const pods = Math.max(2, Math.min(12, Math.floor(Number.isFinite(spec.split?.count) ? spec.split!.count : 6)));
+    add(new THREE.CylinderGeometry(.042, .042, .38, 6), metal, 'cluster-carrier-spine').rotation.x = Math.PI / 2;
+    for (let i = 0; i < pods; i++) {
+      const angle = i / pods * Math.PI * 2;
+      const pod = add(new THREE.CylinderGeometry(.036, .036, .30 + variant * .015, 5), metal, 'cluster-submunition-casing');
+      pod.rotation.x = Math.PI / 2; pod.position.set(Math.cos(angle) * .08, Math.sin(angle) * .08, 0);
+      const tip = add(new THREE.ConeGeometry(.036, .075, 5), i % 2 ? bright : core, 'cluster-submunition-tip');
+      tip.rotation.x = Math.PI / 2; tip.position.set(pod.position.x, pod.position.y, .19 + variant * .0075);
+    }
+    for (const z of [-.10, .09]) { const band = add(new THREE.TorusGeometry(.12, .013, 4, 12), metal, 'cluster-separation-band'); band.position.z = z; }
+  } else if (type === 'rocket' || type === 'homing') {
     add(new THREE.CylinderGeometry(.065, .075, .32 + variant * .035, 6), metal, 'ordnance-casing').rotation.x = Math.PI / 2;
     const nose = add(new THREE.ConeGeometry(.075, .18, 6), core, 'elemental-warhead'); nose.rotation.x = Math.PI / 2; nose.position.z = .24;
     for (let i = 0; i < (brand === 'kestrel' ? 3 : brand === 'cindergrid' ? 4 : 2); i++) {
@@ -88,7 +99,7 @@ export function createProjectileTrail(start: THREE.Vector3, end: THREE.Vector3, 
   const delta = end.clone().sub(start), distance = delta.length(), direction = delta.clone().normalize();
   const c = colors(spec, brand), primary = shotMaterial(c.primary, .74), secondary = shotMaterial(c.secondary, .85);
   const type = spec.projectile, style = spec.trail ?? 'tracer', variant = spec.visualVariant ?? 0;
-  const energy = type === 'orb' || type === 'sticky' || type === 'rocket';
+  const energy = type === 'orb' || type === 'sticky' || type === 'rocket' || type === 'cluster';
   const radius = (type === 'scatter' ? .007 : type === 'slug' || type === 'spike' ? .014 : energy ? .026 : .009) * (1 + variant * .1);
   const side = new THREE.Vector3().crossVectors(direction, Math.abs(direction.y) > .95 ? new THREE.Vector3(1, 0, 0) : UP).normalize();
   const up = new THREE.Vector3().crossVectors(side, direction).normalize();

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import * as THREE from 'three';
 import { createProgression, rollItem, seededRandom } from '../src/core/index.ts';
-import { brandList, createWeaponSpec, type ProjectileTrail, type WeaponType, type ProjectileType } from '../src/core/arsenal.ts';
+import { brandList, createWeaponSpec, elementColors, type ProjectileTrail, type WeaponType, type ProjectileType } from '../src/core/arsenal.ts';
 import { describeItemAppearance, resolveEquipmentAppearance } from '../src/core/appearance.ts';
 import { createEquipmentWeapon, disposeEquipmentModel } from '../src/rendering/equipmentModels.ts';
 import { updateEquipmentEffects } from '../src/rendering/equipmentEffects.ts';
@@ -84,7 +84,7 @@ test('dual elemental idle effects attach only to cartridge surfaces, leaving bro
 });
 
 test('same-element rifles preserve delivery silhouettes and expose six genuinely different trail geometries', () => {
-  const deliveries: ProjectileType[] = ['bullet', 'slug', 'spike', 'ricochet', 'homing', 'sticky', 'orb', 'scatter', 'rocket', 'disc'];
+  const deliveries: ProjectileType[] = ['bullet', 'slug', 'spike', 'ricochet', 'homing', 'sticky', 'orb', 'scatter', 'rocket', 'cluster', 'disc'];
   const silhouettes = new Set<string>();
   for (const projectile of deliveries) {
     const root = createProjectileVisual({ ...createWeaponSpec(projectile, 'corrosive'), weaponType: 'rifle' }, 'tackwork');
@@ -115,4 +115,34 @@ test('instant beams honor trail and dual-color choices, and both hit payloads su
   assert.equal(hits, 1); assert.ok(scene.getObjectByName('player-ballistic-impact-corrosive')); assert.ok(scene.getObjectByName('player-ballistic-impact-shock'));
   ballistics.clear(); assert.equal(scene.children.length, 1);
   body.geometry.dispose(); (body.material as THREE.Material).dispose();
+});
+
+test('cluster carriers show separate munitions while both elemental cartridges remain independent', () => {
+  const spec = { ...createWeaponSpec('cluster', 'fire'), secondaryElement: 'shock' as const };
+  const root = createProjectileVisual(spec, 'cindergrid');
+  assert.equal(root.children.filter(child => child.name === 'cluster-submunition-casing').length, 6);
+  assert.equal(root.children.filter(child => child.name === 'cluster-separation-band').length, 2);
+  const tipColors = new Set(root.children.filter(child => child.name === 'cluster-submunition-tip').map(child => ((child as THREE.Mesh).material as THREE.MeshBasicMaterial).color.getHex()));
+  assert.deepEqual(tipColors, new Set([new THREE.Color(elementColors.fire).getHex(), new THREE.Color(elementColors.shock).getHex()]));
+  assert.equal(root.userData.element, 'fire'); assert.equal(root.userData.secondaryElement, 'shock');
+  cleanup(root);
+
+  const mechSpec = createWeaponSpec('cluster', 'kinetic', 'mech');
+  const mechCarrier = createProjectileVisual(mechSpec);
+  assert.equal(mechCarrier.children.filter(child => child.name === 'cluster-submunition-casing').length, mechSpec.split!.count);
+  cleanup(mechCarrier);
+
+  for (const mode of ['pilot', 'mech'] as const) {
+    const base = rollItem(mode, 1, seededRandom(14), 'weapon'); base.affix = null;
+    const shapes: string[] = [];
+    for (const element of ['fire', 'ice'] as const) {
+      const item = { ...base, weapon: { ...createWeaponSpec('cluster', element, mode), secondaryElement: 'corrosive' as const } };
+      const rig = createEquipmentWeapon(mode, describeItemAppearance(item));
+      const delivery = rig.group.getObjectByName('delivery-cluster')!;
+      assert.ok(delivery.getObjectByName('cluster-canister-sleeve'));
+      assert.equal(delivery.children.filter(child => child.name === 'cluster-loading-cell').length, 6);
+      shapes.push(geometryFingerprint(delivery)); cleanup(rig.group);
+    }
+    assert.equal(shapes[0], shapes[1], 'changing elements must retain the cluster loading hardware');
+  }
 });

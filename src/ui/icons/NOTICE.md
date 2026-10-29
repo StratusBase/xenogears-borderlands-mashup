@@ -27,6 +27,8 @@ The original 24 × 24 geometry is retained. The TypeScript renderer sets size, c
 | `bounces` | `arrow-u-up-right-bold` | Colton Wiscombe |
 | `tracking` | `target` | Doug C. Hardester |
 | `fuse` | `timer` | Michael Irigoyen |
+| `splitCount` | `ammunition` | Michael Irigoyen |
+| `splitDelay` | `timer` | Michael Irigoyen |
 | `blastRadius` | `flare` | Google |
 | `kinetic` | `ammunition` | Michael Irigoyen |
 | `fire` | `fire` | Google |

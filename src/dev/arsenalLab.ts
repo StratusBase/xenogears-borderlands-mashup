@@ -17,6 +17,7 @@ const examples: readonly { projectile: ProjectileType; element: ElementType; bra
   { projectile: 'rocket', element: 'corrosive', brand: 'ironvale' },
   { projectile: 'disc', element: 'kinetic', brand: 'rebound' },
   { projectile: 'arc', element: 'shock', brand: 'voltaic' },
+  { projectile: 'cluster', element: 'fire', brand: 'cindergrid' },
 ];
 
 function createArsenalProgression(): Progression {

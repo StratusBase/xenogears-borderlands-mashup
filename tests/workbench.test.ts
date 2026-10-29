@@ -35,6 +35,24 @@ test('workbench family, delivery, dual elements and trail round-trip through nor
   assert.equal(item.value, 0, 'Free sandbox weapons must not mint resale money');
 });
 
+test('cluster build codes and normal saves preserve split metadata and independent element combinations', () => {
+  for (const target of ['pilot', 'mech'] as const) {
+    for (const [element, secondaryElement] of [['fire', 'corrosive'], ['kinetic', 'shock'], ['gravity', 'none']] as const) {
+      const config = normalizeWorkbenchConfig({ target, weaponType: 'launcher', projectile: 'cluster', element, secondaryElement, guaranteedStatus: true });
+      assert.deepEqual(parseWorkbenchCode(workbenchCode(config)), config);
+      const item = createWorkbenchWeapon(config);
+      const state = createProgression();
+      state.inventory.push(item); state.loadouts[target].weapon = item.id;
+      const loaded = deserializeProgression(serializeProgression(state))!;
+      const restored = loaded.inventory.find(entry => entry.id === item.id)!;
+      assert.deepEqual(restored, item);
+      assert.deepEqual(restored.weapon!.split, { count: target === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 });
+      assert.deepEqual(getWeaponElements(restored.weapon!), secondaryElement === 'none' ? [element] : [element, secondaryElement]);
+      assert.equal(restored.weapon!.statusChance, 1);
+    }
+  }
+});
+
 test('new drop cosmetics consume no additional RNG and preserve established ballistic rolls', () => {
   let draws = 0;
   const spec = rollWeaponSpec('cindergrid', 'pilot', () => { draws++; return 0.5; });

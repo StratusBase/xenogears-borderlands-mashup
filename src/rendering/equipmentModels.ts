@@ -232,6 +232,12 @@ function barrel(parent: THREE.Object3D, appearance: EquipmentAppearance, p: Pale
   } else if (appearance.projectile === 'sticky') {
     cylinder(delivery, 'sticky-injector-nozzle', .115 * scale, .14 * scale, [0, 0, muzzleZ + .06 * scale], p.secondary, 'z');
     cylinder(delivery, 'sticky-pressure-reservoir', .09 * scale, .27 * scale, [-.17 * scale, 0, muzzleZ * .45], p.metal, 'z');
+  } else if (appearance.projectile === 'cluster') {
+    cylinder(delivery, 'cluster-canister-sleeve', .16 * scale, .10 * scale, [0, 0, muzzleZ + .08 * scale], p.secondary, 'z', 12);
+    for (let i = 0; i < 6; i++) {
+      const angle = i / 6 * Math.PI * 2;
+      cylinder(delivery, 'cluster-loading-cell', .039 * scale, .30 * scale, [Math.cos(angle) * .115 * scale, Math.sin(angle) * .115 * scale, muzzleZ * .47], p.metal, 'z', 6);
+    }
   } else if (appearance.projectile === 'homing' || appearance.projectile === 'rocket') {
     for (const s of [-1, 1]) box(delivery, 'ordnance-guide-rail', [.055 * scale, .12 * scale, .40 * scale], [s * .14 * scale, .035 * scale, muzzleZ * .48], p.secondary);
     if (appearance.projectile === 'homing') box(delivery, 'guidance-seeker', [.09 * scale, .10 * scale, .13 * scale], [0, .16 * scale, muzzleZ * .4], p.accent);

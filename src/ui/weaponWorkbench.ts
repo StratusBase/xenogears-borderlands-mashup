@@ -247,6 +247,12 @@ export class WeaponWorkbench {
     tags.append(node('span', '', projectileLabels[this.config.projectile]), node('span', '', projectileTrailLabels[this.config.trail]),
       node('span', '', `${item.weapon?.speed ?? 0} m/s`));
     if ((item.weapon?.pellets ?? 1) > 1) tags.append(node('span', '', `×${item.weapon!.pellets} pellets`));
+    if (item.weapon?.split) {
+      tags.append(node('span', '', `${item.weapon.split.count} bomblets`),
+        node('span', '', `Split: ${item.weapon.split.delay} s or impact`),
+        node('span', '', `Bomblet fuse: ${item.weapon.fuse} s`),
+        node('span', '', `Blast: ${item.weapon.blastRadius} m`));
+    }
     this.detail.append(tags);
     const note = node('p', 'workbench-test-note', 'Free sandbox build. Equip & test replaces the previous workbench weapon.');
     this.detail.append(note);
