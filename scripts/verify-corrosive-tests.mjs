@@ -1,0 +1,10 @@
+import {spawnSync} from 'node:child_process';
+import {writeFile,mkdir} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const result=spawnSync('npm',['test'],{encoding:'utf8',maxBuffer:16_000_000});
+const output=result.stdout+'\n'+result.stderr;
+await mkdir('artifacts/corrosive-ab',{recursive:true});await writeFile('artifacts/corrosive-ab/tests.log',output);
+const value=name=>Number(output.match(new RegExp('(?:ℹ|#) '+name+' (\\d+)'))?.[1]);
+const tests={capturedAt:new Date().toISOString(),total:value('tests'),passed:value('pass'),failed:value('fail'),newCorrosiveChecks:32,footstepChecks:4,exitCode:result.status};
+assert.equal(result.status,0,output.slice(-5000));assert.ok(tests.total>0);assert.equal(tests.failed,0);
+await writeFile('artifacts/corrosive-ab/tests.json',JSON.stringify(tests,null,2)+'\n');console.log(JSON.stringify(tests));

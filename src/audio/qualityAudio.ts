@@ -5,6 +5,8 @@ export type QualityAudioEvent = 'fire' | 'reload-out' | 'reload-in' | 'reload-bo
   | 'impact-metal' | 'impact-dust' | 'impact-shield' | 'step' | 'land' | 'dry' | 'mount';
 
 export interface QualityAudioOptions {
+  footstepVariant?:number;
+  surface?:'sand'|'stone'|'metal';
   mode?: Mode;
   strength?: number;
   /** Metres from the listener. Presentation only; never changes combat ranges. */
@@ -13,6 +15,7 @@ export interface QualityAudioOptions {
 }
 
 export interface QualityVoice {
+  sampleOffset?:number;
   wave: 'noise' | 'sine' | 'triangle' | 'sawtooth';
   frequency: number;
   endFrequency?: number;
@@ -32,7 +35,6 @@ const tone = (wave: 'sine' | 'triangle' | 'sawtooth', frequency: number, endFreq
 /** Original layered foley. Pure recipes are also the audition/validation contract. */
 export function qualityAudioRecipe(event: QualityAudioEvent, options: QualityAudioOptions = {}): readonly QualityVoice[] {
   const mech = options.mode === 'mech';
-  const body = mech ? 1 : .58;
   switch (event) {
     case 'fire': {
       const voices = mech ? [
@@ -64,9 +66,14 @@ export function qualityAudioRecipe(event: QualityAudioEvent, options: QualityAud
     case 'impact-metal': return [noise(3200, .028, .24, 'highpass'), tone('triangle', mech ? 560 : 1120, mech ? 390 : 870, .15, .09), tone('sine', 2350, 2100, .115, .037, .006)];
     case 'impact-dust': return [noise(1100, .1, .19), tone('sine', 150, 65, .07, .08)];
     case 'impact-shield': return [noise(6200, .035, .17, 'bandpass'), tone('sine', 1600, 390, .14, .11), tone('triangle', 2300, 740, .11, .032)];
-    case 'step': return mech ? [tone('sine', 82, 31, .24, .4), noise(420, .2, .22), noise(1350, .065, .1, 'bandpass', .027), tone('triangle', 290, 150, .12, .035, .045)]
-      : [noise(1700, .085, .12), tone('sine', 150, 65, .065, .09), noise(3500, .04, .035, 'highpass', .022)];
-    case 'land': return [tone('sine', mech ? 77 : 140, mech ? 27 : 53, mech ? .37 : .16, body * .5), noise(mech ? 570 : 1100, mech ? .29 : .14, body * .37), noise(1400, .08, body * .1, 'bandpass', .035)];
+    case 'step': {
+      const variant=Number.isFinite(options.footstepVariant)?Math.abs(Math.floor(options.footstepVariant!))%7:0,variation=.91+variant*.024,offset=variant*.103;
+      const recipes=mech?[tone('sine',72,39,.15,.13),noise(430,.115,.10),noise(960,.055,.034,'bandpass',.018)]
+       :[noise(380*variation,.050,.050),noise(1050*variation,.095,.039,'bandpass',.009),noise(1900*variation,.055,.013,'lowpass',.028)];
+      return recipes.map(recipe=>({...recipe,attack:recipe.wave==='noise'?.004:recipe.attack,sampleOffset:recipe.wave==='noise'?offset:undefined}));
+    }
+    case 'land': return mech?[tone('sine',67,29,.27,.22),noise(490,.20,.13),noise(1300,.07,.035,'bandpass',.025)]
+      :[noise(330,.095,.085),noise(1000,.15,.064,'bandpass',.008),noise(1700,.07,.026,'lowpass',.028)];
     case 'dry': return [noise(2400, .022, .13, 'bandpass'), tone('triangle', mech ? 270 : 740, mech ? 170 : 410, .025, .05)];
     case 'mount': return [noise(700, .42, .15), tone('triangle', 180, 45, .35, .18, .08), noise(1500, .1, .19, 'bandpass', .25)];
   }
@@ -125,7 +132,7 @@ function scheduleVoice(context: BaseAudioContext, target: AudioNode, noiseBuffer
   gain.gain.exponentialRampToValueAtTime(.0001, end - .001);
   gain.gain.linearRampToValueAtTime(0, end);
   if (filter) source.connect(filter).connect(gain); else source.connect(gain);
-  gain.connect(target); source.start(start); source.stop(end);
+  gain.connect(target);if(recipe.wave==='noise')(source as AudioBufferSourceNode).start(start,recipe.sampleOffset??0);else source.start(start);source.stop(end);
   return { source, gain, filter, end };
 }
 
@@ -153,6 +160,8 @@ export async function renderQualityAudioPreview(events: readonly QualityAudioPre
 
 /** No context, timers or sound until unlock() is called from a user gesture. */
 export class QualityAudio {
+  private recordingTap:MediaStreamAudioDestinationNode|null=null;
+  captureStream():MediaStream|undefined{if(!this.context||!this.compressor)return;if(!this.recordingTap){this.recordingTap=this.context.createMediaStreamDestination();this.compressor.connect(this.recordingTap);}return this.recordingTap.stream;}
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
@@ -226,7 +235,7 @@ export class QualityAudio {
     this.master?.disconnect();
     this.compressor?.disconnect();
     void this.context?.close();
-    this.context = null; this.noiseBuffer = null; this.master = null; this.compressor = null;
+    this.recordingTap?.disconnect();this.recordingTap=null;this.context = null; this.noiseBuffer = null; this.master = null; this.compressor = null;
   }
 
   private release(voice: ActiveVoice): void {

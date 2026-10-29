@@ -4,4 +4,5 @@ dist/
 *.local
 /artifacts/
 /dist-quality/
+/dist-corrosive/
 /dist-crowd/

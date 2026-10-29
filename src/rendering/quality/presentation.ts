@@ -8,6 +8,7 @@ import { decorateEnemy, upgradeReferenceMech } from './actors';
 import { qualityRecoilEnvelope } from './motion';
 import { QualityAudio } from '../../audio/qualityAudio';
 import { QualityFeedback } from './feedback';
+import { FootstepCadence } from './footsteps';
 
 export interface QualityFrame {
   dt: number; time: number; paused: boolean; mode: Mode;
@@ -26,12 +27,13 @@ export class QualityPresentation {
   readonly feedback: QualityFeedback;
   private disposers = new Map<THREE.Object3D, () => void>();
   private actors = new Map<THREE.Object3D, {handle: ActorHandle; previous: THREE.Vector3; fireAt:number; hitAt:number}>();
-  private stride = 0;
+  private readonly gait=new FootstepCadence();
+  private readonly footfalls:{at:number;kind:'step'|'land';mode:Mode;variant:number;position:number[]}[]=[];
+  get footstepDiagnostics(){return this.footfalls.map(event=>({...event,position:[...event.position]}));}
   private lastTime = 0;
   private shotAt:Record<Mode,number>={pilot:-Infinity,mech:-Infinity};
   private motion = new THREE.Vector3();
   private readonly camera: THREE.Camera;
-  private stepSide = 1;
   constructor(options: {scene: THREE.Scene; camera: THREE.Camera}) { this.camera=options.camera; this.feedback = new QualityFeedback(options); }
   weapon(rig: WeaponRig, appearance: EquipmentAppearance, mode: Mode): void {
     if (this.disposers.has(rig.group)) return;
@@ -68,22 +70,20 @@ export class QualityPresentation {
     this.lastTime=frame.time;
     const dt=frame.paused?0:Math.min(.05,Math.max(0,frame.dt));
     this.feedback.update(dt,{paused:frame.paused});
-    if (frame.paused) { this.audio.pause(); return; }
+    if (frame.paused) { this.gait.update({...frame,dt:0});this.audio.pause(); return; }
     for (const [root, actor] of this.actors) {
       if (!root.parent) { this.release(root); continue; }
       const distance=actor.previous.distanceTo(root.position);
       actor.previous.copy(root.position);
       actor.handle.update(frame.time,dt,dt>0?distance/dt:0,frame.time-actor.fireAt,frame.time-actor.hitAt);
     }
-    this.stride += frame.grounded ? frame.distance : 0;
-    const strideLength=frame.mode==='mech'?2.7:1.65;
-    if(this.stride>=strideLength || frame.landed){
-      this.stride%=strideLength;
-      this.audio.play(frame.landed?'land':'step',{mode:frame.mode});
-      this.stepSide *= -1;
+    const footfall=this.gait.update(frame);
+    if(footfall){
+      this.audio.play(footfall.kind,{mode:frame.mode,strength:footfall.strength,footstepVariant:footfall.variant,surface:'sand'});
       const point=this.camera.getWorldPosition(new THREE.Vector3());point.y=.025;
-      point.x+=this.stepSide*(frame.mode==='mech'?.5:.14);
-      this.feedback.step({point,mode:frame.mode,strength:frame.landed?1.4:1});
+      point.x+=footfall.side*(frame.mode==='mech'?.5:.14);
+      this.feedback.step({point,mode:frame.mode,strength:footfall.kind==='land'?1.1:frame.mode==='mech'?.65:.36});
+      this.footfalls.push({at:frame.time,kind:footfall.kind,mode:frame.mode,variant:footfall.variant,position:point.toArray()});if(this.footfalls.length>128)this.footfalls.shift();
     }
     if(frame.weaponRoot){
       // Game owns the root pose and calls this AFTER its own animation each frame.

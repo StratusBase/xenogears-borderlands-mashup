@@ -45,7 +45,15 @@ export class GamePresentation {
  private audioWasUnlocked=false;
  private frameTime=0;
  private audioError:string|null=null;
+ private elementalFactory=(scene:THREE.Scene,camera:THREE.Camera)=>new ElementalPresentation(scene,camera);
  constructor(private readonly context:GamePresentationContext){}
+ /** Optional review/integration seam. Change only while disabled; Game owns the lifecycle transition. */
+ setElementalFactory(factory:(scene:THREE.Scene,camera:THREE.Camera)=>ElementalPresentation):void{
+  if(this.enabled)throw new Error('Disable presentation before replacing its elemental factory.');
+  this.elementalFactory=factory;
+ }
+ /** Local review capture taps the identical final buses heard in gameplay. */
+ recordingStreams():MediaStream[]{return[this.quality?.audio.captureStream(),this.elements?.audio.captureStream()].filter((stream):stream is MediaStream=>!!stream);}
  get enabled():boolean{return this.quality!==null;}
  get mode():PresentationMode{return this.enabled?'quality':'legacy';}
  get diagnostics(){return{
@@ -66,7 +74,7 @@ export class GamePresentation {
    return;
   }
   this.quality=new QualityPresentation({scene:this.context.scene,camera:this.context.camera});
-  this.elements=new ElementalPresentation(this.context.scene,this.context.camera);
+  this.elements=this.elementalFactory(this.context.scene,this.context.camera);
   this.context.ballistics.setPresentation(this.elements);
   this.restoreInk=applyQualityInk(this.context.comicRenderer);
   this.setSoundEnabled(this.sound);

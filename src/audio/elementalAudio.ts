@@ -4,6 +4,8 @@ import { qualityNoiseSamples } from './qualityAudio';
 
 export type ElementalAudioEvent = 'equipment' | 'shot' | 'flight' | 'impact' | 'status' | 'release';
 export interface ElementalAudioOptions {
+  splash?:boolean;
+  surface?: 'skin' | 'cloth' | 'armor' | 'ground';
   mode?: Mode;
   delivery?: ProjectileType;
   distance?: number;
@@ -189,14 +191,14 @@ function cadence(element:ElementType,event:'equipment'|'status',serial:number):n
 }
 export interface ElementalAudioPreviewEvent {at:number;event:ElementalAudioEvent;element:ElementType;options?:ElementalAudioOptions}
 /** Offline export uses the identical recipes, textures, automation and output graph as runtime. */
-export async function renderElementalAudioPreview(events:readonly ElementalAudioPreviewEvent[],duration=12):Promise<AudioBuffer>{
+export async function renderElementalAudioPreview(events:readonly ElementalAudioPreviewEvent[],duration=12,recipe=elementalAudioRecipe):Promise<AudioBuffer>{
   const seconds=Math.min(60,Math.max(1,Number.isFinite(duration)?duration:12));
   const context=new OfflineAudioContext(1,Math.ceil(seconds*48000),48000),bus=createBus(context);
   let active:ActiveVoice[]=[];
   for(const entry of [...events.slice(0,256)].sort((a,b)=>a.at-b.at)){
     if(!Number.isFinite(entry.at)||entry.at<0||entry.at>=seconds)continue;
     active=active.filter(voice=>voice.end>entry.at);
-    for(const voice of elementalAudioRecipe(entry.element,entry.event,entry.options)){
+    for(const voice of recipe(entry.element,entry.event,entry.options)){
       while(active.length>=ELEMENTAL_AUDIO_MAX_VOICES){const oldest=active.shift()!;oldest.source.stop(entry.at+.002);}
       active.push(schedule(context,bus,voice,entry.at+.002+voice.delay,elementalAttenuation(entry.options)));
     }
@@ -206,7 +208,10 @@ export async function renderElementalAudioPreview(events:readonly ElementalAudio
 
 /** Bounded original elemental Foley; has no effect on combat state or browser audio before a gesture. */
 export class ElementalAudio{
+  constructor(private readonly recipe=elementalAudioRecipe){}
   private context:AudioContext|null=null;private bus:Bus|null=null;
+  private recordingTap:MediaStreamAudioDestinationNode|null=null;
+  captureStream():MediaStream|undefined{if(!this.context||!this.bus)return;if(!this.recordingTap){this.recordingTap=this.context.createMediaStreamDestination();this.bus.limiter.connect(this.recordingTap);}return this.recordingTap.stream;}
   private voices=new Set<ActiveVoice>();private loops=new Map<string,Loop>();
   private on=true;private disposed=false;private time=0;private suspended=false;
   get enabled():boolean{return this.on;}
@@ -238,7 +243,7 @@ export class ElementalAudio{
   dispose():void{
     if(this.disposed)return;this.pause();this.disposed=true;this.loops.clear();
     this.bus?.master.disconnect();this.bus?.compressor.disconnect();this.bus?.limiter.disconnect();
-    void this.context?.close();this.context=null;this.bus=null;
+    this.recordingTap?.disconnect();this.recordingTap=null;void this.context?.close();this.context=null;this.bus=null;
   }
   private setLoop(element:ElementType,event:'equipment'|'status',active:boolean,options:ElementalAudioOptions):void{
     if(this.disposed||element==='kinetic')return;const key=`${event}:${element}`,old=this.loops.get(key);
@@ -248,7 +253,7 @@ export class ElementalAudio{
   private play(element:ElementType,event:ElementalAudioEvent,options:ElementalAudioOptions):void{
     const context=this.context,bus=this.bus;if(this.disposed||!this.on||!context||context.state!=='running'||!bus||this.suspended)return;
     const attenuation=elementalAttenuation(options);if(attenuation<.005)return;this.reclaim();
-    for(const recipe of elementalAudioRecipe(element,event,options)){
+    for(const recipe of this.recipe(element,event,options)){
       while(this.voices.size>=ELEMENTAL_AUDIO_MAX_VOICES)this.stop(this.voices.values().next().value!);
       const voice=schedule(context,bus,recipe,context.currentTime+.002+recipe.delay,attenuation);this.voices.add(voice);voice.source.onended=()=>this.release(voice);
     }

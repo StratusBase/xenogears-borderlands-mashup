@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {writeFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE??'/Users/steven/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs');
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE??'/Users/steven/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',args:['--use-angle=metal']});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});await page.goto(process.env.CORROSIVE_REVIEW_URL??'http://127.0.0.1:5203/corrosive-lab.html');await page.waitForFunction(()=>!!window.corrosiveReview);
+ await page.getByLabel('Focus target',{exact:true}).selectOption('armored');await page.getByRole('button',{name:'Compare direct / near / edge'}).click();await page.getByRole('button',{name:/Enable sound|Sound enabled/}).click();
+ await page.evaluate(()=>{const r=window.corrosiveReview;r.clean();r.fireOne();for(let i=0;i<360;i++){r.step(1/120);if(r.layer.corrosive.events.some(e=>e.role==='splash'))break;}r.step(.08);});
+ await page.waitForTimeout(60);await page.screenshot({path:'artifacts/corrosive-ab/sizing-burst.png'});
+ await page.evaluate(()=>{for(let i=0;i<90;i++)window.corrosiveReview.step(1/120);});await page.waitForTimeout(50);await page.screenshot({path:'artifacts/corrosive-ab/sizing-residue.png'});
+ const result=await page.evaluate(()=>{const r=window.corrosiveReview;return{events:r.layer.corrosive.events,snapshot:r.snapshot(),bindings:r.g.enemies.map(t=>({id:t.id,visible:t.statusEffects.get('corrosive')?.bindings.filter(b=>b.mesh.visible).map(b=>({name:b.source.name,radii:b.radii}))}))};});
+ const blast=result.events.find(e=>e.role==='detonation'),splash=result.events.filter(e=>e.role==='splash');assert.ok(blast.size>.5);assert.equal(splash.length,2);assert.ok(splash.every(e=>e.size===0&&e.coatingRadius<blast.coatingRadius*.35));assert.ok(splash[0].exposure>splash[1].exposure&&splash[0].coatingRadius>splash[1].coatingRadius&&splash[0].dropCount>splash[1].dropCount);
+ const splashHits=result.snapshot.hits.filter(h=>h.target>0);assert.equal(splashHits.length,2);splash.forEach((e,i)=>assert.equal(e.energy,splashHits[i].damage));assert.ok(result.snapshot.targets.every(t=>t.statuses.corrosive));assert.ok(result.bindings.every(t=>t.visible.length>0),'Every real recipient must have a visible surface binding, even at the blast edge');
+ for(const [name,at,look]of[['near',[-1.5,1.65,.4],[-2.65,1.62,-1.72]],['edge',[-.7,1.65,.3],[.85,1.60,-1.77]]]){
+  await page.evaluate(({at,look})=>{const r=window.corrosiveReview;r.g.camera.position.set(...at);r.g.camera.lookAt(...look);r.g.yaw=r.g.camera.rotation.y;r.g.pitch=r.g.camera.rotation.x;},{at,look});await page.waitForTimeout(60);await page.screenshot({path:`artifacts/corrosive-ab/sizing-${name}-closeup.png`});
+ }
+ await page.evaluate(()=>{const r=window.corrosiveReview;r.sizingReview();r.clean();r.play();});const recording=await page.evaluate(()=>window.corrosiveReview.startRecording());assert.equal(recording.audioTracks,1);await page.waitForTimeout(400);
+ await page.evaluate(()=>{const r=window.corrosiveReview;r.game.driveEvaluation({fire:true,yaw:r.g.yaw,pitch:r.g.pitch});});await page.waitForTimeout(90);await page.evaluate(()=>{const r=window.corrosiveReview;r.game.driveEvaluation({fire:false,yaw:r.g.yaw,pitch:r.g.pitch});});await page.waitForTimeout(4300);
+ const bytes=Buffer.from(await page.evaluate(()=>window.corrosiveReview.stopRecording()),'base64');assert.equal(bytes.subarray(0,4).toString('hex'),'1a45dfa3');await writeFile('artifacts/corrosive-ab/sizing-review.webm',bytes);assert.deepEqual(errors,[]);
+ await writeFile('artifacts/corrosive-ab/sizing-review.json',JSON.stringify({capturedAt:new Date().toISOString(),layout:'Center: direct target. Left: near neighbor. Right: blast-edge neighbor. Identical armored humans, one real sticky round, no manufactured damage or exposure values.',recording,...result,errors},null,2)+'\n');console.log('PASS real splash scaling',JSON.stringify({direct:blast,splash}));
+}finally{await browser.close();}

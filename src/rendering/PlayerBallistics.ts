@@ -22,12 +22,19 @@ export interface BallisticCallbacks {
 export interface BallisticPresentationImpact {
   point: THREE.Vector3; normal: THREE.Vector3; spec: Readonly<WeaponSpec>; radius: number;
   target?: THREE.Group; phase: 'contact' | 'detonate';
+  /** Presentation-only actual shot energy and propagated contact fraction. */
+  energy?: number; exposure?: number;
+}
+export interface BallisticPresentationSplash extends BallisticPresentationImpact {
+  target:THREE.Group;origin:THREE.Vector3;energy:number;exposure:number;primary:boolean;
 }
 export interface BallisticPresentation {
   projectile(spec: WeaponSpec, brand: BrandId): THREE.Group;
   trail(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, brand: BrandId): THREE.Group;
   beam(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, jagged: boolean, brand: BrandId): THREE.Group;
   impact(event: BallisticPresentationImpact): void;
+  /** One notification for each actual, unoccluded blast recipient; no damage is applied here. */
+  splash?(event:BallisticPresentationSplash):void;
   updateProjectile?(root: THREE.Group, dt: number, age: number): void;
 }
 
@@ -309,7 +316,7 @@ export class PlayerBallistics {
     const collision = this.trace(origin, end);
     const point = collision?.intersection.point ?? end;
     this.beam(origin, point, spec, spec.projectile === 'arc');
-    if (collision) this.presentation?.impact({ point: point.clone(), normal: collision.normal.clone(), spec, radius: .3, target: collision.target?.root, phase: 'contact' });
+    if (collision) this.presentation?.impact({ point: point.clone(), normal: collision.normal.clone(), spec, radius: .3, target: collision.target?.root, phase: 'contact',energy:damage });
     if (!collision?.target) { if (collision) this.flash(point, spec, 0.2); return; }
     const primary = collision.target;
     if (!this.emit(primary, point, direction, damage, spec, collision.intersection.object.userData.critical === true)) return;
@@ -324,7 +331,7 @@ export class PlayerBallistics {
       if (!candidate) break;
       const endpoint = candidate.bounds.clampPoint(from, new THREE.Vector3());
       this.beam(from, endpoint, spec, true);
-      this.presentation?.impact({point:endpoint.clone(),normal:from.clone().sub(endpoint).normalize(),spec,radius:.22,target:candidate.root,phase:'contact'});
+      this.presentation?.impact({point:endpoint.clone(),normal:from.clone().sub(endpoint).normalize(),spec,radius:.22,target:candidate.root,phase:'contact',energy:damage*Math.pow(.58,hop),exposure:Math.pow(.58,hop)});
       if (!this.emit(candidate, endpoint, endpoint.clone().sub(from), damage * Math.pow(0.58, hop), spec)) return;
       if (getWeaponElements(spec).some(element => element !== 'kinetic')) this.flash(endpoint, spec, 0.40);
       hit.add(candidate.id);
@@ -390,7 +397,7 @@ export class PlayerBallistics {
       }
       const target = collision.target;
       projectile.visualContact = { normal: collision.normal.clone(), target: target?.root };
-      projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact'});
+      projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact',energy:projectile.damage*(type==='sticky'?.20:1)});
       if (!this.projectiles.has(projectile)) return;
       if (projectile.splitDelay !== undefined) {
         // Release on the near side of the surface. Children still sweep against
@@ -463,7 +470,7 @@ export class PlayerBallistics {
 
   private explode(projectile: Projectile, point: THREE.Vector3, excludeId?: number, multiplier = 1): void {
     const radius = projectile.spec.blastRadius;
-    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate'});
+    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier});
     if (!this.projectiles.has(projectile)) return;
     this.flash(point, projectile.spec, Math.max(0.35, radius), projectile.presenter ?? null);
     if (radius <= 0) return;
@@ -478,6 +485,8 @@ export class PlayerBallistics {
       if (offset.lengthSq() > 1e-8) start.addScaledVector(offset.clone().normalize(), 0.005);
       if (this.trace(start, closest, true)) continue;
       const amount = projectile.damage * multiplier * Math.max(0.12, 1 - distance / radius);
+      if(projectile.presenter?.splash&&amount>0&&Number.isFinite(amount)&&this.callbacks.targets().some(candidate=>candidate.id===target.id))projectile.presenter.splash({point:closest.clone(),normal:offset.lengthSq()>1e-8?offset.clone().negate().normalize():projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),origin:point.clone(),spec:projectile.spec,radius,target:target.root,phase:'contact',energy:amount,exposure:Math.max(0,Math.min(1,amount/projectile.damage)),primary:target.root===projectile.visualContact?.target});
+      if(!this.projectiles.has(projectile))return;
       if (!this.emit(target, closest, offset.lengthSq() > 1e-8 ? offset : projectile.velocity, amount, projectile.spec)) return;
     }
   }
