@@ -114,7 +114,7 @@ async function startLab() {
     for (const entry of EVALUATION_BUILDS) for (const value of [7, 8, 41, 97]) jobs.push({ build: entry.id, seed: value, schedule: 'none' });
     for (const entry of EVALUATION_BUILDS) for (const value of SCHEDULES.filter(value => value !== 'none')) jobs.push({ build: entry.id, seed: 7, schedule: value });
     const queue: Queue = { jobs, index: 0, saved: [], references: {}, running: true };
-    storeQueue(queue); location.replace(jobUrl(jobs[0]));
+    storeQueue(queue); clearInterval(timer); location.replace(jobUrl(jobs[0]));
   });
   const single = button('Run this cell', () => { void runCell(null).catch(showError); });
   button('Save current result', () => { void saveResult().then(filename => { state.textContent += `\nSAVED ${filename}`; }).catch(showError); });
@@ -124,7 +124,7 @@ async function startLab() {
   });
   button('Resume matrix', () => {
     const queue = loadQueue(); if (!queue || queue.index >= queue.jobs.length) { state.textContent = 'No unfinished matrix.'; return; }
-    queue.running = true; queue.stopAfterRun = false; delete queue.error; storeQueue(queue); location.replace(jobUrl(queue.jobs[queue.index]));
+    queue.running = true; queue.stopAfterRun = false; delete queue.error; storeQueue(queue); clearInterval(timer); location.replace(jobUrl(queue.jobs[queue.index]));
   });
   panel.append(title, note, actions, state); document.body.append(panel);
   function showError(error: unknown) { state.textContent = error instanceof Error ? error.message : String(error); }
@@ -242,7 +242,7 @@ async function startLab() {
       if (schedule === 'none') latest.references[key(job)] = filename;
       latest.index++; latest.running = latest.index < latest.jobs.length && !latest.stopAfterRun;
       storeQueue(latest); state.textContent += `\nSAVED ${filename}\n${latest.index}/${latest.jobs.length} cells`;
-      if (latest.running) location.replace(jobUrl(latest.jobs[latest.index]));
+      if (latest.running) { clearInterval(timer); location.replace(jobUrl(latest.jobs[latest.index])); }
     } catch (error) {
       queue.running = false; queue.error = error instanceof Error ? error.message : String(error); storeQueue(queue); showError(error);
     } finally { busy = false; }

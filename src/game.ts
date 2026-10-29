@@ -1224,7 +1224,7 @@ export class Game {
       this.healingUntil = 0; this.lastHealingAmount = 0;
       this.recoveryAction.cancel();
       this.shooting = false; this.mouseAiming = false; this.keys.clear(); this.dashUntil = 0;
-      this.weaponPose.reset(); this.applyWeaponPose(); this.emptyAt = -10; this.nextShot = this.time + 1.25; this.lastFiredAt = -Infinity;
+      this.weaponPose.reset(); this.emptyAt = -10; this.applyWeaponPose(); this.nextShot = this.time + 1.25; this.lastFiredAt = -Infinity;
       this.respawnUntil = this.time + 1.25;
       const checkpoint = getCheckpoint(this.progression.checkpoint!.id)!;
       this.save();
