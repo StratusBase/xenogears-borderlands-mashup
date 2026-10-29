@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DUST // STEEL — Damage feedback inspection</title>
+    <style>
+      body.feedback-fixture { background: radial-gradient(ellipse at center, #3d4942, #15231d 75%); }
+      .feedback-fixture .objective-block, .feedback-fixture .mouse-capture-control, .feedback-fixture .input-device { display: none !important; }
+      .feedback-controls { position: fixed; z-index: 5; left: 50%; top: 136px; transform: translateX(-50%); width: min(760px, calc(100% - 36px)); padding: 17px 20px; background: #15221df2; border: 1px solid #d7dfbe50; font: 12px system-ui, sans-serif; color: #e8ebd5; }
+      .feedback-controls h1 { margin: 0 0 7px; font-size: 13px; letter-spacing: .08em; }
+      .feedback-controls p { margin: 0 0 14px; color: #b8c5ad; font-size: 11px; line-height: 1.5; }
+      .feedback-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+      .feedback-buttons button { padding: 9px 13px; background: #304b38; color: #f2f4e7; border: 1px solid #c5d7b24d; font: 700 11px system-ui, sans-serif; }
+      .feedback-buttons button[aria-pressed="true"] { background: #d6e4bf; color: #172219; border-color: #d6e4bf; }
+      .feedback-buttons button:focus-visible { outline: 2px solid #76c9bb; outline-offset: 3px; }
+      .feedback-options { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 13px; font-size: 10px; color: #b8c5ad; }
+      .feedback-options label { display: flex; align-items: center; gap: 6px; }
+      .feedback-options input { accent-color: #76c9bb; }
+      #feedback-selection { margin-left: auto; color: #e8ebd5; font-weight: 700; letter-spacing: .04em; }
+      @media(max-height: 620px) { .feedback-controls { top: 117px; padding: 12px 16px; } .feedback-controls p { margin-bottom: 9px; } }
+    </style>
+  </head>
+  <body class="feedback-fixture">
+    <main id="app"></main>
+    <section class="feedback-controls" aria-label="Development damage feedback inspection">
+      <h1>ACTUAL GAME UI / DAMAGE FEEDBACK</h1>
+      <p>Calls GameUI.hit() with the shared stylesheet. No combat, saves, or mouse capture.</p>
+      <div class="feedback-buttons" aria-label="Hit types">
+        <button type="button" data-hit="normal" aria-pressed="false">Normal</button>
+        <button type="button" data-hit="critical" aria-pressed="false">Critical</button>
+        <button type="button" data-hit="fire" aria-pressed="false">Fire</button>
+        <button type="button" data-hit="shock" aria-pressed="false">Shock</button>
+        <button type="button" data-hit="corrosion" aria-pressed="false">Corrosion</button>
+        <button type="button" data-hit="frost" aria-pressed="false">Frost</button>
+        <button type="button" data-hit="bleed" aria-pressed="false">Bleed</button>
+      </div>
+      <div class="feedback-options">
+        <label><input id="repeat-feedback" type="checkbox" checked /> Repeat selected hit for inspection</label>
+        <span id="feedback-selection" role="status">SELECT A HIT TYPE</span>
+      </div>
+    </section>
+    <script type="module" src="/src/dev/feedback.ts"></script>
+  </body>
+</html>

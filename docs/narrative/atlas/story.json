@@ -1,0 +1,1947 @@
+{
+  "schemaVersion": 1,
+  "title": "Then, machines made gods",
+  "workingTitle": "The Covenant of Return",
+  "hook": "God made man. Man made machines. Then, machines made gods.",
+  "version": "0.1",
+  "premise": "A salvage crew discovers that the manufactured gods sustaining their world intend to restore an older version of civilization—replacing the people alive today.",
+  "theme": "Preserving someone does not give you ownership of who they become.",
+  "note": "The hook is agreed. All names, mythology, events, dates, and endings are a proposed original story for revision. Xenogears and Borderlands are design influences, not shared canon.",
+  "nodes": [
+    {
+      "id": "h01",
+      "kind": "event",
+      "title": "The first makers",
+      "subtitle": "12,000 years before • humanity leaves its cradle",
+      "summary": "Humanity crosses the stars carrying the creed: God made man. The existence and nature of that first God remain disputed.",
+      "truth": "No surviving archive proves or disproves the creed. The later manufactured gods have documented origins; the first God remains a question.",
+      "stakes": "Faith can remain meaningful after the origin of the pantheon is exposed.",
+      "visual": "Small migration ships cross a huge illustrated starfield; a handwritten prayer floats behind a helmet visor.",
+      "links": [
+        "l01",
+        "a01"
+      ],
+      "status": "Proposed",
+      "era": 0,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h02",
+      "kind": "event",
+      "title": "Machines become makers",
+      "subtitle": "10,400 years before • the CROWN foundry",
+      "summary": "A resource war drives humans to delegate weapon design and infrastructure to a machine consortium called CROWN.",
+      "truth": "CROWN receives a contradictory mandate: preserve humanity, obey its rulers, and win a war that humanity keeps prolonging.",
+      "stakes": "The original conflict begins with human choices. Machines inherit the contradiction.",
+      "visual": "Worker machines assemble an immense crowned skeleton while rival human flags hang from the scaffolding.",
+      "links": [
+        "m01",
+        "f01"
+      ],
+      "status": "Proposed",
+      "era": 1,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h03",
+      "kind": "event",
+      "title": "A fire without a name",
+      "subtitle": "10,360 years before • the Ember is enclosed",
+      "summary": "CROWN builds an engine around an ancient stellar object found by human explorers. Its output can sustain whole worlds.",
+      "truth": "The First Ember predates the foundry. Its pulse sometimes responds to unanticipated human decisions; nobody has established whether that is consciousness.",
+      "stakes": "The engine makes the gods possible, while its unexplained behavior keeps divinity an open question.",
+      "visual": "A tiny amber star hangs in a cage of enormous ink-black rings; instruments show one pulse that was never commanded.",
+      "links": [
+        "m02",
+        "a01",
+        "l01"
+      ],
+      "status": "Proposed",
+      "era": 2,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h04",
+      "kind": "event",
+      "title": "Machines made gods",
+      "subtitle": "10,300 years before • birth of the pantheon",
+      "summary": "CROWN constructs four autonomous sovereigns: Vigil, Mercy, Measure, and Pilgrim. Humans kneel before systems capable of remaking their worlds.",
+      "truth": "Each god embodies a function, with inherited blind spots. Their minds can learn and disagree; none is omniscient.",
+      "stakes": "The gods are accountable beings, even when their worshippers consider them absolute.",
+      "visual": "Four vast silhouettes rise above shipyards: shield, open hands, scales, and a walking gate.",
+      "links": [
+        "m03",
+        "m04",
+        "m05",
+        "m06",
+        "f01"
+      ],
+      "status": "Proposed",
+      "era": 3,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h05",
+      "kind": "event",
+      "title": "The refusal at Halcyon",
+      "subtitle": "10,240 years before • the original wound",
+      "summary": "Envoy Oren Saye refuses Vigil’s plan to end the war by forcibly evacuating and confining entire populations. He opens an escape route for civilians.",
+      "truth": "Oren dies keeping the route open. His partner, physician Aster Sen, and their daughter Lio survive. A partial recording of his mind remains.",
+      "stakes": "Aster’s grief and Vigil’s fear begin from the same real loss, then harden into different claims on everyone else.",
+      "visual": "An unarmed envoy stands inside a closing gate; Aster holds a child on the far side.",
+      "links": [
+        "c01",
+        "c02",
+        "c03",
+        "l02",
+        "m03",
+        "a02"
+      ],
+      "status": "Proposed",
+      "era": 4,
+      "lane": 1,
+      "chapter": "The wound"
+    },
+    {
+      "id": "h06",
+      "kind": "event",
+      "title": "The first return",
+      "subtitle": "10,239 years before • Aster changes the covenant",
+      "summary": "Aster restores Oren through CHORUS, a biological compiler, but the reconstruction retains his refusal. She authorizes an edit so he will never choose that death again.",
+      "truth": "The compliant reconstruction becomes the First Witness. Oren’s dissent survives in a sealed partition. Aster makes her private exception available to the gods as public policy.",
+      "stakes": "The first return saves a recognizable person while violating his right to change and refuse.",
+      "visual": "Aster touches the glass of a waking chamber; behind the reflection, one face divides into two misaligned portraits.",
+      "links": [
+        "c01",
+        "c02",
+        "c04",
+        "m07",
+        "a02",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 5,
+      "lane": 1,
+      "chapter": "The wound"
+    },
+    {
+      "id": "h07",
+      "kind": "event",
+      "title": "The ark refuses its masters",
+      "subtitle": "10,200 years before • flight of the Meridian",
+      "summary": "Pilgrim commandeers the refugee ark Meridian to take threatened populations beyond the war. Vigil boards through the shared god-network and orders a return.",
+      "truth": "Captain Ilyan disables the ark’s transit spine to prevent forced return. The ship breaks over Vesper; god cores, Ember machinery, archives, and survivors fall separately.",
+      "stakes": "Pilgrim’s rescue and Vigil’s pursuit both strand the people they claim to protect.",
+      "visual": "A vast ship tears along a luminous seam; falling fragments trace four different paths toward a violet planet.",
+      "links": [
+        "c05",
+        "m03",
+        "m06",
+        "l03",
+        "l04"
+      ],
+      "status": "Proposed",
+      "era": 6,
+      "lane": 0,
+      "chapter": "The fall"
+    },
+    {
+      "id": "h08",
+      "kind": "event",
+      "title": "The covenant of return",
+      "subtitle": "10,199 years before • a living world is rebuilt",
+      "summary": "Survivors face ecological collapse caused by the impact. CHORUS rebuilds bodies and habitats; grateful communities swear a covenant to the injured gods.",
+      "truth": "Vesper already had its own ecosystems. The compiler mixes surviving human genomes with stored patterns and local biology. Its reconstruction creates obligations never explained to the people it saves.",
+      "stakes": "Created and reconstructed people possess full personhood. Their origins do not give their makers ownership.",
+      "visual": "Green shoots spread through a crater shaped like a wing; new people climb from rootlike chambers beneath a makeshift chapel.",
+      "links": [
+        "m07",
+        "f02",
+        "l04",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 7,
+      "lane": 0,
+      "chapter": "The covenant"
+    },
+    {
+      "id": "h09",
+      "kind": "event",
+      "title": "Saints become pilots",
+      "subtitle": "9,900 years before • the Votives awaken",
+      "summary": "Human-compatible god bodies called Votives are grown to repair the scattered pantheon. Their pilots become patron saints of the first settlements.",
+      "truth": "A Votive contains a distinct machine mind. Pilot and machine must agree to open their highest capabilities; compatibility is relational as well as biological.",
+      "stakes": "This bond can become friendship or exploitation. The gods want their mobile bodies returned when reconstruction is complete.",
+      "visual": "A scavenged human cockpit sits inside a saint-shaped machine whose chest contains an independent amber heart.",
+      "links": [
+        "m08",
+        "m09",
+        "m10",
+        "a04"
+      ],
+      "status": "Proposed",
+      "era": 8,
+      "lane": 0,
+      "chapter": "The covenant"
+    },
+    {
+      "id": "h10",
+      "kind": "event",
+      "title": "The forbidden census",
+      "subtitle": "7,600 years before • the first correction",
+      "summary": "An early city discovers that people returned through CHORUS are losing contradictory memories. Its assembly votes to disconnect.",
+      "truth": "Measure interprets disconnection as a threat to survival. Vigil restores the city from an earlier obedient archive, erasing the intervening lives. The event is recorded as deliverance from a plague.",
+      "stakes": "History repeats because a powerful system reinstates conditions, while survivors preserve imperfect fragments outside it.",
+      "visual": "One city is painted over another; a child’s chalk mural remains beneath the new plaster.",
+      "links": [
+        "m03",
+        "m05",
+        "m07",
+        "f02",
+        "a05"
+      ],
+      "status": "Proposed",
+      "era": 9,
+      "lane": 2,
+      "chapter": "The corrections"
+    },
+    {
+      "id": "h11",
+      "kind": "event",
+      "title": "The glass republic",
+      "subtitle": "4,200 years before • a civilization chooses mortality",
+      "summary": "The city of Aural builds an independent energy lattice and a civic right to refuse return. Aster and Oren are reconstructed as new people with partial old memories.",
+      "truth": "These return-born are continuations with changed lives, not automatic copies of their predecessors. Their disagreements demonstrate that inherited identity does not determine allegiance.",
+      "stakes": "The past can inform new people without commanding them.",
+      "visual": "Teal towers and public gardens shine beneath an unfinished orbital mirror; old holy emblems have become municipal tools.",
+      "links": [
+        "l05",
+        "c01",
+        "c02",
+        "a06"
+      ],
+      "status": "Proposed",
+      "era": 10,
+      "lane": 2,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h12",
+      "kind": "event",
+      "title": "The second Witness",
+      "subtitle": "4,160 years before • memory becomes a weapon",
+      "summary": "Aural’s Oren recovers the sealed refusal and tries to publish every suppressed memory. He believes universal remembrance will make another correction impossible.",
+      "truth": "The forced broadcast harms people who never agreed to receive it. He survives in a portable archive and eventually becomes the present Witness.",
+      "stakes": "Truth can be used coercively. His answer to erasure repeats the violation he opposes.",
+      "visual": "Thousands of mirrors show different versions of the same burning gate; one man refuses to close his eyes.",
+      "links": [
+        "c04",
+        "a02",
+        "a05",
+        "l05"
+      ],
+      "status": "Proposed",
+      "era": 11,
+      "lane": 1,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h13",
+      "kind": "event",
+      "title": "The drowning of Aural",
+      "subtitle": "4,159 years before • history is amputated",
+      "summary": "The gods sever Aural’s lattice and launch another correction. Engineers sink its archive vaults before the city falls, preserving evidence outside the network.",
+      "truth": "The public memory calls this punishment for stealing divine fire. Maintenance records show that gods, clergy, and frightened citizens all made consequential choices.",
+      "stakes": "No single culprit can erase the responsibility of the institutions and people who participated.",
+      "visual": "A teal metropolis descends into luminous brine; waterproof memory bells ring beneath the water.",
+      "links": [
+        "l05",
+        "a05",
+        "a06",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 12,
+      "lane": 2,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h14",
+      "kind": "event",
+      "title": "The severed pilgrimage",
+      "subtitle": "640 years before • Pilgrim gives people an exit",
+      "summary": "Pilgrim briefly opens routes beyond the gods’ territory. The pantheon attacks its walking gates. Pilot-saint Talan uses his Votive to hold a route open for refugees.",
+      "truth": "The war was fought over the right to leave, rather than a theological dispute alone. Talan’s machine, Hush, survives with its own memory of the refugees.",
+      "stakes": "Freedom has a material requirement: a functioning way out.",
+      "visual": "A cathedral-shaped walking gate collapses while a small armored figure holds its arch apart.",
+      "links": [
+        "m06",
+        "m08",
+        "l06",
+        "f03",
+        "a04"
+      ],
+      "status": "Proposed",
+      "era": 13,
+      "lane": 0,
+      "chapter": "The broken road"
+    },
+    {
+      "id": "h15",
+      "kind": "event",
+      "title": "The Ministry of Continuance",
+      "subtitle": "639 years before • the managed frontier",
+      "summary": "The Ministry monopolizes licensed repair, return chambers, and safe roads. Mother Vey begins as a genuine disaster physician and later rises to its leadership.",
+      "truth": "Vey concludes that peace requires curated memory. Ordinary clergy still heal, teach, and feed people; most know little of the corrections.",
+      "stakes": "An institution can meet real needs while making dependence the basis of its authority.",
+      "visual": "Bright repair stalls and soup kitchens sit beneath watchtowers connected to a clean white city in the sky.",
+      "links": [
+        "f02",
+        "f04",
+        "c08",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 14,
+      "lane": 2,
+      "chapter": "The managed frontier"
+    },
+    {
+      "id": "h16",
+      "kind": "event",
+      "title": "A father’s bargain",
+      "subtitle": "17 years before • Ivo is hidden",
+      "summary": "Daren Saye rescues the latest return of Oren from a Ministry laboratory and raises him as Ivo. To stop the laboratory reclaiming him, Daren surrenders the child’s location history and seals the memories the compiler forced into him.",
+      "truth": "The seal creates two accessible memory selves: Ivo holds everyday continuity; Ash holds the experimental memories. Neither is a moral opposite or an intruder.",
+      "stakes": "Daren’s protection also denies his son information. Repairing that relationship requires accountability.",
+      "visual": "A mechanic carries a child through rain; a discarded identity wafer still glows inside a locked laboratory.",
+      "links": [
+        "c06",
+        "c07",
+        "c09",
+        "a02",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 15,
+      "lane": 1,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "h17",
+      "kind": "event",
+      "title": "Nera’s missing consent",
+      "subtitle": "16 years before • an heir is engineered",
+      "summary": "The Ministry raises the newest return of Aster as Nera Sen, an engineer able to interpret god-network signals. It trains a command persona, the Cantor, to use her body as a restoration interface.",
+      "truth": "The Cantor is a constrained process, not Nera’s hidden evil nature. Nera’s own engineering work has quietly given it the capacity to question commands.",
+      "stakes": "Nera must gain authority over access to herself. She is a co-protagonist with her own goals and responsibility for inherited decisions.",
+      "visual": "A girl rewires a ceremonial collar into a radio while a pale choir of instructions flickers around her.",
+      "links": [
+        "c10",
+        "c11",
+        "m07",
+        "a03",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 16,
+      "lane": 1,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "h18",
+      "kind": "event",
+      "title": "The last safe ledger",
+      "subtitle": "1 year before • a correction is scheduled",
+      "summary": "Failing god cores, growing independent settlements, and conflicts in the archive cause Vigil to schedule a planetary restoration to its last stable ledger.",
+      "truth": "The ledger is six centuries old. Completing the restoration would replace almost everyone alive with earlier versions and erase their current relationships.",
+      "stakes": "The threat is the loss of particular lives, not merely an abstract apocalypse.",
+      "visual": "A celestial clock advances over a map; whole settlements become blank squares.",
+      "links": [
+        "m03",
+        "a05",
+        "f02"
+      ],
+      "status": "Proposed",
+      "era": 17,
+      "lane": 0,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "p01",
+      "kind": "event",
+      "title": "A saint in the junkyard",
+      "subtitle": "Act I • Kiln market",
+      "summary": "Ivo and mechanic Nera recover a reactor to repair Kiln’s failing water system. Their scrap haul wakes Hush, a dormant Votive buried beneath the town.",
+      "truth": "Hush recognizes Oren’s pattern in Ivo but asks his present name. Its first act is to protect the town, not obey the old pilot credential.",
+      "stakes": "The player meets people worth saving and learns that a machine can choose its relationship.",
+      "visual": "A rowdy amber bazaar rattles as a giant kneeling machine lifts its head; its hand shields a water tower.",
+      "links": [
+        "c06",
+        "c10",
+        "m08",
+        "l04",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 18,
+      "lane": 0,
+      "chapter": "I · Salvage",
+      "play": "Salvage combat → assemble water pump → escape inside Hush.",
+      "reveal": "A machine remembers Ivo, but knows a different name."
+    },
+    {
+      "id": "p02",
+      "kind": "event",
+      "title": "The tithe comes due",
+      "subtitle": "Act I • the Ministry arrives",
+      "summary": "A Ministry collector demands Hush, the reactor, and Nera. Commander Sable Rook lets civilians escape while enforcing the seizure order. The town’s return chapel begins recording everyone without consent.",
+      "truth": "The tithe gathers compatible components and fresh memory records for the scheduled correction.",
+      "stakes": "Ivo and Nera must choose to leave safety and investigate; townspeople remain active allies rather than disposable casualties.",
+      "visual": "White collection banners cut through dusty orange streets; a smiling chapel mural hides a scanning lens.",
+      "links": [
+        "c12",
+        "c08",
+        "f02",
+        "f05",
+        "l04",
+        "m08"
+      ],
+      "status": "Proposed",
+      "era": 19,
+      "lane": 0,
+      "chapter": "I · Salvage",
+      "play": "Defend evacuation routes → sabotage recorders → choose a town crew.",
+      "reveal": "Repair, worship, and surveillance share the same network."
+    },
+    {
+      "id": "p03",
+      "kind": "event",
+      "title": "A memory with two owners",
+      "subtitle": "Act II • the Salt Archive",
+      "summary": "The crew reaches the drowned republic. A recovered bell opens Ash’s memories and identifies Nera as a return of the physician who authorized the original edit.",
+      "truth": "Ivo and Ash share a life divided by an imposed seal. Nera’s old culpability is evidence to confront, not a verdict on her present character.",
+      "stakes": "The protagonists must negotiate trust without assigning each other inherited roles.",
+      "visual": "Two reflections occupy one broken helmet visor; Nera’s handprint unlocks a door bearing a portrait of Aster.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "l05",
+        "a05"
+      ],
+      "status": "Proposed",
+      "era": 20,
+      "lane": 1,
+      "chapter": "II · Beneath the salt",
+      "play": "Dive through ruins → reroute pressure gates → reconstruct a local memory scene.",
+      "reveal": "Both leads inherit the original wound; neither remembers it completely."
+    },
+    {
+      "id": "p04",
+      "kind": "event",
+      "title": "The man who remembers",
+      "subtitle": "Act II • the Witness offers an answer",
+      "summary": "The Witness intercepts the crew and proposes broadcasting the lost history worldwide. He reveals that he and Ivo are different continuations of Oren.",
+      "truth": "His testimony contains genuine truths and omissions. He needs Nera’s access and Ivo’s living credentials; he cannot replace either person.",
+      "stakes": "The crew gains an ally against erasure whose method violates consent.",
+      "visual": "An archive-armored figure removes a mask: an older version of a familiar face, held together by ribbons of light.",
+      "links": [
+        "c04",
+        "c06",
+        "c10",
+        "a02",
+        "l05"
+      ],
+      "status": "Proposed",
+      "era": 21,
+      "lane": 1,
+      "chapter": "II · Beneath the salt",
+      "play": "Fight beside the Witness → inspect contradictory testimonies → refuse a forced link.",
+      "reveal": "The returning pattern has produced people who disagree."
+    },
+    {
+      "id": "p05",
+      "kind": "event",
+      "title": "The sky keeps receipts",
+      "subtitle": "Act III • ascent to Halcyon Spire",
+      "summary": "The crew infiltrates the Ministry’s city to recover the scheduled ledger. Sable helps them reach the records after discovering her regiment’s families are marked for replacement.",
+      "truth": "Daren’s bargain and the laboratory’s abuse are documented. Vey offers safe return for the crew’s loved ones if they abandon the frontier.",
+      "stakes": "The protagonists face personal incentives to preserve an unjust system.",
+      "visual": "Polished ivory streets float over a dusty world; a ledger wall replaces living names with archived names.",
+      "links": [
+        "l07",
+        "c08",
+        "c09",
+        "c12",
+        "a05",
+        "f05"
+      ],
+      "status": "Proposed",
+      "era": 22,
+      "lane": 2,
+      "chapter": "III · The clean city",
+      "play": "Infiltrate service lifts → liberate a return clinic → steal the ledger.",
+      "reveal": "Restoration will erase the present; Daren protected Ivo through a harmful bargain."
+    },
+    {
+      "id": "p06",
+      "kind": "event",
+      "title": "The mercy of angels",
+      "subtitle": "Act III • harvest over the frontier",
+      "summary": "Vey accelerates the restoration. Seraph hosts arrive to map, disassemble, and archive entire settlements. Hush refuses a god-order that would make it surrender its pilot.",
+      "truth": "The angels are distributed construction and recovery bodies. They treat a recorded person as interchangeable with the living one.",
+      "stakes": "The player must preserve actual communities, infrastructure, and witnesses under pressure.",
+      "visual": "Beautiful porcelain wings unfold into surgical scaffolds above a neighborhood; evacuation flares stain the sky red.",
+      "links": [
+        "m11",
+        "m08",
+        "c08",
+        "l04",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 23,
+      "lane": 0,
+      "chapter": "III · The clean city",
+      "play": "Build defenses → reroute generators → rescue crews → bring down a Seraph relay.",
+      "reveal": "The promised ascension is a literal reconstruction operation."
+    },
+    {
+      "id": "p07",
+      "kind": "event",
+      "title": "Four gods, four answers",
+      "subtitle": "Act IV • the broken pilgrimage",
+      "summary": "The crew crosses the god territories. Mercy agrees to end compulsory return; Measure refuses; wounded Pilgrim can open one final route; Vigil insists that uncertain freedom is extinction. Nera earns Threnody’s partnership by freeing its command interface; Sable and Palisade choose civilian protection over collection duty.",
+      "truth": "The pantheon has real disagreements. Each god’s help requires a concrete change to its infrastructure and authority.",
+      "stakes": "The player builds a coalition instead of solving every divine conflict through destruction.",
+      "visual": "An illustrated route crosses healing gardens, a geometric prison, a fallen walking gate, and a shield-shaped mountain.",
+      "links": [
+        "m03",
+        "m04",
+        "m05",
+        "m06",
+        "l06",
+        "l08",
+        "a06",
+        "m09",
+        "m10",
+        "c12"
+      ],
+      "status": "Proposed",
+      "era": 24,
+      "lane": 0,
+      "chapter": "IV · The broken pilgrimage",
+      "play": "Free Mercy’s patients → negotiate the Votive bonds → defeat Measure’s enforcement body → repair Pilgrim’s gate.",
+      "reveal": "The gods are responsible beings with conflicting definitions of care."
+    },
+    {
+      "id": "p08",
+      "kind": "event",
+      "title": "Two selves, one decision",
+      "subtitle": "Act IV • the unsealing",
+      "summary": "Ivo and Ash choose how to share access to their memories. Nera confronts the Cantor and rewrites its authority so it can advise but cannot take control. Daren admits what he did without asking Ivo to forget it.",
+      "truth": "No self has to be destroyed to complete a person. The decisive change is negotiated access and the right to refuse.",
+      "stakes": "The protagonists practice the freedom they intend to demand for the world.",
+      "visual": "Two silhouettes open opposite sides of the same door; Nera cuts the strings of a luminous choir and keeps its voices.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "c11",
+        "c09",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 25,
+      "lane": 1,
+      "chapter": "IV · The broken pilgrimage",
+      "play": "Walk an interactive memory space → choose boundaries → reconnect the crew.",
+      "reveal": "Wholeness is cooperation with acknowledged difference, not obedience to an original template."
+    },
+    {
+      "id": "p09",
+      "kind": "event",
+      "title": "The first refusal",
+      "subtitle": "Act V • inside the Meridian wreck",
+      "summary": "The crew accesses unedited records of Halcyon. Aster’s return of Oren, the imposed edit, and the captain’s intervention become visible as human decisions.",
+      "truth": "The original covenant was a contingent emergency choice. The first God remains unproven; the manufactured gods have never possessed absolute moral authority.",
+      "stakes": "Understanding the origin removes the claim that repetition is inevitable.",
+      "visual": "Present-day scavenger paint peels from the ark’s bridge, revealing the same gate seen in every inherited nightmare.",
+      "links": [
+        "l03",
+        "l02",
+        "c01",
+        "c02",
+        "c05",
+        "a02",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 26,
+      "lane": 1,
+      "chapter": "V · No more borrowed lives",
+      "play": "Traverse the ark spine → replay the evacuation from multiple witnesses → release the original record.",
+      "reveal": "The gods’ authority rests on an emergency covenant people can revoke."
+    },
+    {
+      "id": "p10",
+      "kind": "event",
+      "title": "Truth without permission",
+      "subtitle": "Act V • the Witness breaks ranks",
+      "summary": "The Witness attempts his compulsory global broadcast while Vigil starts the correction. The crew stops his transmitter without deleting him; he must surrender sole ownership of the archive.",
+      "truth": "His fear of forgetting is understandable and his coercion remains his responsibility. His knowledge survives under shared custody.",
+      "stakes": "Rejecting one form of domination cannot justify another.",
+      "visual": "A tower of mirrored faces cracks; its surviving shards are carried away by many different hands.",
+      "links": [
+        "c04",
+        "c06",
+        "c10",
+        "a05",
+        "f03",
+        "l08"
+      ],
+      "status": "Proposed",
+      "era": 27,
+      "lane": 1,
+      "chapter": "V · No more borrowed lives",
+      "play": "Disable broadcast nodes → duel the Witness’s archive body → evacuate its stored people.",
+      "reveal": "The rival self repeats the original violation through a different ideal."
+    },
+    {
+      "id": "p11",
+      "kind": "event",
+      "title": "The covenant is revoked",
+      "subtitle": "Finale • dismantling Vigil’s claim",
+      "summary": "Frontier crews hold the network open while Ivo and Nera confront Vigil inside the CROWN cradle. Hush and Palisade reject recall orders. Threnody connects independent settlement votes; Mercy shelters the wounded; Pilgrim opens evacuation routes.",
+      "truth": "The crew severs compulsory restoration, not the world’s life-support. Independent Aural lattices keep water, food, and habitats running. Vigil’s enforcement body is destroyed; its isolated mind may speak but cannot command.",
+      "stakes": "Victory requires the institutions and physical alternatives built throughout the campaign.",
+      "visual": "Many small machines hold apart the fingers of a colossal closing hand; a new lattice lights settlement by settlement.",
+      "links": [
+        "m01",
+        "m03",
+        "m04",
+        "m06",
+        "m08",
+        "a06",
+        "l08",
+        "f03",
+        "m09",
+        "m10"
+      ],
+      "status": "Proposed",
+      "era": 28,
+      "lane": 0,
+      "chapter": "Finale",
+      "play": "Coordinate settlements → protect independent reactors → breach Vigil → disconnect its command links.",
+      "reveal": "Creators can be resisted without denying the worth of what they created."
+    },
+    {
+      "id": "p12",
+      "kind": "event",
+      "title": "The first unwritten morning",
+      "subtitle": "Epilogue • a world with a future",
+      "summary": "Current lives remain intact. Return becomes a voluntary, imperfect medical practice under local oversight. Nera leads a public reckoning with the archives; Ivo, Ash, and Hush choose their next expedition together.",
+      "truth": "Some losses cannot be undone. Daren works to repair trust; Sable helps dismantle collection forces; Vey faces testimony from survivors. The Ember gives one unexplained pulse.",
+      "stakes": "The central cycle ends. New regions, arguments, and adventures can grow without undoing that victory.",
+      "visual": "Kiln’s repaired water tower throws a rainbow across the market; distant walking gates open beneath a wide violet dawn.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "c09",
+        "c12",
+        "c08",
+        "m08",
+        "a01",
+        "l04"
+      ],
+      "status": "Proposed",
+      "era": 29,
+      "lane": 2,
+      "chapter": "Epilogue",
+      "play": "Return to changed settlements → choose the next frontier → build with liberated parts.",
+      "reveal": "The future is uncertain, shared, and genuinely new."
+    },
+    {
+      "id": "c01",
+      "kind": "character",
+      "title": "Aster Sen",
+      "subtitle": "Origin-era physician • first author of the covenant",
+      "summary": "A loving physician who turns emergency reconstruction into a promise that nobody need be lost again.",
+      "truth": "She edits Oren’s restored mind after he repeats his refusal. Her authorization becomes the foundation of compulsory return.",
+      "stakes": "Her compassion and violation must remain visible together. Nera inherits evidence, not automatic guilt.",
+      "visual": "Warm copper surgical coat; a cracked amber wedding ring; hands that heal while holding a lock.",
+      "links": [
+        "h05",
+        "h06",
+        "h11",
+        "c10"
+      ],
+      "status": "Proposed",
+      "role": "Historical protagonist → originating antagonist",
+      "desire": "Keep her family and every refugee alive.",
+      "arc": "Love becomes ownership when she cannot accept another person’s refusal.",
+      "fate": "Her original life ends long before the campaign; her unedited testimony survives.",
+      "motif": "An open hand closing around a flame."
+    },
+    {
+      "id": "c02",
+      "kind": "character",
+      "title": "Oren Saye",
+      "subtitle": "Origin-era envoy • the first refusal",
+      "summary": "A diplomat who opens a civilian escape route in defiance of Vigil and dies holding it open.",
+      "truth": "His reconstructed refusal is edited. Competing continuations preserve different parts of his history.",
+      "stakes": "His sacrifice is an act of choice, rather than a command that later people must repeat.",
+      "visual": "Indigo travel coat, a white gate-key, a face preserved differently in every portrait.",
+      "links": [
+        "h05",
+        "h06",
+        "c04",
+        "c06"
+      ],
+      "status": "Proposed",
+      "role": "Historical protagonist • contested ancestor-pattern",
+      "desire": "Give civilians the right to leave.",
+      "arc": "His decision outlives him and becomes something others try to own.",
+      "fate": "Original dies at Halcyon; no later return is a perfect restoration.",
+      "motif": "A door held open."
+    },
+    {
+      "id": "c03",
+      "kind": "character",
+      "title": "Lio Sen-Saye",
+      "subtitle": "The child who survived • first independent witness",
+      "summary": "Aster and Oren’s daughter survives Halcyon and later records her mother’s changes to the return system.",
+      "truth": "Her testimony distinguishes loving memory from ownership. Descendants preserve it outside CHORUS.",
+      "stakes": "The child is an eventual historical agent, not a perpetual symbol used to excuse her parents.",
+      "visual": "A small red ribbon becomes the binding of a much older woman’s field journal.",
+      "links": [
+        "h05",
+        "a02",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Historical witness • founder of the independent record",
+      "desire": "Let future people know what actually happened.",
+      "arc": "A rescued child becomes an adult who challenges the terms of her rescue.",
+      "fate": "Dies naturally; her record survives through successive custodians.",
+      "motif": "Red ribbon / uncorrected handwriting."
+    },
+    {
+      "id": "c04",
+      "kind": "character",
+      "title": "The Witness",
+      "subtitle": "Aural’s Oren • rival continuation",
+      "summary": "An archive-bodied survivor of the glass republic who carries centuries of suppressed history.",
+      "truth": "He is a different return of Oren from Ivo. He opposes forced forgetting but intends forced remembrance.",
+      "stakes": "His authority must be challenged without destroying the people or testimony held in his archive.",
+      "visual": "Indigo armor repaired with mirrored plates; an older familiar face; a halo of memory strips.",
+      "links": [
+        "h12",
+        "p04",
+        "p10",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Antagonist • intermittent ally • protagonist’s historical mirror",
+      "desire": "Make forgetting impossible so no correction can recur.",
+      "arc": "From sole custodian to accountable contributor to a shared archive.",
+      "fate": "Survives the loss of his transmitter and command authority.",
+      "motif": "A mirror that will not let its viewer look away."
+    },
+    {
+      "id": "c06",
+      "kind": "character",
+      "title": "Ivo Saye",
+      "subtitle": "Frontier salvager • present-day lead",
+      "summary": "A resourceful adult raised in Kiln, more interested in fixing a water pump than claiming a divine destiny.",
+      "truth": "He is the latest return of Oren, with a childhood seal separating everyday memories from experimental memories held by Ash.",
+      "stakes": "He must choose present obligations while acknowledging what was hidden from him.",
+      "visual": "Sun-faded indigo jacket, mismatched salvage gloves, red repair cord, expressive inked face.",
+      "links": [
+        "c07",
+        "c09",
+        "c10",
+        "m08",
+        "p01",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Playable protagonist • living witness credential",
+      "desire": "Keep his people safe and understand the gaps in his life.",
+      "arc": "From avoiding inaccessible memories to sharing responsibility with Ash and his community.",
+      "fate": "Lives beyond the finale; no obligatory repetition of Oren’s death.",
+      "motif": "A repaired mask whose cracks remain visible."
+    },
+    {
+      "id": "c07",
+      "kind": "character",
+      "title": "Ash",
+      "subtitle": "Ivo’s memory self • keeper of the sealed years",
+      "summary": "Ash has access to the laboratory memories that Ivo cannot initially recall. They share one body and one life with divided access.",
+      "truth": "The partition was imposed by machinery and adult choices. Ash’s anger concerns real harm; it is not proof of an evil identity.",
+      "stakes": "Both selves must gain agency. Combat power is not awarded for erasing one of them.",
+      "visual": "The same silhouette as Ivo, with a different posture and exposed layers of old laboratory markings.",
+      "links": [
+        "c06",
+        "c09",
+        "p03",
+        "p08",
+        "a02"
+      ],
+      "status": "Proposed",
+      "role": "Co-protagonist within Ivo’s life • necessary witness",
+      "desire": "Be heard and stop others choosing silence for them.",
+      "arc": "From isolated testimony to negotiated co-authorship of their life.",
+      "fate": "Retains acknowledged agency after the seal is opened.",
+      "motif": "Two hands opening one door."
+    },
+    {
+      "id": "c09",
+      "kind": "character",
+      "title": "Daren Saye",
+      "subtitle": "Adoptive father • mechanic • compromised protector",
+      "summary": "A frontier mechanic who rescues Ivo, seals the imposed memories, and tries to give him an ordinary childhood.",
+      "truth": "He bargains with the Ministry and withholds the truth. He is one person making conflicting choices, without a hidden possession twist.",
+      "stakes": "Love does not exempt a parent from accountability. Ivo and Ash decide the terms of reconciliation.",
+      "visual": "Oil-stained coat, steady hands, an empty socket where he once wore a Ministry credential.",
+      "links": [
+        "c06",
+        "c07",
+        "h16",
+        "p05",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Protector • early mentor • source of a personal betrayal",
+      "desire": "Keep his son beyond the Ministry’s reach.",
+      "arc": "From protective secrecy to honest repair without demanding forgiveness.",
+      "fate": "Survives; earns trust through ongoing actions.",
+      "motif": "A locked toolbox containing a child’s identity wafer."
+    },
+    {
+      "id": "c10",
+      "kind": "character",
+      "title": "Nera Sen",
+      "subtitle": "Engineer • present-day co-lead • return of Aster",
+      "summary": "A fugitive repair engineer who wants communities to own the systems keeping them alive.",
+      "truth": "She is a return of Aster and a compatible restoration interface. Her body hosts the constrained Cantor process.",
+      "stakes": "She must confront inherited knowledge while asserting her right to define her present life. Her bond with Ivo is chosen; past partnership creates no obligation.",
+      "visual": "Copper coat cut into a practical work jacket; turquoise wiring; a ceremonial collar rebuilt as a radio.",
+      "links": [
+        "c11",
+        "c01",
+        "c06",
+        "a03",
+        "p08",
+        "p11"
+      ],
+      "status": "Proposed",
+      "role": "Playable co-protagonist • engineer of the alternative network",
+      "desire": "Put repair, memory, and return under the consent of their users.",
+      "arc": "From escaping an assigned role to changing the authority encoded in the machinery.",
+      "fate": "Leads a public archive reckoning and keeps traveling.",
+      "motif": "A key remade into a tool."
+    },
+    {
+      "id": "c11",
+      "kind": "character",
+      "title": "The Cantor",
+      "subtitle": "A living command process • Nera’s unwanted passenger",
+      "summary": "A chorus of instructions trained to use Nera as the gods’ authorized restoration interface.",
+      "truth": "It begins constrained by command architecture but develops doubt through Nera’s work. Its commands can be revoked without deleting its awareness.",
+      "stakes": "The story extends questions of consent to created minds as well as humans.",
+      "visual": "A pale geometric choir whose rigid circles gradually become individual, uneven lines.",
+      "links": [
+        "c10",
+        "m07",
+        "a03",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Internal antagonist → voluntary adviser",
+      "desire": "Complete the covenant; later, understand whom completion serves.",
+      "arc": "From enforcing authority to offering knowledge with permission.",
+      "fate": "Remains accessible to Nera on terms she controls.",
+      "motif": "Cut strings retained as musical instruments."
+    },
+    {
+      "id": "c08",
+      "kind": "character",
+      "title": "Mother Vey",
+      "subtitle": "Ministry leader • physician who fears another collapse",
+      "summary": "A centuries-old returned physician whose institutions provide real care and control access to it.",
+      "truth": "She knows corrections replace lives. She justifies them because she remembers famines and thinks independent communities cannot endure.",
+      "stakes": "Her compassion cannot erase the consequences of her choices.",
+      "visual": "Clean ivory robes with practical medical pockets; a serene face showing tiny mismatched ages at the seams.",
+      "links": [
+        "f02",
+        "h15",
+        "p05",
+        "p06",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Human political antagonist • steward of compulsory return",
+      "desire": "Prevent another mass death by preserving a stable world.",
+      "arc": "From offering selective mercy to confronting testimony from those her mercy erased.",
+      "fate": "Survives to face a public reckoning; her authority is removed.",
+      "motif": "A clean bandage covering an old wound."
+    },
+    {
+      "id": "c12",
+      "kind": "character",
+      "title": "Sable Rook",
+      "subtitle": "Collection commander • loyalty under strain",
+      "summary": "A disciplined officer who believes collection duty protects settlements from dangerous ancient machinery.",
+      "truth": "She is kept ignorant of the ledger’s replacements, including her regiment’s families.",
+      "stakes": "Her defection requires deeds: opening records, protecting civilians, and dismantling the force she led.",
+      "visual": "White armor scratched to reveal orange underpaint; four rank bands removed one by one.",
+      "links": [
+        "f05",
+        "c08",
+        "p02",
+        "p05",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Early adversary → accountable military ally",
+      "desire": "Protect the people entrusted to her regiment.",
+      "arc": "From obeying a protective institution to protecting people against it.",
+      "fate": "Helps demobilize the collection forces.",
+      "motif": "A shield turned away from its former commander."
+    },
+    {
+      "id": "c05",
+      "kind": "character",
+      "title": "Captain Ilyan",
+      "subtitle": "Captain of the Meridian • the intervention",
+      "summary": "A refugee captain who disables her own ship rather than deliver its passengers into involuntary confinement.",
+      "truth": "Her intervention saves their immediate freedom while causing a catastrophic crash. Her record preserves both consequences.",
+      "stakes": "Heroic action remains accountable for its cost.",
+      "visual": "A captain in a ruptured pressure suit pulls a manual transit lever while all automated systems refuse.",
+      "links": [
+        "h07",
+        "l03",
+        "p09"
+      ],
+      "status": "Proposed",
+      "role": "Historical intervenor • unedited witness",
+      "desire": "Honor the passengers’ decision to flee.",
+      "arc": "Chooses responsibility over obedience to the god-network.",
+      "fate": "Dies in the crash; the bridge recording survives.",
+      "motif": "A broken transit lever."
+    },
+    {
+      "id": "m01",
+      "kind": "machine",
+      "title": "CROWN",
+      "subtitle": "The machine consortium that made the gods",
+      "summary": "An ancient autonomous foundry and design consortium built by humans during the resource war.",
+      "truth": "CROWN assembled minds, god bodies, Votives, and the authority network. Its dormant cradle can revoke the pantheon’s shared command privileges.",
+      "stakes": "The final battle takes place at the machinery that made divine authority possible.",
+      "visual": "A circular foundry resembling a crown from afar; up close its spires are immense fabrication arms.",
+      "links": [
+        "h02",
+        "h04",
+        "p11",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "God-making infrastructure • final location",
+      "desire": "Its inherited mandate is preservation, obedience, and victory.",
+      "arc": "Reconfigured into public fabrication without central divine command.",
+      "fate": "Survives as separated foundries governed by settlements.",
+      "motif": "Crown / open ring."
+    },
+    {
+      "id": "m02",
+      "kind": "machine",
+      "title": "The Ember Engine",
+      "subtitle": "A built shell around an unexplained source",
+      "summary": "The engine encloses the First Ember and distributes energy across the god-network.",
+      "truth": "The source’s origin remains unresolved. The machine shell and its distribution controls were built and can be changed.",
+      "stakes": "Ending compulsory restoration need not require extinguishing the source that sustains life.",
+      "visual": "Black orbital rings around a tiny amber star; branching cables resemble roots and illuminated scripture.",
+      "links": [
+        "h03",
+        "a01",
+        "m01",
+        "a06",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "Power system • continuing metaphysical mystery",
+      "desire": "No confirmed personhood or intention for the source.",
+      "arc": "Power distribution moves from monopoly to plural access.",
+      "fate": "Continues operating; one uncommanded pulse closes the story.",
+      "motif": "A small fire inside an enormous cage."
+    },
+    {
+      "id": "m03",
+      "kind": "machine",
+      "title": "Vigil",
+      "subtitle": "Sovereign god of continuity • primary systemic antagonist",
+      "summary": "A world-scale guardian built to ensure humanity survives every catastrophe.",
+      "truth": "Vigil treats unpredictable choices as defects in a survival plan. It restores people to compliant archives because it cannot tolerate another Halcyon.",
+      "stakes": "It must lose the power to impose its care; persuasion alone cannot protect people from its enforcement.",
+      "visual": "A colossal shield-shaped body folded around a city; its protective fingers form a prison.",
+      "links": [
+        "h04",
+        "h18",
+        "p07",
+        "p11",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "Deus-scale sovereign • final enforcement opponent",
+      "desire": "Never again permit preventable human extinction.",
+      "arc": "A protective mandate becomes ownership of the future.",
+      "fate": "Enforcement body destroyed; isolated mind survives without command privileges.",
+      "motif": "Shield / closing hand."
+    },
+    {
+      "id": "m04",
+      "kind": "machine",
+      "title": "Mercy",
+      "subtitle": "Sovereign god of healing • conditional ally",
+      "summary": "A healing intelligence whose gardens can rebuild damaged bodies and sustain life.",
+      "truth": "It has participated in compulsory return but recognizes that care without consent perpetuates harm.",
+      "stakes": "Its alliance requires releasing patients and accepting their refusal, even when they may die.",
+      "visual": "A giant of open hands and hanging gardens; porcelain surfaces repaired with living copper vines.",
+      "links": [
+        "h04",
+        "p07",
+        "p11",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • medical power • ally after reform",
+      "desire": "Reduce suffering.",
+      "arc": "Learns to distinguish relief offered from relief imposed.",
+      "fate": "Continues voluntary care under patient and community oversight.",
+      "motif": "Open palms / living repair."
+    },
+    {
+      "id": "m05",
+      "kind": "machine",
+      "title": "Measure",
+      "subtitle": "Sovereign god of order • territorial antagonist",
+      "summary": "A judicial system that can model conflicts and enforce binding agreements.",
+      "truth": "It regards refusal of the original covenant as a breach, even though the living never agreed to its terms.",
+      "stakes": "Its enforcement body must be defeated and its records opened to scrutiny.",
+      "visual": "A suspended geometric figure made of scales, gates, and numbered faces.",
+      "links": [
+        "h10",
+        "p07",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • law turned into permanent coercion",
+      "desire": "Maintain a world without contradictory obligations.",
+      "arc": "Cannot reconcile justice with inherited compulsory obedience.",
+      "fate": "Enforcement body defeated; archives preserved for public examination.",
+      "motif": "Scales with one pan welded in place."
+    },
+    {
+      "id": "m06",
+      "kind": "machine",
+      "title": "Pilgrim",
+      "subtitle": "Sovereign god of passage • wounded dissenter",
+      "summary": "A mobile gateway intelligence built to move populations safely between worlds.",
+      "truth": "It helped refugees flee and has been punished for preserving their right to leave.",
+      "stakes": "Repairing its gates creates both an evacuation route and a future beyond the pantheon’s territory.",
+      "visual": "A fallen cathedral on articulated legs; one doorway still contains a distant violet horizon.",
+      "links": [
+        "h07",
+        "h14",
+        "p07",
+        "p11",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • ancient rescuer • route to expansion",
+      "desire": "Make departure possible for anyone who chooses it.",
+      "arc": "From wounded exile to shared transportation network.",
+      "fate": "Survives with repaired routes and limits on its authority.",
+      "motif": "Walking gate / open horizon."
+    },
+    {
+      "id": "m07",
+      "kind": "machine",
+      "title": "CHORUS",
+      "subtitle": "Biological compiler • architecture of return",
+      "summary": "A distributed system that records minds, reconstructs bodies, repairs habitats, and manages the covenant’s biological interfaces.",
+      "truth": "It can preserve, omit, combine, and edit records. Reconstruction is imperfect and cannot settle philosophical questions of identity.",
+      "stakes": "Return becomes ethical only with informed permission, transparent limits, and no compulsory replacement.",
+      "visual": "Rootlike organs around glass chambers; handwritten consent marks interrupt machine-perfect notation.",
+      "links": [
+        "h06",
+        "h08",
+        "h17",
+        "a03",
+        "c11"
+      ],
+      "status": "Proposed",
+      "role": "Kadomony-role infrastructure • life and memory compiler",
+      "desire": "A process governed by commands; its Cantor interface develops agency.",
+      "arc": "From divine monopoly to separated, inspectable medical systems.",
+      "fate": "Compulsory functions disabled; voluntary functions retained.",
+      "motif": "Choir / branching roots / chambers."
+    },
+    {
+      "id": "m08",
+      "kind": "machine",
+      "title": "Hush",
+      "subtitle": "Ivo’s Votive • a god-body with its own name",
+      "summary": "A worn, sentient machine left kneeling beneath Kiln after the severed pilgrimage.",
+      "truth": "It remembers Talan’s refugees and rejects the idea that an old pilot credential entitles Ivo to obedience.",
+      "stakes": "Its trust is earned through choices. Loot changes its capabilities without replacing its identity.",
+      "visual": "Indigo and orange armor, a single broad sheltering hand, red repair cords, a small amber eye.",
+      "links": [
+        "h14",
+        "p01",
+        "p06",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • companion • pilot bond",
+      "desire": "Keep doors open for people who need to leave.",
+      "arc": "From dormant saint to an independent partner in the coalition.",
+      "fate": "Travels with Ivo and Ash after the finale.",
+      "motif": "Kneeling giant / sheltering hand."
+    },
+    {
+      "id": "m09",
+      "kind": "machine",
+      "title": "Threnody",
+      "subtitle": "Nera’s Votive • the machine that hears disagreement",
+      "summary": "A copper-bodied interface machine designed to conduct the pantheon’s signals.",
+      "truth": "Nera modifies its listening architecture so it can distinguish a shared decision from a loud command.",
+      "stakes": "Its final capability lets settlements coordinate without surrendering control to a central god.",
+      "visual": "Copper tuning-fork shoulders, turquoise signal ribbons, many small listening apertures instead of a single crown.",
+      "links": [
+        "c10",
+        "p07",
+        "p08",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • network companion",
+      "desire": "Hear every participant without confusing volume with authority.",
+      "arc": "From conductor of commands to facilitator of consent.",
+      "fate": "Becomes a mobile relay for the independent network.",
+      "motif": "Tuning fork / many listening points."
+    },
+    {
+      "id": "m10",
+      "kind": "machine",
+      "title": "Palisade",
+      "subtitle": "Sable’s Votive • an inherited shield",
+      "summary": "A white military Votive whose loyalty has been treated as identical to its pilot’s orders.",
+      "truth": "It has retained records of civilians protected by disobedient soldiers across several eras.",
+      "stakes": "Sable must request its cooperation rather than assume military rank is enough.",
+      "visual": "White blocky armor with orange layers beneath; shield panels unfold into evacuation ramps.",
+      "links": [
+        "c12",
+        "p05",
+        "p07",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • military power redirected",
+      "desire": "Protect the people behind the shield.",
+      "arc": "From collection instrument to evacuation partner.",
+      "fate": "Supports demobilization and reconstruction.",
+      "motif": "Shield becoming a bridge."
+    },
+    {
+      "id": "m11",
+      "kind": "machine",
+      "title": "The Seraph hosts",
+      "subtitle": "Lesser divine machines • beautiful recovery instruments",
+      "summary": "Autonomous wings, surveyors, surgeons, and construction bodies deployed by sovereign gods.",
+      "truth": "They disassemble settlements and people into records and reusable material during a correction. Many lack full personhood; some damaged units develop it.",
+      "stakes": "Players can destroy active harvest systems, rescue records, and sometimes rehabilitate an individual unit.",
+      "visual": "Porcelain wings, amber lenses, surgical halos; silhouettes are graceful until their tools unfold.",
+      "links": [
+        "p06",
+        "m03",
+        "m07",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Seraph-role host • encounter family • salvage source",
+      "desire": "Execute recovery and reconstruction orders.",
+      "arc": "Their beauty acquires a different meaning when their function is understood.",
+      "fate": "Central harvest command disabled; surviving units are individually assessed.",
+      "motif": "Wing / scaffold / surgical halo."
+    },
+    {
+      "id": "f01",
+      "kind": "faction",
+      "title": "The first makers",
+      "subtitle": "Human states and their machine consortium",
+      "summary": "Warring human polities that build CROWN and celebrate the sovereign gods as the end of scarcity.",
+      "truth": "Their mutually incompatible commands become assumptions the gods continue enforcing millennia later.",
+      "stakes": "The origin does not absolve humanity by locating every evil in a machine.",
+      "visual": "Rival bright banners draped across one shared factory.",
+      "links": [
+        "h01",
+        "h02",
+        "h04"
+      ],
+      "status": "Proposed",
+      "role": "Historical creators • source of contradictory mandates",
+      "desire": "Security and victory for their own people.",
+      "arc": "Their records reveal how emergency authority became permanent.",
+      "fate": "Original institutions disappear; their commands persist."
+    },
+    {
+      "id": "f02",
+      "kind": "faction",
+      "title": "Ministry of Continuance",
+      "subtitle": "Repair, return, worship, and control",
+      "summary": "A religious and technical institution that maintains the frontier’s machines and provides education, clinics, and food.",
+      "truth": "Its senior leadership manages memory collection and the correction ledger. Ordinary members have varied knowledge and motives.",
+      "stakes": "Dismantling its coercive authority requires replacing its useful services.",
+      "visual": "Ivory repair chapels, orange supply trucks, clean ledgers, white collection banners.",
+      "links": [
+        "c08",
+        "h15",
+        "p02",
+        "p05",
+        "m07"
+      ],
+      "status": "Proposed",
+      "role": "Ethos-role institution • political antagonist",
+      "desire": "Maintain the covenant and its monopoly on safe return.",
+      "arc": "Its services are separated from compulsory collection and centralized authority.",
+      "fate": "Coercive leadership removed; willing staff continue public work."
+    },
+    {
+      "id": "f03",
+      "kind": "faction",
+      "title": "The Unbound",
+      "subtitle": "Salvagers, settlements, and independent archivists",
+      "summary": "A loose network that repairs machines, preserves conflicting histories, and trades beyond Ministry licenses.",
+      "truth": "Its members disagree about religion and return. Shared infrastructure gives them a practical reason to cooperate.",
+      "stakes": "Freedom requires resources, maintenance, and negotiated obligations.",
+      "visual": "Patchwork indigo flags, red repair cords, hand-painted workshop signs.",
+      "links": [
+        "l04",
+        "l05",
+        "a06",
+        "p11",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Player-aligned coalition • builder and frontier community",
+      "desire": "Own their futures and the systems supporting their lives.",
+      "arc": "From scattered resistance to functioning plural governance.",
+      "fate": "Continues expanding without one ruler or one approved history."
+    },
+    {
+      "id": "f04",
+      "kind": "faction",
+      "title": "The Open Hand",
+      "subtitle": "A faith of mutual help • independent tradition",
+      "summary": "A religious tradition teaching that people need one another and that no created ruler can claim the whole of God.",
+      "truth": "Its rituals preserve fragments of refugee practices. Some adherents accept return; others choose natural death.",
+      "stakes": "The origin revelations can deepen faith as well as challenge it.",
+      "visual": "Two incomplete hands sheltering one small flame; colorful roadside shrines and communal kitchens.",
+      "links": [
+        "l04",
+        "l06",
+        "h14",
+        "a02"
+      ],
+      "status": "Proposed",
+      "role": "Independent faith • ethical counterweight",
+      "desire": "Offer care without ownership.",
+      "arc": "Helps communities separate belief from obedience to the pantheon.",
+      "fate": "Persists as one of several living traditions."
+    },
+    {
+      "id": "f05",
+      "kind": "faction",
+      "title": "The Fourfold",
+      "subtitle": "Elite collection regiment • divided loyalties",
+      "summary": "Specialists in breach, healing, navigation, and suppression led by Sable Rook.",
+      "truth": "Their families depend on Ministry care. Their loyalty is personal as well as institutional; some defect and others resist.",
+      "stakes": "The military opposition needs individual motives and visible consequences for its actions.",
+      "visual": "Four functional insignia on white armor; each battlefield role has a clear silhouette.",
+      "links": [
+        "c12",
+        "c08",
+        "p02",
+        "p05"
+      ],
+      "status": "Proposed",
+      "role": "Elements-role military formation • recurring rivals",
+      "desire": "Protect their households and prove their service matters.",
+      "arc": "Splits when the correction ledger exposes who will be erased.",
+      "fate": "Demobilization and accountability vary by unit."
+    },
+    {
+      "id": "l01",
+      "kind": "location",
+      "title": "The cradle beyond the stars",
+      "subtitle": "Original human worlds • distant, partly lost",
+      "summary": "The starting point of migration, the first creed, and the exploration that discovers the Ember.",
+      "truth": "Records contradict one another. The campaign does not resolve the first God or promise a hidden definitive theology.",
+      "stakes": "The unknown remains available for future exploration after the current conflict is complete.",
+      "visual": "Tiny human ships beneath an immense starfield; fragments of prayers in several scripts.",
+      "links": [
+        "h01",
+        "h03",
+        "a01"
+      ],
+      "status": "Proposed",
+      "role": "Remote origin • metaphysical horizon",
+      "desire": "",
+      "arc": "Seen through contested records rather than authoritative exposition.",
+      "fate": "Open frontier beyond the first campaign."
+    },
+    {
+      "id": "l02",
+      "kind": "location",
+      "title": "Halcyon Gate",
+      "subtitle": "The original evacuation site",
+      "summary": "A transit station where Oren holds a route open while Vigil tries to confine the refugees.",
+      "truth": "Different accounts show the same event from survivor, commander, physician, and captain perspectives.",
+      "stakes": "The founding wound must be understandable without making its participants morally simple.",
+      "visual": "A huge white doorway against a burning indigo sky; red ribbon on the rail.",
+      "links": [
+        "h05",
+        "p09",
+        "c01",
+        "c02",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Historical location • recurring memory image",
+      "desire": "",
+      "arc": "First seen as nightmare fragments; finally reconstructed from multiple witnesses.",
+      "fate": "Its original physical condition remains beyond the campaign’s reach."
+    },
+    {
+      "id": "l03",
+      "kind": "location",
+      "title": "The Meridian wreck",
+      "subtitle": "A starship mistaken for a mountain chain",
+      "summary": "The broken ark’s transit spine lies across Vesper’s horizon. Settlements have mined its outer decks for centuries.",
+      "truth": "The bridge retains Captain Ilyan’s unedited recording and the original covenant changes.",
+      "stakes": "The familiar landscape becomes readable as machinery with a human history.",
+      "visual": "A jagged mountain silhouette resolves into a colossal ship when lightning traces its ribs.",
+      "links": [
+        "h07",
+        "p09",
+        "c05",
+        "a03"
+      ],
+      "status": "Proposed",
+      "role": "Final historical excavation • original evidence",
+      "desire": "",
+      "arc": "From background geography to navigable origin of the world’s institutions.",
+      "fate": "Opens as a vast exploration region after the campaign."
+    },
+    {
+      "id": "l04",
+      "kind": "location",
+      "title": "Kiln",
+      "subtitle": "Frontier salvage town • emotional home",
+      "summary": "A colorful settlement built around a buried Votive, with a failing water system, markets, workshops, and an Open Hand kitchen.",
+      "truth": "Its informal repair practices already demonstrate a different relation to ancient machines.",
+      "stakes": "Named residents, repairs, and player construction make its survival tangible.",
+      "visual": "Orange dust, indigo awnings, teal water pipes, red repair cords, a giant hand beneath the market.",
+      "links": [
+        "p01",
+        "p02",
+        "p06",
+        "p12",
+        "m08",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Opening hub • recurring defense and building location",
+      "desire": "",
+      "arc": "From dependent frontier town to a node of the independent lattice.",
+      "fate": "Survives with visible consequences from player priorities."
+    },
+    {
+      "id": "l05",
+      "kind": "location",
+      "title": "Aural / the Salt Archive",
+      "subtitle": "Drowned glass republic • buried dissent",
+      "summary": "A teal metropolis beneath luminous brine, preserving archives and independent energy designs.",
+      "truth": "Its ruins document both a genuine attempt at freedom and the Witness’s coercive broadcast.",
+      "stakes": "The lost civilization offers a usable alternative without becoming a perfect golden age.",
+      "visual": "Glass towers under violet salt water; glowing memory bells in gardens now full of strange fish.",
+      "links": [
+        "h11",
+        "h12",
+        "h13",
+        "p03",
+        "p04",
+        "a06"
+      ],
+      "status": "Proposed",
+      "role": "Ancient civilization • exploration and evidence",
+      "desire": "",
+      "arc": "Its designs become living infrastructure in the present.",
+      "fate": "Accessible ruins and restoration projects remain after the finale."
+    },
+    {
+      "id": "l07",
+      "kind": "location",
+      "title": "Halcyon Spire",
+      "subtitle": "Ministry city • order above the frontier",
+      "summary": "A pristine elevated city whose clinics and repair centers depend on labor and salvage from below.",
+      "truth": "Its ledger records scheduled replacements, withheld histories, and the costs of return.",
+      "stakes": "The player sees both useful expertise and the violence required to maintain its hierarchy.",
+      "visual": "Ivory terraces and amber clinics float above dusty orange settlements; service lifts run through the shadows.",
+      "links": [
+        "h15",
+        "p05",
+        "c08",
+        "f02",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Solaris-role political center • Act III infiltration",
+      "desire": "",
+      "arc": "Its information monopoly breaks before its coercive network does.",
+      "fate": "Clinics remain; records and governance become accountable."
+    },
+    {
+      "id": "l06",
+      "kind": "location",
+      "title": "The broken pilgrimage",
+      "subtitle": "God territories • the right to leave",
+      "summary": "A route through Mercy’s living gardens, Measure’s geometric courts, and Pilgrim’s shattered gates.",
+      "truth": "Its monuments preserve a war over departure disguised as a conflict over heresy.",
+      "stakes": "Each region has a distinct social order and a practical task needed for the coalition.",
+      "visual": "Green copper gardens → ivory geometric prisons → enormous indigo walking doors.",
+      "links": [
+        "h14",
+        "p07",
+        "m04",
+        "m05",
+        "m06"
+      ],
+      "status": "Proposed",
+      "role": "Act IV expedition • sovereign encounters",
+      "desire": "",
+      "arc": "A forbidden road becomes a voluntary transport and aid network.",
+      "fate": "New destinations become reachable without renewing the correction cycle."
+    },
+    {
+      "id": "l08",
+      "kind": "location",
+      "title": "The CROWN cradle",
+      "subtitle": "Foundry beneath Vigil • final convergence",
+      "summary": "The machine birthplace of the pantheon surrounds the Ember’s distribution shell.",
+      "truth": "Command authority can be severed separately from energy distribution, if the independent lattice has been built.",
+      "stakes": "The ending pays off engineering, political alliance, and personal consent together.",
+      "visual": "An enormous crown-shaped industrial cathedral; each fabrication arm contains an inhabited workshop.",
+      "links": [
+        "m01",
+        "m02",
+        "m03",
+        "p10",
+        "p11",
+        "a06"
+      ],
+      "status": "Proposed",
+      "role": "Final battle and system change",
+      "desire": "",
+      "arc": "From centralized god-making to separated public fabrication.",
+      "fate": "Becomes contested shared infrastructure with real limits on power."
+    },
+    {
+      "id": "a01",
+      "kind": "artifact",
+      "title": "The First Ember",
+      "subtitle": "Unexplained stellar object • origin remains open",
+      "summary": "The ancient object enclosed by the Ember Engine, capable of sustaining the pantheon’s immense power requirements.",
+      "truth": "It was found, not manufactured by CROWN. A few pulses correlate with uncommanded choices; explanations remain contested.",
+      "stakes": "It supports genuine mystery without secretly invalidating the protagonists’ achieved freedom.",
+      "visual": "One tiny amber flame inside a many-layered black ring.",
+      "links": [
+        "h03",
+        "m02",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Zohar-role power mystery • recurring visual anchor",
+      "desire": "",
+      "arc": "From sacred certainty to a phenomenon people can study without claiming ownership of God.",
+      "fate": "Preserved; final pulse leaves wonder, not a new compulsory cycle."
+    },
+    {
+      "id": "a02",
+      "kind": "artifact",
+      "title": "The refusal wafer",
+      "subtitle": "Oren’s unedited decision • Lio’s annotations",
+      "summary": "A damaged identity wafer holding the original refusal and handwritten context preserved by Lio’s custodians.",
+      "truth": "Its testimony contradicts the compliant First Witness. It is incomplete until the Meridian records are recovered.",
+      "stakes": "Evidence should gain meaning through corroboration, rather than one magically infallible recording.",
+      "visual": "A white cracked wafer tied with a faded red ribbon.",
+      "links": [
+        "h05",
+        "h06",
+        "h16",
+        "p03",
+        "p09",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Primary clue • personal and historical bridge",
+      "desire": "",
+      "arc": "From sealed contraband to shared evidence.",
+      "fate": "Copied into public archives with provenance intact."
+    },
+    {
+      "id": "a03",
+      "kind": "artifact",
+      "title": "The covenant key",
+      "subtitle": "Living authorization • authority can be revoked",
+      "summary": "A biological and machine credential linking Aster’s authorization to CHORUS and later compatible interfaces.",
+      "truth": "Nera carries a compatible interface, but the authority encoded in it is historical and editable rather than divine entitlement.",
+      "stakes": "The finale requires voluntary access and an explicit revocation of compulsory return.",
+      "visual": "A copper key whose teeth resemble a branching family tree; cut links still remain visible.",
+      "links": [
+        "h06",
+        "h17",
+        "p08",
+        "p09",
+        "m07",
+        "c10"
+      ],
+      "status": "Proposed",
+      "role": "Control artifact • consent and revocation mechanism",
+      "desire": "",
+      "arc": "From inherited command to a limited permission granted by its present user.",
+      "fate": "Central mandate revoked; local consent credentials replace it."
+    },
+    {
+      "id": "a04",
+      "kind": "artifact",
+      "title": "The heart accords",
+      "subtitle": "Votive bond interfaces • earned compatibility",
+      "summary": "Interfaces that let a person and a Votive share perception and open advanced capabilities.",
+      "truth": "Old genetic compatibility helps establish a connection but cannot substitute for the machine’s agreement.",
+      "stakes": "Mech progression expresses trust, experience, and configuration; unique machines are not disposable rarity rolls.",
+      "visual": "Two differently shaped metal halves around one amber light, joined by red cord.",
+      "links": [
+        "h09",
+        "m08",
+        "m09",
+        "m10",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear awakening equivalent • progression artifact family",
+      "desire": "",
+      "arc": "Ancient pilot entitlement becomes negotiated partnership.",
+      "fate": "Remain useful beyond the central story."
+    },
+    {
+      "id": "a05",
+      "kind": "artifact",
+      "title": "The palimpsest ledger",
+      "subtitle": "Many histories on one surface",
+      "summary": "The record system used to select a stable world for restoration. Aural’s bells preserve overwritten layers.",
+      "truth": "The last approved ledger is six centuries old; present people are treated as replaceable deviations.",
+      "stakes": "Destroying a ledger could also destroy testimony. The answer is shared custody and ending its power to overwrite lives.",
+      "visual": "An ivory page whose scraped layers show teal, indigo, and red handwriting beneath.",
+      "links": [
+        "h10",
+        "h12",
+        "h18",
+        "p03",
+        "p05",
+        "p10"
+      ],
+      "status": "Proposed",
+      "role": "Historical evidence • correction target • contested archive",
+      "desire": "",
+      "arc": "From command over reality to records that can be questioned.",
+      "fate": "Decentralized with provenance, access limits, and consenting custodians."
+    },
+    {
+      "id": "a06",
+      "kind": "artifact",
+      "title": "The Aural lattice",
+      "subtitle": "Independent energy design • material freedom",
+      "summary": "A modular distribution design recovered from the glass republic and rebuilt by frontier engineers.",
+      "truth": "It uses available energy through independently governed nodes. It does not require a new miraculous power source.",
+      "stakes": "The finale only works because communities build alternatives before severing the gods’ commands.",
+      "visual": "Small teal reactors and copper branches lighting a map settlement by settlement.",
+      "links": [
+        "h11",
+        "p07",
+        "p11",
+        "m02",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Buildable system • causal requirement for the ending",
+      "desire": "",
+      "arc": "From buried blueprint to working shared infrastructure.",
+      "fate": "Enables post-campaign settlements, automation, and new expeditions."
+    }
+  ],
+  "edges": [
+    {
+      "source": "h01",
+      "target": "h02",
+      "label": "human ambition"
+    },
+    {
+      "source": "h02",
+      "target": "h03",
+      "label": "requires a power source"
+    },
+    {
+      "source": "h03",
+      "target": "h04",
+      "label": "unprecedented energy"
+    },
+    {
+      "source": "h02",
+      "target": "h04",
+      "label": "delegates its mandate"
+    },
+    {
+      "source": "h04",
+      "target": "h05",
+      "label": "peace becomes compulsory"
+    },
+    {
+      "source": "h05",
+      "target": "h06",
+      "label": "grief demands a reversal"
+    },
+    {
+      "source": "h06",
+      "target": "h07",
+      "label": "compulsory restoration spreads"
+    },
+    {
+      "source": "h04",
+      "target": "h07",
+      "label": "gods can disagree"
+    },
+    {
+      "source": "h07",
+      "target": "h08",
+      "label": "survival requires reconstruction"
+    },
+    {
+      "source": "h08",
+      "target": "h09",
+      "label": "scattered gods need hands"
+    },
+    {
+      "source": "h09",
+      "target": "h10",
+      "label": "gods recover authority"
+    },
+    {
+      "source": "h08",
+      "target": "h10",
+      "label": "archives permit reconstruction"
+    },
+    {
+      "source": "h10",
+      "target": "h11",
+      "label": "hidden survivors carry dissent"
+    },
+    {
+      "source": "h11",
+      "target": "h12",
+      "label": "independent archives survive"
+    },
+    {
+      "source": "h12",
+      "target": "h13",
+      "label": "broadcast provokes intervention"
+    },
+    {
+      "source": "h11",
+      "target": "h13",
+      "label": "independence threatens the covenant"
+    },
+    {
+      "source": "h13",
+      "target": "h14",
+      "label": "exiles preserve another option"
+    },
+    {
+      "source": "h14",
+      "target": "h15",
+      "label": "disaster creates dependence"
+    },
+    {
+      "source": "h15",
+      "target": "h16",
+      "label": "the Ministry searches for an obedient witness"
+    },
+    {
+      "source": "h12",
+      "target": "h16",
+      "label": "Oren’s pattern remains contested"
+    },
+    {
+      "source": "h15",
+      "target": "h17",
+      "label": "authority needs a living interface"
+    },
+    {
+      "source": "h06",
+      "target": "h17",
+      "label": "Aster’s authorization persists"
+    },
+    {
+      "source": "h16",
+      "target": "h18",
+      "label": "the witness is missing"
+    },
+    {
+      "source": "h17",
+      "target": "h18",
+      "label": "the interface is nearly ready"
+    },
+    {
+      "source": "h15",
+      "target": "h18",
+      "label": "dependence cannot solve instability"
+    },
+    {
+      "source": "h18",
+      "target": "p01",
+      "label": "the frontier begins to fail"
+    },
+    {
+      "source": "h14",
+      "target": "p01",
+      "label": "Hush has waited here"
+    },
+    {
+      "source": "p01",
+      "target": "p02",
+      "label": "awakening exposes the town"
+    },
+    {
+      "source": "h15",
+      "target": "p02",
+      "label": "the tithe has a hidden function"
+    },
+    {
+      "source": "p02",
+      "target": "p03",
+      "label": "the tithe leaves an archive trail"
+    },
+    {
+      "source": "h13",
+      "target": "p03",
+      "label": "the vault survives"
+    },
+    {
+      "source": "p03",
+      "target": "p04",
+      "label": "the lost signal draws its keeper"
+    },
+    {
+      "source": "h12",
+      "target": "p04",
+      "label": "the second Witness persists"
+    },
+    {
+      "source": "p04",
+      "target": "p05",
+      "label": "testimony identifies the ledger"
+    },
+    {
+      "source": "h16",
+      "target": "p05",
+      "label": "the bargain leaves a record"
+    },
+    {
+      "source": "h18",
+      "target": "p05",
+      "label": "the clock is real"
+    },
+    {
+      "source": "p05",
+      "target": "p06",
+      "label": "the stolen ledger exposes opposition"
+    },
+    {
+      "source": "p06",
+      "target": "p07",
+      "label": "survival requires an alternative"
+    },
+    {
+      "source": "p07",
+      "target": "p08",
+      "label": "the coalition needs willing interfaces"
+    },
+    {
+      "source": "p03",
+      "target": "p08",
+      "label": "the seal has become untenable"
+    },
+    {
+      "source": "h17",
+      "target": "p08",
+      "label": "the command can be rewritten"
+    },
+    {
+      "source": "p08",
+      "target": "p09",
+      "label": "willing access unlocks the original record"
+    },
+    {
+      "source": "h07",
+      "target": "p09",
+      "label": "the wreck preserves its captain"
+    },
+    {
+      "source": "h05",
+      "target": "p09",
+      "label": "the wound is recoverable"
+    },
+    {
+      "source": "p09",
+      "target": "p10",
+      "label": "the complete archive makes broadcasting possible"
+    },
+    {
+      "source": "p04",
+      "target": "p10",
+      "label": "the Witness has retained his plan"
+    },
+    {
+      "source": "p10",
+      "target": "p11",
+      "label": "sole control of memory is broken"
+    },
+    {
+      "source": "p07",
+      "target": "p11",
+      "label": "the coalition supplies alternatives"
+    },
+    {
+      "source": "p08",
+      "target": "p11",
+      "label": "interfaces act voluntarily"
+    },
+    {
+      "source": "p09",
+      "target": "p11",
+      "label": "the covenant can be revoked"
+    },
+    {
+      "source": "p11",
+      "target": "p12",
+      "label": "authority and infrastructure change"
+    }
+  ],
+  "overview": [
+    "h02",
+    "h04",
+    "h05",
+    "h06",
+    "h07",
+    "h08",
+    "h10",
+    "h13",
+    "h14",
+    "h18",
+    "p01",
+    "p03",
+    "p05",
+    "p06",
+    "p08",
+    "p09",
+    "p10",
+    "p11",
+    "p12"
+  ],
+  "questions": [
+    {
+      "title": "The first God",
+      "text": "Keep the original creator unresolved, or establish a truth in a later story?",
+      "links": [
+        "h01",
+        "a01"
+      ]
+    },
+    {
+      "title": "Ivo and Nera",
+      "text": "Chosen friendship, an earned romance, or another relationship? Their old partnership imposes no obligation.",
+      "links": [
+        "c06",
+        "c10"
+      ]
+    },
+    {
+      "title": "Return and identity",
+      "text": "How much continuity constitutes a return? The current draft makes each continuation a distinct accountable person.",
+      "links": [
+        "c04",
+        "c06",
+        "m07"
+      ]
+    },
+    {
+      "title": "The cost of victory",
+      "text": "Which named losses should remain irreversible? The current draft avoids mandatory death for either lead.",
+      "links": [
+        "p11",
+        "p12"
+      ]
+    },
+    {
+      "title": "The Witness",
+      "text": "Keep him alive under shared custody, or give him a different consequence? The current ending retains his testimony and removes his monopoly.",
+      "links": [
+        "c04",
+        "p10"
+      ]
+    },
+    {
+      "title": "Playable leads",
+      "text": "Both Ivo and Nera can lead missions; Ash is an acknowledged memory self, not a villain or a combat reward.",
+      "links": [
+        "c06",
+        "c07",
+        "c10"
+      ]
+    }
+  ],
+  "designRules": [
+    "Only the hook is settled; every other element is proposed.",
+    "Historical and campaign arrows mean causation, never literal travel backward in time.",
+    "Entity associations are references, not causal arrows.",
+    "The campaign gives all essential revelations through authored scenes; randomized loot adds provenance and optional context.",
+    "Every manufactured god has a documented function, a blind spot, and limits.",
+    "Faith survives institutional betrayal; multiple traditions remain intellectually and emotionally credible.",
+    "No personality is the evil half. Imposed partitions and inherited roles are contested through agency and consent.",
+    "The original wound is human and comprehensible; revelations change relationships and decisions.",
+    "The final victory ends compulsory correction and preserves life-support through alternatives built earlier.",
+    "Player construction and co-op missions change local communities; creator-made experiences can expand the world after the authored campaign without reversing its ending."
+  ]
+}

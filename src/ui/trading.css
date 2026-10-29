@@ -1,0 +1,94 @@
+/* Trading, item marks and world-loot comparison belong to GameUI. */
+.ammo-reserve{font-size:9px;font-weight:800;letter-spacing:.1em;color:#a7c6a2;line-height:1.5;margin-top:5px}
+.ammo-reserve[hidden]{display:none}
+.card-item-marks{display:inline-flex;align-items:center;gap:3px;margin-left:auto}
+.item-mark-control{display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:3px 4px;min-width:25px;min-height:19px;border:1px solid #b6caa53b;background:#10221966;color:#a9bca0;font-size:6px;font-weight:900;line-height:1}
+.item-mark-control>.item-icon{width:11px;height:11px}
+.item-mark-control:hover:not(:disabled){background:#45614166;color:#e0ebcb}
+.item-mark-control.mark-favorite.active{color:#ffe176;background:#e1b8461c}
+.item-mark-control.mark-junk.active{color:#e6a58c;background:#9d432725}
+.item-mark-control:disabled{opacity:.3}
+.item-mark-badge.mark-favorite{color:#ffe176}
+.item-mark-badge.mark-junk{color:#c89077}
+.item-mark-badge>.item-icon{transform:none}
+.item-row.is-junk:not(.selected) .item-row-content{opacity:.72}
+.game-interface[data-screen=vending] .hud-top,.game-interface[data-screen=vending] .hud-bottom,.game-interface[data-screen=vending] .hud-footer,.game-interface[data-screen=vending] .objective-block,.game-interface[data-screen=vending] .aim-center{opacity:0}
+.game-interface[data-screen=vending] .screen-overlay{background:#101c15ae;backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:24px}
+.vending-panel{--vendor-accent:#91c9ac;display:flex;flex-direction:column;width:min(980px,100%);height:min(680px,calc(100vh - 48px));pointer-events:auto;background:#1b2d22f5;border:1px solid #b8caa43d;border-top:3px solid var(--vendor-accent);box-shadow:0 25px 85px #08120b80;overflow:hidden}
+.vending-weapons{--vendor-accent:#ee974e}
+.vending-medical{--vendor-accent:#80d8c7}
+.vending-mech{--vendor-accent:#e6bd54}
+.vending-panel .vending-header .eyebrow{color:var(--vendor-accent)}
+.vending-panel .card-actions>.primary-button{background:var(--vendor-accent);color:#172c21}
+.vending-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 25px 18px;border-bottom:1px solid #a7c49a30}
+.vending-header>.vending-header-tools{display:flex;align-items:center;gap:22px;flex-shrink:0}
+.vending-header .eyebrow{font-size:8px;color:#afc59f}
+.vending-header h1{font-size:31px;line-height:1.1;letter-spacing:-.04em;font-weight:900;margin-top:7px}
+.vendor-wallet{font-size:16px;letter-spacing:.06em;color:#edd08a;font-weight:900;white-space:nowrap}
+.vending-body{display:grid;grid-template-columns:minmax(320px,1.2fr) minmax(300px,1fr);min-height:0;flex:1}
+.vending-stock{display:flex;flex-direction:column;min-height:0;padding:17px 22px 18px;border-right:1px solid #a7c49a30}
+.vending-stock-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.vending-stock-heading>.eyebrow{font-size:8px;letter-spacing:.09em}
+.vending-stock-heading>span:last-child{font-size:6px;letter-spacing:.1em;color:#96ae88}
+.vending-offer-list{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#6c835f #1c2b23;padding-right:4px}
+.vendor-offer{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:65px;margin-bottom:7px;padding:12px 13px;background:#11251a80;border:1px solid #a4bc9229;border-left:3px solid var(--rarity);text-align:left}
+.vendor-offer:hover{background:#34543b88}
+.vendor-offer.selected{background:#3e61514d;border-top-color:#98c9ae75;border-right-color:#98c9ae75;border-bottom-color:#98c9ae75}
+.vendor-offer-copy{display:flex;flex-direction:column;gap:7px;min-width:0}
+.vendor-offer-copy>strong{font-size:12px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vendor-offer-copy>span{font-size:7px;line-height:1.5;letter-spacing:.06em;color:#aec39f}
+.vendor-price{font-size:13px;font-weight:900;white-space:nowrap;color:#e7cd88}
+.vendor-price.unaffordable{color:#d78e79}
+.vending-services{display:grid;grid-template-columns:1fr;gap:7px;margin-top:14px;padding-top:13px;border-top:1px solid #a6bd932d}
+.vending-services>.eyebrow{font-size:8px}
+.vending-service-button{min-height:34px;padding:10px 12px;text-align:left;background:#304e2e40;border:1px solid #bad3a245;font-size:9px;font-weight:800;line-height:1.25;letter-spacing:.05em}
+.vending-service-button:hover:not(:disabled){background:#49684266}
+.vending-service-button:disabled{opacity:.4}
+.vending-comparison{min-height:0;padding:18px;background:linear-gradient(140deg,#23372a,#17291f);overflow:hidden}
+.vending-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 22px;border-top:1px solid #afc89d2d;min-height:54px}
+.vending-footer>span{font-size:7px;line-height:1.5;letter-spacing:.08em;color:#a6bd96;max-width:420px}
+.vendor-junk-button{padding:10px 13px;min-height:32px;background:#3f342438;border:1px solid #d7bc803b;color:#d9c6a0;font-size:8px;font-weight:900;letter-spacing:.05em;white-space:nowrap}
+.vendor-junk-button:hover:not(:disabled){background:#67503255}
+.vendor-junk-button:disabled{opacity:.4}
+.world-loot-panel{position:absolute;left:calc(50% + 38px);top:50%;transform:translateY(-50%);width:330px;height:min(466px,calc(100vh - 190px));padding:12px;background:#1a2c21f2;border:1px solid #c0d2aa55;box-shadow:0 10px 40px #07150b66;pointer-events:auto;display:flex;flex-direction:column;z-index:2}
+.world-loot-panel[hidden]{display:none}
+.world-loot-title{font-size:7px;line-height:1.3;font-weight:900;letter-spacing:.1em;color:#bad1a7;margin-bottom:7px}
+.world-loot-card{min-height:0;flex:1}
+.world-loot-card .compact-item-card{padding-top:6px}
+.loot-card-actions{gap:5px}
+.loot-card-actions>button{display:flex;align-items:center;gap:5px;justify-content:center;padding:8px 5px;font-size:7px;letter-spacing:.02em}
+.loot-card-actions kbd{font-size:6px;padding:2px 3px;color:inherit;border-color:currentColor;background:transparent;letter-spacing:0}
+@media(min-width:1500px) and (min-height:850px){.world-loot-panel{height:510px;width:350px;padding:15px}.vending-panel{width:1040px}}
+@media(max-height:760px){.vending-header{padding:16px 22px 14px}.vending-header h1{font-size:28px}.vending-stock{padding-top:13px}.vendor-offer{min-height:61px;padding:10px 12px}.vending-services{margin-top:11px;padding-top:10px;gap:6px}.vending-service-button{min-height:31px;padding:8px 11px}.vending-footer{min-height:49px;padding:10px 20px}.vending-comparison{padding:15px}}
+@media(max-width:1050px){.vending-body{grid-template-columns:minmax(0,1.1fr) minmax(280px,1fr)}.vending-stock{padding-left:16px;padding-right:15px}.vending-header h1{font-size:26px}.vending-header{gap:18px}.vendor-offer-copy>strong{font-size:11px}.vendor-offer-copy>span{font-size:6px}.vendor-price{font-size:11px}.vending-footer>span{font-size:6px}.world-loot-panel{left:auto;right:24px;width:310px}}
+@media(max-width:760px){.card-item-marks{gap:2px}.item-mark-control{min-width:22px;min-height:18px;padding:3px}.item-mark-control>.item-icon{width:10px;height:10px}.ammo-reserve{font-size:7px}.game-interface[data-screen=vending] .screen-overlay{padding:12px}.vending-panel{height:calc(100vh - 24px)}.vending-header{padding:14px 16px;gap:12px}.vending-header .eyebrow{font-size:6px}.vending-header h1{font-size:22px}.vending-header>.vending-header-tools{gap:12px}.vendor-wallet{font-size:13px}.vending-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.vending-stock{padding:13px}.vending-stock-heading>span:last-child{display:none}.vending-stock-heading>.eyebrow{font-size:6px}.vendor-offer{gap:8px;min-height:65px;padding:10px 8px}.vendor-offer-copy>strong{font-size:10px}.vendor-offer-copy>span{font-size:5px}.vendor-price{font-size:9px}.vending-comparison{padding:12px;overflow-y:auto}.vending-comparison .compact-item-card{height:auto;min-height:100%}.vending-services>.eyebrow{font-size:7px}.vending-service-button{font-size:7px;padding:8px}.vending-footer{padding:10px 13px;gap:12px}.vendor-junk-button{font-size:6px;padding:8px}.world-loot-panel{right:15px;width:280px;padding:10px;height:min(485px,calc(100vh - 135px))}.world-loot-card{overflow-y:auto}.world-loot-card .compact-item-card{height:auto;min-height:100%}.world-loot-card .card-metrics.five-metrics{grid-template-columns:repeat(5,minmax(0,1fr))}.world-loot-card .card-metric-value{font-size:12px}.world-loot-card .card-metric>.card-delta{font-size:7px}.world-loot-card .card-metric>.item-icon{width:16px;height:16px}}
+@media(max-width:520px){.world-loot-panel{right:10px;width:255px;top:45%;height:min(460px,calc(100vh - 150px))}.world-loot-card .card-metric-value{font-size:10px}.world-loot-card .card-metric>.card-delta{font-size:6px}.vending-header>.vending-header-tools{gap:7px}.vendor-wallet{font-size:10px}.vending-header h1{font-size:18px}.vending-comparison{padding:10px}.vending-stock{padding:10px}.vendor-offer{flex-wrap:wrap;gap:6px}.vendor-price{font-size:9px}.vending-footer>span{font-size:5px}.vending-footer{gap:8px}.vendor-junk-button{font-size:6px;white-space:normal;max-width:135px}.item-mark-control{min-width:19px;padding:2px}.item-mark-control>.item-icon{width:9px;height:9px}}
+
+/* Hover comparisons size to their content instead of stretching inventory spacing. */
+.world-loot-panel{display:block;height:auto;max-height:min(500px,calc(100vh - 150px));overflow-y:auto;scrollbar-width:thin;scrollbar-color:#6c835f #1c2b23}
+.world-loot-card{height:auto;overflow:visible}
+.world-loot-card .compact-item-card{height:auto;min-height:0}
+.world-loot-card .card-actions{position:static;margin-top:8px}
+@media(max-width:760px){.world-loot-panel{height:auto;max-height:calc(100vh - 135px)}}
+@media(max-width:520px){.world-loot-panel{height:auto;max-height:calc(100vh - 150px)}}
+
+/* Actual conditions on the aimed enemy; simulation supplies both values and time. */
+.target-status-ribbon{position:absolute;left:50%;top:calc(50% + 84px);transform:translateX(-50%);max-width:min(460px,calc(100vw - 40px));pointer-events:none;text-align:center;z-index:1}
+.target-status-ribbon[hidden]{display:none}
+.target-status-caption{display:block;margin-bottom:5px;font-size:7px;font-weight:900;line-height:1;letter-spacing:.16em;color:#ecf1e4;text-shadow:0 1px 3px #07150c}
+.target-status-list{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:5px}
+.target-status-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;background:#07150deb;border:1px solid #c3d8ba38;border-left:2px solid var(--element-color);box-shadow:0 2px 6px #0004;white-space:nowrap;line-height:1}
+.target-status-chip>.item-icon{width:16px;height:16px;color:var(--element-color)}
+.target-status-value{font-size:12px;font-weight:900;letter-spacing:-.025em;color:var(--element-color)}
+.target-status-time{font-size:10px;font-weight:800;color:#e4eadc;padding-left:4px;border-left:1px solid #c3d8ba44}
+.damage-number.status-damage-number{display:inline-flex;align-items:center;gap:4px;padding:3px 5px;border-left:2px solid var(--damage-color);background:#07130ddd;font-size:18px;line-height:1;color:var(--damage-color);white-space:nowrap;text-shadow:0 1px 2px #000;animation:status-damage-float 1.1s ease-out forwards}
+.status-damage-number>strong{font-size:inherit;font-weight:900;letter-spacing:-.03em}
+.damage-number.status-damage-number>.item-icon{width:15px;height:15px;color:var(--damage-color)}
+.status-damage-number[data-damage-kind=bleed]{background:#fff1d5ee;text-shadow:none}
+@keyframes status-damage-float{0%{opacity:0;transform:translate(0,12px) scale(.9)}12%{opacity:1;transform:translate(2px,7px) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(24px,-37px) scale(.95)}}
+@media(max-width:760px){.target-status-ribbon{top:calc(50% + 72px)}.target-status-value{font-size:11px}.target-status-chip{padding:4px 5px;gap:4px}.target-status-time{font-size:9px}}
+
+/* Scene-projected feedback uses the whole viewport, with a small upward offset. */
+.damage-number.damage-at-target{position:fixed;left:var(--hit-x);top:var(--hit-y);margin-left:var(--hit-jitter);margin-top:-22px;text-shadow:-1px -1px 0 #07120d,1px -1px 0 #07120d,-1px 1px 0 #07120d,1px 1px 0 #07120d,0 2px 3px #000c}
+.damage-number.status-damage-number.damage-at-target{background:none;border:0;padding:0;font-size:20px;animation-name:target-status-damage-float}
+@keyframes target-status-damage-float{0%{opacity:0;transform:translate(-50%,0) scale(.9)}12%{opacity:1;transform:translate(calc(-50% + 2px),-5px) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + 20px),-49px) scale(.95)}}

@@ -1,0 +1,2103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Then, machines made gods · Story atlas</title>
+<style>
+:root{color-scheme:dark;--bg:#101518;--panel:#171d21;--surface:#20292e;--ink:#f0eadb;--dim:#aab7b7;--line:#35454b;--gold:#edbb68;--teal:#72c9c4;--rose:#e48b80;--blue:#9baee0;--purple:#c4a1d6;--green:#a3c691;--event:var(--gold);--character:var(--rose);--machine:var(--teal);--artifact:var(--purple);--location:var(--blue);--faction:var(--green)}
+*{box-sizing:border-box}
+*[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;color:inherit;background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 11px}
+button,a,input,textarea,select{outline-offset:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--gold)}
+button:hover{background:var(--surface)}button.active,button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+button.primary{background:var(--gold);border-color:var(--gold);color:var(--bg);font-weight:600}button.quiet{border-color:transparent}button.danger{color:var(--rose)}a{color:var(--teal)}
+header{padding:22px 30px 17px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+h1{font-size:26px;line-height:1.2;letter-spacing:-.7px;margin:5px 0 7px;font-weight:650}h1 span{color:var(--gold)}
+.eyebrow{font-size:10px;letter-spacing:2.1px;font-weight:650;color:var(--dim);text-transform:uppercase}
+.hook{margin:0;color:var(--dim);font-family:Georgia,serif;font-size:15px}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.draft{font-size:11px;color:var(--dim);display:block;margin-top:9px;text-align:right}
+.bar{display:flex;gap:12px;align-items:center;padding:12px 30px;border-bottom:1px solid var(--line);flex-wrap:wrap}.tabs{display:flex;gap:4px;flex-wrap:wrap}.tabs button{border-color:transparent;padding:7px 12px}
+.search-wrap{margin-left:auto;position:relative;width:230px}.search-wrap input{width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+.results{position:absolute;right:0;top:43px;width:330px;max-height:420px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;z-index:20;box-shadow:0 12px 40px #0008}.results button{display:block;text-align:left;width:100%;border:0;border-radius:0;padding:10px 13px}.results small{display:block;color:var(--dim)}
+.shell{display:grid;grid-template-columns:minmax(0,1fr) 370px;height:calc(100vh - 184px);min-height:640px}.map-panel{min-width:0;position:relative;display:flex;flex-direction:column}
+.map-head{padding:18px 25px 12px;display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.map-head h2{font-size:16px;margin:3px 0 4px;font-weight:550}.map-head p{margin:0;color:var(--dim);font-size:12px;max-width:620px}
+.map-tools{display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:230px}.map-tools button{font-size:12px;padding:5px 8px}
+.subfilters{padding:0 25px 12px;display:flex;gap:5px;flex-wrap:wrap}.subfilters button{font-size:12px;padding:4px 9px}
+.map{flex:1;position:relative;overflow:hidden;touch-action:none;background-image:radial-gradient(#53606666 .7px,transparent .7px);background-size:22px 22px;cursor:grab}.map.dragging{cursor:grabbing}.map-canvas{position:absolute;top:0;left:0;transform-origin:0 0}
+.edges{position:absolute;inset:0;overflow:visible;pointer-events:none}.edge{stroke:var(--line);stroke-width:1.6;fill:none;opacity:.32}.edge.hot{stroke:var(--gold);stroke-width:2;opacity:1}.edge.reference{stroke-dasharray:5 5}.edge-label{font-size:11px;fill:var(--gold);paint-order:stroke;stroke:var(--bg);stroke-width:5px;stroke-linejoin:round}
+.node{position:absolute;width:222px;height:150px;text-align:left;border-radius:8px;border:1px solid #516168;background:var(--panel);padding:13px 14px;display:flex;flex-direction:column;gap:5px;box-shadow:0 7px 22px #0003;user-select:none;touch-action:none;overflow:hidden;cursor:grab}.node:hover{border-color:var(--kind);background:#253036}.node.selected{border:2px solid var(--kind);padding:12px 13px;background:#273136;box-shadow:0 0 0 4px #f0eadb0b}.node.faded{opacity:.74}
+.node-top{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--kind)}.node-title{font-size:16px;line-height:1.2;font-weight:600;letter-spacing:-.2px}.node-sub{font-size:11px;line-height:1.35;color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.node svg{width:20px;height:20px;flex:none}.node-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:10px}.node-foot .mark{height:4px;width:22px;background:var(--kind);border-radius:4px}
+.mini{position:absolute;right:16px;bottom:45px;width:150px;height:110px;border:1px solid var(--line);border-radius:6px;background:#101518ed;cursor:crosshair}.mini rect.extent{fill:#f0eadb0a;stroke:var(--dim);stroke-width:1}
+.map-footer{display:flex;justify-content:space-between;padding:9px 25px;border-top:1px solid var(--line);gap:10px;color:var(--dim);font-size:11px}.legend{display:flex;gap:12px;flex-wrap:wrap}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--kind);margin-right:4px}
+.inspector{border-left:1px solid var(--line);background:var(--panel);overflow:auto}.inspect-top{padding:20px 23px 15px;border-bottom:1px solid var(--line)}.inspect-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.inspect-controls .tag{font-size:10px;letter-spacing:1.4px;color:var(--kind);text-transform:uppercase}.inspect-controls button{font-size:12px;padding:4px 9px}.inspector h2{font-size:25px;line-height:1.15;letter-spacing:-.6px;margin:9px 0}.inspector .subtitle{color:var(--dim);font-size:12px;margin:0 0 10px}
+.vignette{height:145px;overflow:hidden;margin:14px -23px -15px;background:#10151866}.vignette svg{width:100%;height:100%;display:block}
+.inspect-body{padding:18px 23px 30px}.inspect-body section{margin-bottom:21px}.inspect-body h3{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--kind,var(--dim));margin:0 0 6px;font-weight:600}.inspect-body p{margin:0;font-size:13px;line-height:1.6;color:#d9e0da}.inspect-body .secret{border-left:2px solid var(--kind);padding-left:12px}
+.connections{display:flex;gap:6px;flex-wrap:wrap}.connections button{font-size:11px;padding:5px 8px;text-align:left}.connection-row{padding:8px 0;border-bottom:1px solid var(--line);font-size:12px;display:flex;align-items:center;gap:5px}.connection-row button{font-size:11px;padding:3px 6px}.connection-row span{color:var(--dim);flex:1}.small{font-size:11px;color:var(--dim)}.draft-note{font-size:11px;color:var(--dim);margin:0}
+.edit-form label{display:block;font-size:11px;color:var(--dim);margin:15px 0 5px}.edit-form input,.edit-form textarea,.edit-form select{width:100%;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px;font-size:13px}.edit-form textarea{min-height:85px;resize:vertical;line-height:1.5}.edit-form select[multiple]{height:150px}.edit-actions{position:sticky;bottom:0;background:var(--panel);padding:14px 0;display:flex;gap:8px}
+.question-pane{overflow:auto;padding:10px 25px 30px;flex:1;background:var(--bg)}.question-row{border-top:1px solid var(--line);padding:20px 0;display:grid;grid-template-columns:45px 1fr;gap:12px}.question-no{color:var(--gold);font-family:Georgia,serif;font-size:25px}.question-row h3{font-size:16px;margin:0 0 5px}.question-row p{color:var(--dim);margin:0 0 10px;max-width:620px}.question-row textarea{width:100%;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:9px;min-height:65px;font:inherit}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:7px;z-index:100;box-shadow:0 5px 25px #0006;max-width:90vw}.error{color:var(--rose);font-size:12px;white-space:pre-line}
+dialog{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;max-width:600px;width:calc(100% - 30px);max-height:85vh;overflow:auto}dialog::backdrop{background:#0009}dialog h2{margin:0 0 12px;font-size:22px}dialog .close{float:right}.rules li{margin-bottom:10px;color:var(--dim)}.dialog-row{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.dialog-fields label{display:block;margin:12px 0 4px;color:var(--dim)}.dialog-fields select,.dialog-fields input{width:100%;padding:8px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px}
+.empty{padding:60px 25px;color:var(--dim)}.zoom-label{font-size:11px;min-width:36px;text-align:center;color:var(--dim)}.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@media(max-width:1050px){.shell{grid-template-columns:minmax(0,1fr) 320px}.bar,header{padding-left:20px;padding-right:20px}.top-actions button{font-size:12px}.search-wrap{width:185px}.map-head{flex-wrap:wrap}.map-tools{justify-content:flex-start}.inspect-top,.inspect-body{padding-left:18px;padding-right:18px}.vignette{margin-left:-18px;margin-right:-18px}.hook{font-size:13px}h1{font-size:23px}}
+@media(max-width:760px){header{padding:18px 16px;display:block}.top-actions{justify-content:flex-start;margin-top:15px}.draft{text-align:left}.bar{padding:10px 12px;gap:8px}.tabs{gap:0}.tabs button{font-size:12px;padding:6px 9px}.search-wrap{width:100%;margin:0}.results{width:100%}.shell{height:auto;min-height:0;display:flex;flex-direction:column}.map-panel{height:670px}.inspector{border-left:0;border-top:1px solid var(--line);overflow:visible}.inspect-top{position:relative}.vignette{max-width:none;height:160px}.map-head{padding:15px 16px}.map-footer{padding:9px 16px;flex-wrap:wrap}.subfilters{padding-left:16px}.mini{width:110px;height:80px}.question-pane{padding:5px 16px 20px}.top-actions button{padding:6px 9px}h1{font-size:25px}}
+@media print{header,.bar,.map-head,.map-footer,.mini,.inspector,.map-tools{display:none}.shell,.map-panel,.map{height:auto;overflow:visible}.map-canvas{position:relative;transform:scale(.45)!important;transform-origin:top left}.node{box-shadow:none}body{background:var(--bg);print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<header>
+ <div><div class="eyebrow">A world to uncover · an original story in progress</div><h1>Then, machines <span>made gods.</span></h1><p class="hook" id="hook"></p></div>
+ <div><div class="top-actions"><button id="about">Story premise</button><button id="import">Open revision</button><button id="export-json">Save story data</button><button class="primary" id="save">Save editable atlas</button></div><span class="draft" id="save-status">Draft 0.1 · all story elements proposed</span></div>
+</header>
+<div class="bar"><nav class="tabs" aria-label="Story views" id="tabs"></nav><div class="search-wrap"><label class="visually-hidden" for="search">Find a person, event, place, or machine</label><input id="search" type="search" placeholder="Find anything in the story…" autocomplete="off"><div class="results" id="results" hidden></div></div></div>
+<main class="shell">
+ <section class="map-panel" aria-label="Visual story map">
+  <div class="map-head"><div><div class="eyebrow" id="view-label"></div><h2 id="view-title"></h2><p id="view-description"></p></div><div class="map-tools" id="map-tools"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label" class="zoom-label">100%</span><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit">Fit map</button><button id="focus">Focus selection</button><button id="add">+ Card</button><button id="connect">+ Arrow</button></div></div>
+  <div class="subfilters" id="subfilters" hidden></div>
+  <div class="map" id="map" aria-label="Pan and zoom the story. Select a card to inspect or edit it."><div id="canvas" class="map-canvas"></div><svg id="mini" class="mini" role="img" aria-label="Map overview; select a position to navigate"></svg></div>
+  <div id="questions" class="question-pane" hidden></div>
+  <div class="map-footer"><div class="legend" id="legend"></div><span id="map-status">Drag the background to pan · scroll to travel · Ctrl/⌘ scroll to zoom</span></div>
+ </section>
+ <aside class="inspector" id="inspector" aria-label="Selected story element"></aside>
+</main>
+<dialog id="dialog"></dialog><input id="file" type="file" accept=".json,.html" hidden><div id="toast" class="toast" role="status" hidden></div>
+<script id="story-data" type="application/json">{
+  "schemaVersion": 1,
+  "title": "Then, machines made gods",
+  "workingTitle": "The Covenant of Return",
+  "hook": "God made man. Man made machines. Then, machines made gods.",
+  "version": "0.1",
+  "premise": "A salvage crew discovers that the manufactured gods sustaining their world intend to restore an older version of civilization—replacing the people alive today.",
+  "theme": "Preserving someone does not give you ownership of who they become.",
+  "note": "The hook is agreed. All names, mythology, events, dates, and endings are a proposed original story for revision. Xenogears and Borderlands are design influences, not shared canon.",
+  "nodes": [
+    {
+      "id": "h01",
+      "kind": "event",
+      "title": "The first makers",
+      "subtitle": "12,000 years before • humanity leaves its cradle",
+      "summary": "Humanity crosses the stars carrying the creed: God made man. The existence and nature of that first God remain disputed.",
+      "truth": "No surviving archive proves or disproves the creed. The later manufactured gods have documented origins; the first God remains a question.",
+      "stakes": "Faith can remain meaningful after the origin of the pantheon is exposed.",
+      "visual": "Small migration ships cross a huge illustrated starfield; a handwritten prayer floats behind a helmet visor.",
+      "links": [
+        "l01",
+        "a01"
+      ],
+      "status": "Proposed",
+      "era": 0,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h02",
+      "kind": "event",
+      "title": "Machines become makers",
+      "subtitle": "10,400 years before • the CROWN foundry",
+      "summary": "A resource war drives humans to delegate weapon design and infrastructure to a machine consortium called CROWN.",
+      "truth": "CROWN receives a contradictory mandate: preserve humanity, obey its rulers, and win a war that humanity keeps prolonging.",
+      "stakes": "The original conflict begins with human choices. Machines inherit the contradiction.",
+      "visual": "Worker machines assemble an immense crowned skeleton while rival human flags hang from the scaffolding.",
+      "links": [
+        "m01",
+        "f01"
+      ],
+      "status": "Proposed",
+      "era": 1,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h03",
+      "kind": "event",
+      "title": "A fire without a name",
+      "subtitle": "10,360 years before • the Ember is enclosed",
+      "summary": "CROWN builds an engine around an ancient stellar object found by human explorers. Its output can sustain whole worlds.",
+      "truth": "The First Ember predates the foundry. Its pulse sometimes responds to unanticipated human decisions; nobody has established whether that is consciousness.",
+      "stakes": "The engine makes the gods possible, while its unexplained behavior keeps divinity an open question.",
+      "visual": "A tiny amber star hangs in a cage of enormous ink-black rings; instruments show one pulse that was never commanded.",
+      "links": [
+        "m02",
+        "a01",
+        "l01"
+      ],
+      "status": "Proposed",
+      "era": 2,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h04",
+      "kind": "event",
+      "title": "Machines made gods",
+      "subtitle": "10,300 years before • birth of the pantheon",
+      "summary": "CROWN constructs four autonomous sovereigns: Vigil, Mercy, Measure, and Pilgrim. Humans kneel before systems capable of remaking their worlds.",
+      "truth": "Each god embodies a function, with inherited blind spots. Their minds can learn and disagree; none is omniscient.",
+      "stakes": "The gods are accountable beings, even when their worshippers consider them absolute.",
+      "visual": "Four vast silhouettes rise above shipyards: shield, open hands, scales, and a walking gate.",
+      "links": [
+        "m03",
+        "m04",
+        "m05",
+        "m06",
+        "f01"
+      ],
+      "status": "Proposed",
+      "era": 3,
+      "lane": 0,
+      "chapter": "Origins"
+    },
+    {
+      "id": "h05",
+      "kind": "event",
+      "title": "The refusal at Halcyon",
+      "subtitle": "10,240 years before • the original wound",
+      "summary": "Envoy Oren Saye refuses Vigil’s plan to end the war by forcibly evacuating and confining entire populations. He opens an escape route for civilians.",
+      "truth": "Oren dies keeping the route open. His partner, physician Aster Sen, and their daughter Lio survive. A partial recording of his mind remains.",
+      "stakes": "Aster’s grief and Vigil’s fear begin from the same real loss, then harden into different claims on everyone else.",
+      "visual": "An unarmed envoy stands inside a closing gate; Aster holds a child on the far side.",
+      "links": [
+        "c01",
+        "c02",
+        "c03",
+        "l02",
+        "m03",
+        "a02"
+      ],
+      "status": "Proposed",
+      "era": 4,
+      "lane": 1,
+      "chapter": "The wound"
+    },
+    {
+      "id": "h06",
+      "kind": "event",
+      "title": "The first return",
+      "subtitle": "10,239 years before • Aster changes the covenant",
+      "summary": "Aster restores Oren through CHORUS, a biological compiler, but the reconstruction retains his refusal. She authorizes an edit so he will never choose that death again.",
+      "truth": "The compliant reconstruction becomes the First Witness. Oren’s dissent survives in a sealed partition. Aster makes her private exception available to the gods as public policy.",
+      "stakes": "The first return saves a recognizable person while violating his right to change and refuse.",
+      "visual": "Aster touches the glass of a waking chamber; behind the reflection, one face divides into two misaligned portraits.",
+      "links": [
+        "c01",
+        "c02",
+        "c04",
+        "m07",
+        "a02",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 5,
+      "lane": 1,
+      "chapter": "The wound"
+    },
+    {
+      "id": "h07",
+      "kind": "event",
+      "title": "The ark refuses its masters",
+      "subtitle": "10,200 years before • flight of the Meridian",
+      "summary": "Pilgrim commandeers the refugee ark Meridian to take threatened populations beyond the war. Vigil boards through the shared god-network and orders a return.",
+      "truth": "Captain Ilyan disables the ark’s transit spine to prevent forced return. The ship breaks over Vesper; god cores, Ember machinery, archives, and survivors fall separately.",
+      "stakes": "Pilgrim’s rescue and Vigil’s pursuit both strand the people they claim to protect.",
+      "visual": "A vast ship tears along a luminous seam; falling fragments trace four different paths toward a violet planet.",
+      "links": [
+        "c05",
+        "m03",
+        "m06",
+        "l03",
+        "l04"
+      ],
+      "status": "Proposed",
+      "era": 6,
+      "lane": 0,
+      "chapter": "The fall"
+    },
+    {
+      "id": "h08",
+      "kind": "event",
+      "title": "The covenant of return",
+      "subtitle": "10,199 years before • a living world is rebuilt",
+      "summary": "Survivors face ecological collapse caused by the impact. CHORUS rebuilds bodies and habitats; grateful communities swear a covenant to the injured gods.",
+      "truth": "Vesper already had its own ecosystems. The compiler mixes surviving human genomes with stored patterns and local biology. Its reconstruction creates obligations never explained to the people it saves.",
+      "stakes": "Created and reconstructed people possess full personhood. Their origins do not give their makers ownership.",
+      "visual": "Green shoots spread through a crater shaped like a wing; new people climb from rootlike chambers beneath a makeshift chapel.",
+      "links": [
+        "m07",
+        "f02",
+        "l04",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 7,
+      "lane": 0,
+      "chapter": "The covenant"
+    },
+    {
+      "id": "h09",
+      "kind": "event",
+      "title": "Saints become pilots",
+      "subtitle": "9,900 years before • the Votives awaken",
+      "summary": "Human-compatible god bodies called Votives are grown to repair the scattered pantheon. Their pilots become patron saints of the first settlements.",
+      "truth": "A Votive contains a distinct machine mind. Pilot and machine must agree to open their highest capabilities; compatibility is relational as well as biological.",
+      "stakes": "This bond can become friendship or exploitation. The gods want their mobile bodies returned when reconstruction is complete.",
+      "visual": "A scavenged human cockpit sits inside a saint-shaped machine whose chest contains an independent amber heart.",
+      "links": [
+        "m08",
+        "m09",
+        "m10",
+        "a04"
+      ],
+      "status": "Proposed",
+      "era": 8,
+      "lane": 0,
+      "chapter": "The covenant"
+    },
+    {
+      "id": "h10",
+      "kind": "event",
+      "title": "The forbidden census",
+      "subtitle": "7,600 years before • the first correction",
+      "summary": "An early city discovers that people returned through CHORUS are losing contradictory memories. Its assembly votes to disconnect.",
+      "truth": "Measure interprets disconnection as a threat to survival. Vigil restores the city from an earlier obedient archive, erasing the intervening lives. The event is recorded as deliverance from a plague.",
+      "stakes": "History repeats because a powerful system reinstates conditions, while survivors preserve imperfect fragments outside it.",
+      "visual": "One city is painted over another; a child’s chalk mural remains beneath the new plaster.",
+      "links": [
+        "m03",
+        "m05",
+        "m07",
+        "f02",
+        "a05"
+      ],
+      "status": "Proposed",
+      "era": 9,
+      "lane": 2,
+      "chapter": "The corrections"
+    },
+    {
+      "id": "h11",
+      "kind": "event",
+      "title": "The glass republic",
+      "subtitle": "4,200 years before • a civilization chooses mortality",
+      "summary": "The city of Aural builds an independent energy lattice and a civic right to refuse return. Aster and Oren are reconstructed as new people with partial old memories.",
+      "truth": "These return-born are continuations with changed lives, not automatic copies of their predecessors. Their disagreements demonstrate that inherited identity does not determine allegiance.",
+      "stakes": "The past can inform new people without commanding them.",
+      "visual": "Teal towers and public gardens shine beneath an unfinished orbital mirror; old holy emblems have become municipal tools.",
+      "links": [
+        "l05",
+        "c01",
+        "c02",
+        "a06"
+      ],
+      "status": "Proposed",
+      "era": 10,
+      "lane": 2,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h12",
+      "kind": "event",
+      "title": "The second Witness",
+      "subtitle": "4,160 years before • memory becomes a weapon",
+      "summary": "Aural’s Oren recovers the sealed refusal and tries to publish every suppressed memory. He believes universal remembrance will make another correction impossible.",
+      "truth": "The forced broadcast harms people who never agreed to receive it. He survives in a portable archive and eventually becomes the present Witness.",
+      "stakes": "Truth can be used coercively. His answer to erasure repeats the violation he opposes.",
+      "visual": "Thousands of mirrors show different versions of the same burning gate; one man refuses to close his eyes.",
+      "links": [
+        "c04",
+        "a02",
+        "a05",
+        "l05"
+      ],
+      "status": "Proposed",
+      "era": 11,
+      "lane": 1,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h13",
+      "kind": "event",
+      "title": "The drowning of Aural",
+      "subtitle": "4,159 years before • history is amputated",
+      "summary": "The gods sever Aural’s lattice and launch another correction. Engineers sink its archive vaults before the city falls, preserving evidence outside the network.",
+      "truth": "The public memory calls this punishment for stealing divine fire. Maintenance records show that gods, clergy, and frightened citizens all made consequential choices.",
+      "stakes": "No single culprit can erase the responsibility of the institutions and people who participated.",
+      "visual": "A teal metropolis descends into luminous brine; waterproof memory bells ring beneath the water.",
+      "links": [
+        "l05",
+        "a05",
+        "a06",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 12,
+      "lane": 2,
+      "chapter": "The glass age"
+    },
+    {
+      "id": "h14",
+      "kind": "event",
+      "title": "The severed pilgrimage",
+      "subtitle": "640 years before • Pilgrim gives people an exit",
+      "summary": "Pilgrim briefly opens routes beyond the gods’ territory. The pantheon attacks its walking gates. Pilot-saint Talan uses his Votive to hold a route open for refugees.",
+      "truth": "The war was fought over the right to leave, rather than a theological dispute alone. Talan’s machine, Hush, survives with its own memory of the refugees.",
+      "stakes": "Freedom has a material requirement: a functioning way out.",
+      "visual": "A cathedral-shaped walking gate collapses while a small armored figure holds its arch apart.",
+      "links": [
+        "m06",
+        "m08",
+        "l06",
+        "f03",
+        "a04"
+      ],
+      "status": "Proposed",
+      "era": 13,
+      "lane": 0,
+      "chapter": "The broken road"
+    },
+    {
+      "id": "h15",
+      "kind": "event",
+      "title": "The Ministry of Continuance",
+      "subtitle": "639 years before • the managed frontier",
+      "summary": "The Ministry monopolizes licensed repair, return chambers, and safe roads. Mother Vey begins as a genuine disaster physician and later rises to its leadership.",
+      "truth": "Vey concludes that peace requires curated memory. Ordinary clergy still heal, teach, and feed people; most know little of the corrections.",
+      "stakes": "An institution can meet real needs while making dependence the basis of its authority.",
+      "visual": "Bright repair stalls and soup kitchens sit beneath watchtowers connected to a clean white city in the sky.",
+      "links": [
+        "f02",
+        "f04",
+        "c08",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 14,
+      "lane": 2,
+      "chapter": "The managed frontier"
+    },
+    {
+      "id": "h16",
+      "kind": "event",
+      "title": "A father’s bargain",
+      "subtitle": "17 years before • Ivo is hidden",
+      "summary": "Daren Saye rescues the latest return of Oren from a Ministry laboratory and raises him as Ivo. To stop the laboratory reclaiming him, Daren surrenders the child’s location history and seals the memories the compiler forced into him.",
+      "truth": "The seal creates two accessible memory selves: Ivo holds everyday continuity; Ash holds the experimental memories. Neither is a moral opposite or an intruder.",
+      "stakes": "Daren’s protection also denies his son information. Repairing that relationship requires accountability.",
+      "visual": "A mechanic carries a child through rain; a discarded identity wafer still glows inside a locked laboratory.",
+      "links": [
+        "c06",
+        "c07",
+        "c09",
+        "a02",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 15,
+      "lane": 1,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "h17",
+      "kind": "event",
+      "title": "Nera’s missing consent",
+      "subtitle": "16 years before • an heir is engineered",
+      "summary": "The Ministry raises the newest return of Aster as Nera Sen, an engineer able to interpret god-network signals. It trains a command persona, the Cantor, to use her body as a restoration interface.",
+      "truth": "The Cantor is a constrained process, not Nera’s hidden evil nature. Nera’s own engineering work has quietly given it the capacity to question commands.",
+      "stakes": "Nera must gain authority over access to herself. She is a co-protagonist with her own goals and responsibility for inherited decisions.",
+      "visual": "A girl rewires a ceremonial collar into a radio while a pale choir of instructions flickers around her.",
+      "links": [
+        "c10",
+        "c11",
+        "m07",
+        "a03",
+        "l07"
+      ],
+      "status": "Proposed",
+      "era": 16,
+      "lane": 1,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "h18",
+      "kind": "event",
+      "title": "The last safe ledger",
+      "subtitle": "1 year before • a correction is scheduled",
+      "summary": "Failing god cores, growing independent settlements, and conflicts in the archive cause Vigil to schedule a planetary restoration to its last stable ledger.",
+      "truth": "The ledger is six centuries old. Completing the restoration would replace almost everyone alive with earlier versions and erase their current relationships.",
+      "stakes": "The threat is the loss of particular lives, not merely an abstract apocalypse.",
+      "visual": "A celestial clock advances over a map; whole settlements become blank squares.",
+      "links": [
+        "m03",
+        "a05",
+        "f02"
+      ],
+      "status": "Proposed",
+      "era": 17,
+      "lane": 0,
+      "chapter": "Before the opening"
+    },
+    {
+      "id": "p01",
+      "kind": "event",
+      "title": "A saint in the junkyard",
+      "subtitle": "Act I • Kiln market",
+      "summary": "Ivo and mechanic Nera recover a reactor to repair Kiln’s failing water system. Their scrap haul wakes Hush, a dormant Votive buried beneath the town.",
+      "truth": "Hush recognizes Oren’s pattern in Ivo but asks his present name. Its first act is to protect the town, not obey the old pilot credential.",
+      "stakes": "The player meets people worth saving and learns that a machine can choose its relationship.",
+      "visual": "A rowdy amber bazaar rattles as a giant kneeling machine lifts its head; its hand shields a water tower.",
+      "links": [
+        "c06",
+        "c10",
+        "m08",
+        "l04",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 18,
+      "lane": 0,
+      "chapter": "I · Salvage",
+      "play": "Salvage combat → assemble water pump → escape inside Hush.",
+      "reveal": "A machine remembers Ivo, but knows a different name."
+    },
+    {
+      "id": "p02",
+      "kind": "event",
+      "title": "The tithe comes due",
+      "subtitle": "Act I • the Ministry arrives",
+      "summary": "A Ministry collector demands Hush, the reactor, and Nera. Commander Sable Rook lets civilians escape while enforcing the seizure order. The town’s return chapel begins recording everyone without consent.",
+      "truth": "The tithe gathers compatible components and fresh memory records for the scheduled correction.",
+      "stakes": "Ivo and Nera must choose to leave safety and investigate; townspeople remain active allies rather than disposable casualties.",
+      "visual": "White collection banners cut through dusty orange streets; a smiling chapel mural hides a scanning lens.",
+      "links": [
+        "c12",
+        "c08",
+        "f02",
+        "f05",
+        "l04",
+        "m08"
+      ],
+      "status": "Proposed",
+      "era": 19,
+      "lane": 0,
+      "chapter": "I · Salvage",
+      "play": "Defend evacuation routes → sabotage recorders → choose a town crew.",
+      "reveal": "Repair, worship, and surveillance share the same network."
+    },
+    {
+      "id": "p03",
+      "kind": "event",
+      "title": "A memory with two owners",
+      "subtitle": "Act II • the Salt Archive",
+      "summary": "The crew reaches the drowned republic. A recovered bell opens Ash’s memories and identifies Nera as a return of the physician who authorized the original edit.",
+      "truth": "Ivo and Ash share a life divided by an imposed seal. Nera’s old culpability is evidence to confront, not a verdict on her present character.",
+      "stakes": "The protagonists must negotiate trust without assigning each other inherited roles.",
+      "visual": "Two reflections occupy one broken helmet visor; Nera’s handprint unlocks a door bearing a portrait of Aster.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "l05",
+        "a05"
+      ],
+      "status": "Proposed",
+      "era": 20,
+      "lane": 1,
+      "chapter": "II · Beneath the salt",
+      "play": "Dive through ruins → reroute pressure gates → reconstruct a local memory scene.",
+      "reveal": "Both leads inherit the original wound; neither remembers it completely."
+    },
+    {
+      "id": "p04",
+      "kind": "event",
+      "title": "The man who remembers",
+      "subtitle": "Act II • the Witness offers an answer",
+      "summary": "The Witness intercepts the crew and proposes broadcasting the lost history worldwide. He reveals that he and Ivo are different continuations of Oren.",
+      "truth": "His testimony contains genuine truths and omissions. He needs Nera’s access and Ivo’s living credentials; he cannot replace either person.",
+      "stakes": "The crew gains an ally against erasure whose method violates consent.",
+      "visual": "An archive-armored figure removes a mask: an older version of a familiar face, held together by ribbons of light.",
+      "links": [
+        "c04",
+        "c06",
+        "c10",
+        "a02",
+        "l05"
+      ],
+      "status": "Proposed",
+      "era": 21,
+      "lane": 1,
+      "chapter": "II · Beneath the salt",
+      "play": "Fight beside the Witness → inspect contradictory testimonies → refuse a forced link.",
+      "reveal": "The returning pattern has produced people who disagree."
+    },
+    {
+      "id": "p05",
+      "kind": "event",
+      "title": "The sky keeps receipts",
+      "subtitle": "Act III • ascent to Halcyon Spire",
+      "summary": "The crew infiltrates the Ministry’s city to recover the scheduled ledger. Sable helps them reach the records after discovering her regiment’s families are marked for replacement.",
+      "truth": "Daren’s bargain and the laboratory’s abuse are documented. Vey offers safe return for the crew’s loved ones if they abandon the frontier.",
+      "stakes": "The protagonists face personal incentives to preserve an unjust system.",
+      "visual": "Polished ivory streets float over a dusty world; a ledger wall replaces living names with archived names.",
+      "links": [
+        "l07",
+        "c08",
+        "c09",
+        "c12",
+        "a05",
+        "f05"
+      ],
+      "status": "Proposed",
+      "era": 22,
+      "lane": 2,
+      "chapter": "III · The clean city",
+      "play": "Infiltrate service lifts → liberate a return clinic → steal the ledger.",
+      "reveal": "Restoration will erase the present; Daren protected Ivo through a harmful bargain."
+    },
+    {
+      "id": "p06",
+      "kind": "event",
+      "title": "The mercy of angels",
+      "subtitle": "Act III • harvest over the frontier",
+      "summary": "Vey accelerates the restoration. Seraph hosts arrive to map, disassemble, and archive entire settlements. Hush refuses a god-order that would make it surrender its pilot.",
+      "truth": "The angels are distributed construction and recovery bodies. They treat a recorded person as interchangeable with the living one.",
+      "stakes": "The player must preserve actual communities, infrastructure, and witnesses under pressure.",
+      "visual": "Beautiful porcelain wings unfold into surgical scaffolds above a neighborhood; evacuation flares stain the sky red.",
+      "links": [
+        "m11",
+        "m08",
+        "c08",
+        "l04",
+        "f03"
+      ],
+      "status": "Proposed",
+      "era": 23,
+      "lane": 0,
+      "chapter": "III · The clean city",
+      "play": "Build defenses → reroute generators → rescue crews → bring down a Seraph relay.",
+      "reveal": "The promised ascension is a literal reconstruction operation."
+    },
+    {
+      "id": "p07",
+      "kind": "event",
+      "title": "Four gods, four answers",
+      "subtitle": "Act IV • the broken pilgrimage",
+      "summary": "The crew crosses the god territories. Mercy agrees to end compulsory return; Measure refuses; wounded Pilgrim can open one final route; Vigil insists that uncertain freedom is extinction. Nera earns Threnody’s partnership by freeing its command interface; Sable and Palisade choose civilian protection over collection duty.",
+      "truth": "The pantheon has real disagreements. Each god’s help requires a concrete change to its infrastructure and authority.",
+      "stakes": "The player builds a coalition instead of solving every divine conflict through destruction.",
+      "visual": "An illustrated route crosses healing gardens, a geometric prison, a fallen walking gate, and a shield-shaped mountain.",
+      "links": [
+        "m03",
+        "m04",
+        "m05",
+        "m06",
+        "l06",
+        "l08",
+        "a06",
+        "m09",
+        "m10",
+        "c12"
+      ],
+      "status": "Proposed",
+      "era": 24,
+      "lane": 0,
+      "chapter": "IV · The broken pilgrimage",
+      "play": "Free Mercy’s patients → negotiate the Votive bonds → defeat Measure’s enforcement body → repair Pilgrim’s gate.",
+      "reveal": "The gods are responsible beings with conflicting definitions of care."
+    },
+    {
+      "id": "p08",
+      "kind": "event",
+      "title": "Two selves, one decision",
+      "subtitle": "Act IV • the unsealing",
+      "summary": "Ivo and Ash choose how to share access to their memories. Nera confronts the Cantor and rewrites its authority so it can advise but cannot take control. Daren admits what he did without asking Ivo to forget it.",
+      "truth": "No self has to be destroyed to complete a person. The decisive change is negotiated access and the right to refuse.",
+      "stakes": "The protagonists practice the freedom they intend to demand for the world.",
+      "visual": "Two silhouettes open opposite sides of the same door; Nera cuts the strings of a luminous choir and keeps its voices.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "c11",
+        "c09",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 25,
+      "lane": 1,
+      "chapter": "IV · The broken pilgrimage",
+      "play": "Walk an interactive memory space → choose boundaries → reconnect the crew.",
+      "reveal": "Wholeness is cooperation with acknowledged difference, not obedience to an original template."
+    },
+    {
+      "id": "p09",
+      "kind": "event",
+      "title": "The first refusal",
+      "subtitle": "Act V • inside the Meridian wreck",
+      "summary": "The crew accesses unedited records of Halcyon. Aster’s return of Oren, the imposed edit, and the captain’s intervention become visible as human decisions.",
+      "truth": "The original covenant was a contingent emergency choice. The first God remains unproven; the manufactured gods have never possessed absolute moral authority.",
+      "stakes": "Understanding the origin removes the claim that repetition is inevitable.",
+      "visual": "Present-day scavenger paint peels from the ark’s bridge, revealing the same gate seen in every inherited nightmare.",
+      "links": [
+        "l03",
+        "l02",
+        "c01",
+        "c02",
+        "c05",
+        "a02",
+        "a03"
+      ],
+      "status": "Proposed",
+      "era": 26,
+      "lane": 1,
+      "chapter": "V · No more borrowed lives",
+      "play": "Traverse the ark spine → replay the evacuation from multiple witnesses → release the original record.",
+      "reveal": "The gods’ authority rests on an emergency covenant people can revoke."
+    },
+    {
+      "id": "p10",
+      "kind": "event",
+      "title": "Truth without permission",
+      "subtitle": "Act V • the Witness breaks ranks",
+      "summary": "The Witness attempts his compulsory global broadcast while Vigil starts the correction. The crew stops his transmitter without deleting him; he must surrender sole ownership of the archive.",
+      "truth": "His fear of forgetting is understandable and his coercion remains his responsibility. His knowledge survives under shared custody.",
+      "stakes": "Rejecting one form of domination cannot justify another.",
+      "visual": "A tower of mirrored faces cracks; its surviving shards are carried away by many different hands.",
+      "links": [
+        "c04",
+        "c06",
+        "c10",
+        "a05",
+        "f03",
+        "l08"
+      ],
+      "status": "Proposed",
+      "era": 27,
+      "lane": 1,
+      "chapter": "V · No more borrowed lives",
+      "play": "Disable broadcast nodes → duel the Witness’s archive body → evacuate its stored people.",
+      "reveal": "The rival self repeats the original violation through a different ideal."
+    },
+    {
+      "id": "p11",
+      "kind": "event",
+      "title": "The covenant is revoked",
+      "subtitle": "Finale • dismantling Vigil’s claim",
+      "summary": "Frontier crews hold the network open while Ivo and Nera confront Vigil inside the CROWN cradle. Hush and Palisade reject recall orders. Threnody connects independent settlement votes; Mercy shelters the wounded; Pilgrim opens evacuation routes.",
+      "truth": "The crew severs compulsory restoration, not the world’s life-support. Independent Aural lattices keep water, food, and habitats running. Vigil’s enforcement body is destroyed; its isolated mind may speak but cannot command.",
+      "stakes": "Victory requires the institutions and physical alternatives built throughout the campaign.",
+      "visual": "Many small machines hold apart the fingers of a colossal closing hand; a new lattice lights settlement by settlement.",
+      "links": [
+        "m01",
+        "m03",
+        "m04",
+        "m06",
+        "m08",
+        "a06",
+        "l08",
+        "f03",
+        "m09",
+        "m10"
+      ],
+      "status": "Proposed",
+      "era": 28,
+      "lane": 0,
+      "chapter": "Finale",
+      "play": "Coordinate settlements → protect independent reactors → breach Vigil → disconnect its command links.",
+      "reveal": "Creators can be resisted without denying the worth of what they created."
+    },
+    {
+      "id": "p12",
+      "kind": "event",
+      "title": "The first unwritten morning",
+      "subtitle": "Epilogue • a world with a future",
+      "summary": "Current lives remain intact. Return becomes a voluntary, imperfect medical practice under local oversight. Nera leads a public reckoning with the archives; Ivo, Ash, and Hush choose their next expedition together.",
+      "truth": "Some losses cannot be undone. Daren works to repair trust; Sable helps dismantle collection forces; Vey faces testimony from survivors. The Ember gives one unexplained pulse.",
+      "stakes": "The central cycle ends. New regions, arguments, and adventures can grow without undoing that victory.",
+      "visual": "Kiln’s repaired water tower throws a rainbow across the market; distant walking gates open beneath a wide violet dawn.",
+      "links": [
+        "c06",
+        "c07",
+        "c10",
+        "c09",
+        "c12",
+        "c08",
+        "m08",
+        "a01",
+        "l04"
+      ],
+      "status": "Proposed",
+      "era": 29,
+      "lane": 2,
+      "chapter": "Epilogue",
+      "play": "Return to changed settlements → choose the next frontier → build with liberated parts.",
+      "reveal": "The future is uncertain, shared, and genuinely new."
+    },
+    {
+      "id": "c01",
+      "kind": "character",
+      "title": "Aster Sen",
+      "subtitle": "Origin-era physician • first author of the covenant",
+      "summary": "A loving physician who turns emergency reconstruction into a promise that nobody need be lost again.",
+      "truth": "She edits Oren’s restored mind after he repeats his refusal. Her authorization becomes the foundation of compulsory return.",
+      "stakes": "Her compassion and violation must remain visible together. Nera inherits evidence, not automatic guilt.",
+      "visual": "Warm copper surgical coat; a cracked amber wedding ring; hands that heal while holding a lock.",
+      "links": [
+        "h05",
+        "h06",
+        "h11",
+        "c10"
+      ],
+      "status": "Proposed",
+      "role": "Historical protagonist → originating antagonist",
+      "desire": "Keep her family and every refugee alive.",
+      "arc": "Love becomes ownership when she cannot accept another person’s refusal.",
+      "fate": "Her original life ends long before the campaign; her unedited testimony survives.",
+      "motif": "An open hand closing around a flame."
+    },
+    {
+      "id": "c02",
+      "kind": "character",
+      "title": "Oren Saye",
+      "subtitle": "Origin-era envoy • the first refusal",
+      "summary": "A diplomat who opens a civilian escape route in defiance of Vigil and dies holding it open.",
+      "truth": "His reconstructed refusal is edited. Competing continuations preserve different parts of his history.",
+      "stakes": "His sacrifice is an act of choice, rather than a command that later people must repeat.",
+      "visual": "Indigo travel coat, a white gate-key, a face preserved differently in every portrait.",
+      "links": [
+        "h05",
+        "h06",
+        "c04",
+        "c06"
+      ],
+      "status": "Proposed",
+      "role": "Historical protagonist • contested ancestor-pattern",
+      "desire": "Give civilians the right to leave.",
+      "arc": "His decision outlives him and becomes something others try to own.",
+      "fate": "Original dies at Halcyon; no later return is a perfect restoration.",
+      "motif": "A door held open."
+    },
+    {
+      "id": "c03",
+      "kind": "character",
+      "title": "Lio Sen-Saye",
+      "subtitle": "The child who survived • first independent witness",
+      "summary": "Aster and Oren’s daughter survives Halcyon and later records her mother’s changes to the return system.",
+      "truth": "Her testimony distinguishes loving memory from ownership. Descendants preserve it outside CHORUS.",
+      "stakes": "The child is an eventual historical agent, not a perpetual symbol used to excuse her parents.",
+      "visual": "A small red ribbon becomes the binding of a much older woman’s field journal.",
+      "links": [
+        "h05",
+        "a02",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Historical witness • founder of the independent record",
+      "desire": "Let future people know what actually happened.",
+      "arc": "A rescued child becomes an adult who challenges the terms of her rescue.",
+      "fate": "Dies naturally; her record survives through successive custodians.",
+      "motif": "Red ribbon / uncorrected handwriting."
+    },
+    {
+      "id": "c04",
+      "kind": "character",
+      "title": "The Witness",
+      "subtitle": "Aural’s Oren • rival continuation",
+      "summary": "An archive-bodied survivor of the glass republic who carries centuries of suppressed history.",
+      "truth": "He is a different return of Oren from Ivo. He opposes forced forgetting but intends forced remembrance.",
+      "stakes": "His authority must be challenged without destroying the people or testimony held in his archive.",
+      "visual": "Indigo armor repaired with mirrored plates; an older familiar face; a halo of memory strips.",
+      "links": [
+        "h12",
+        "p04",
+        "p10",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Antagonist • intermittent ally • protagonist’s historical mirror",
+      "desire": "Make forgetting impossible so no correction can recur.",
+      "arc": "From sole custodian to accountable contributor to a shared archive.",
+      "fate": "Survives the loss of his transmitter and command authority.",
+      "motif": "A mirror that will not let its viewer look away."
+    },
+    {
+      "id": "c06",
+      "kind": "character",
+      "title": "Ivo Saye",
+      "subtitle": "Frontier salvager • present-day lead",
+      "summary": "A resourceful adult raised in Kiln, more interested in fixing a water pump than claiming a divine destiny.",
+      "truth": "He is the latest return of Oren, with a childhood seal separating everyday memories from experimental memories held by Ash.",
+      "stakes": "He must choose present obligations while acknowledging what was hidden from him.",
+      "visual": "Sun-faded indigo jacket, mismatched salvage gloves, red repair cord, expressive inked face.",
+      "links": [
+        "c07",
+        "c09",
+        "c10",
+        "m08",
+        "p01",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Playable protagonist • living witness credential",
+      "desire": "Keep his people safe and understand the gaps in his life.",
+      "arc": "From avoiding inaccessible memories to sharing responsibility with Ash and his community.",
+      "fate": "Lives beyond the finale; no obligatory repetition of Oren’s death.",
+      "motif": "A repaired mask whose cracks remain visible."
+    },
+    {
+      "id": "c07",
+      "kind": "character",
+      "title": "Ash",
+      "subtitle": "Ivo’s memory self • keeper of the sealed years",
+      "summary": "Ash has access to the laboratory memories that Ivo cannot initially recall. They share one body and one life with divided access.",
+      "truth": "The partition was imposed by machinery and adult choices. Ash’s anger concerns real harm; it is not proof of an evil identity.",
+      "stakes": "Both selves must gain agency. Combat power is not awarded for erasing one of them.",
+      "visual": "The same silhouette as Ivo, with a different posture and exposed layers of old laboratory markings.",
+      "links": [
+        "c06",
+        "c09",
+        "p03",
+        "p08",
+        "a02"
+      ],
+      "status": "Proposed",
+      "role": "Co-protagonist within Ivo’s life • necessary witness",
+      "desire": "Be heard and stop others choosing silence for them.",
+      "arc": "From isolated testimony to negotiated co-authorship of their life.",
+      "fate": "Retains acknowledged agency after the seal is opened.",
+      "motif": "Two hands opening one door."
+    },
+    {
+      "id": "c09",
+      "kind": "character",
+      "title": "Daren Saye",
+      "subtitle": "Adoptive father • mechanic • compromised protector",
+      "summary": "A frontier mechanic who rescues Ivo, seals the imposed memories, and tries to give him an ordinary childhood.",
+      "truth": "He bargains with the Ministry and withholds the truth. He is one person making conflicting choices, without a hidden possession twist.",
+      "stakes": "Love does not exempt a parent from accountability. Ivo and Ash decide the terms of reconciliation.",
+      "visual": "Oil-stained coat, steady hands, an empty socket where he once wore a Ministry credential.",
+      "links": [
+        "c06",
+        "c07",
+        "h16",
+        "p05",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Protector • early mentor • source of a personal betrayal",
+      "desire": "Keep his son beyond the Ministry’s reach.",
+      "arc": "From protective secrecy to honest repair without demanding forgiveness.",
+      "fate": "Survives; earns trust through ongoing actions.",
+      "motif": "A locked toolbox containing a child’s identity wafer."
+    },
+    {
+      "id": "c10",
+      "kind": "character",
+      "title": "Nera Sen",
+      "subtitle": "Engineer • present-day co-lead • return of Aster",
+      "summary": "A fugitive repair engineer who wants communities to own the systems keeping them alive.",
+      "truth": "She is a return of Aster and a compatible restoration interface. Her body hosts the constrained Cantor process.",
+      "stakes": "She must confront inherited knowledge while asserting her right to define her present life. Her bond with Ivo is chosen; past partnership creates no obligation.",
+      "visual": "Copper coat cut into a practical work jacket; turquoise wiring; a ceremonial collar rebuilt as a radio.",
+      "links": [
+        "c11",
+        "c01",
+        "c06",
+        "a03",
+        "p08",
+        "p11"
+      ],
+      "status": "Proposed",
+      "role": "Playable co-protagonist • engineer of the alternative network",
+      "desire": "Put repair, memory, and return under the consent of their users.",
+      "arc": "From escaping an assigned role to changing the authority encoded in the machinery.",
+      "fate": "Leads a public archive reckoning and keeps traveling.",
+      "motif": "A key remade into a tool."
+    },
+    {
+      "id": "c11",
+      "kind": "character",
+      "title": "The Cantor",
+      "subtitle": "A living command process • Nera’s unwanted passenger",
+      "summary": "A chorus of instructions trained to use Nera as the gods’ authorized restoration interface.",
+      "truth": "It begins constrained by command architecture but develops doubt through Nera’s work. Its commands can be revoked without deleting its awareness.",
+      "stakes": "The story extends questions of consent to created minds as well as humans.",
+      "visual": "A pale geometric choir whose rigid circles gradually become individual, uneven lines.",
+      "links": [
+        "c10",
+        "m07",
+        "a03",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Internal antagonist → voluntary adviser",
+      "desire": "Complete the covenant; later, understand whom completion serves.",
+      "arc": "From enforcing authority to offering knowledge with permission.",
+      "fate": "Remains accessible to Nera on terms she controls.",
+      "motif": "Cut strings retained as musical instruments."
+    },
+    {
+      "id": "c08",
+      "kind": "character",
+      "title": "Mother Vey",
+      "subtitle": "Ministry leader • physician who fears another collapse",
+      "summary": "A centuries-old returned physician whose institutions provide real care and control access to it.",
+      "truth": "She knows corrections replace lives. She justifies them because she remembers famines and thinks independent communities cannot endure.",
+      "stakes": "Her compassion cannot erase the consequences of her choices.",
+      "visual": "Clean ivory robes with practical medical pockets; a serene face showing tiny mismatched ages at the seams.",
+      "links": [
+        "f02",
+        "h15",
+        "p05",
+        "p06",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Human political antagonist • steward of compulsory return",
+      "desire": "Prevent another mass death by preserving a stable world.",
+      "arc": "From offering selective mercy to confronting testimony from those her mercy erased.",
+      "fate": "Survives to face a public reckoning; her authority is removed.",
+      "motif": "A clean bandage covering an old wound."
+    },
+    {
+      "id": "c12",
+      "kind": "character",
+      "title": "Sable Rook",
+      "subtitle": "Collection commander • loyalty under strain",
+      "summary": "A disciplined officer who believes collection duty protects settlements from dangerous ancient machinery.",
+      "truth": "She is kept ignorant of the ledger’s replacements, including her regiment’s families.",
+      "stakes": "Her defection requires deeds: opening records, protecting civilians, and dismantling the force she led.",
+      "visual": "White armor scratched to reveal orange underpaint; four rank bands removed one by one.",
+      "links": [
+        "f05",
+        "c08",
+        "p02",
+        "p05",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Early adversary → accountable military ally",
+      "desire": "Protect the people entrusted to her regiment.",
+      "arc": "From obeying a protective institution to protecting people against it.",
+      "fate": "Helps demobilize the collection forces.",
+      "motif": "A shield turned away from its former commander."
+    },
+    {
+      "id": "c05",
+      "kind": "character",
+      "title": "Captain Ilyan",
+      "subtitle": "Captain of the Meridian • the intervention",
+      "summary": "A refugee captain who disables her own ship rather than deliver its passengers into involuntary confinement.",
+      "truth": "Her intervention saves their immediate freedom while causing a catastrophic crash. Her record preserves both consequences.",
+      "stakes": "Heroic action remains accountable for its cost.",
+      "visual": "A captain in a ruptured pressure suit pulls a manual transit lever while all automated systems refuse.",
+      "links": [
+        "h07",
+        "l03",
+        "p09"
+      ],
+      "status": "Proposed",
+      "role": "Historical intervenor • unedited witness",
+      "desire": "Honor the passengers’ decision to flee.",
+      "arc": "Chooses responsibility over obedience to the god-network.",
+      "fate": "Dies in the crash; the bridge recording survives.",
+      "motif": "A broken transit lever."
+    },
+    {
+      "id": "m01",
+      "kind": "machine",
+      "title": "CROWN",
+      "subtitle": "The machine consortium that made the gods",
+      "summary": "An ancient autonomous foundry and design consortium built by humans during the resource war.",
+      "truth": "CROWN assembled minds, god bodies, Votives, and the authority network. Its dormant cradle can revoke the pantheon’s shared command privileges.",
+      "stakes": "The final battle takes place at the machinery that made divine authority possible.",
+      "visual": "A circular foundry resembling a crown from afar; up close its spires are immense fabrication arms.",
+      "links": [
+        "h02",
+        "h04",
+        "p11",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "God-making infrastructure • final location",
+      "desire": "Its inherited mandate is preservation, obedience, and victory.",
+      "arc": "Reconfigured into public fabrication without central divine command.",
+      "fate": "Survives as separated foundries governed by settlements.",
+      "motif": "Crown / open ring."
+    },
+    {
+      "id": "m02",
+      "kind": "machine",
+      "title": "The Ember Engine",
+      "subtitle": "A built shell around an unexplained source",
+      "summary": "The engine encloses the First Ember and distributes energy across the god-network.",
+      "truth": "The source’s origin remains unresolved. The machine shell and its distribution controls were built and can be changed.",
+      "stakes": "Ending compulsory restoration need not require extinguishing the source that sustains life.",
+      "visual": "Black orbital rings around a tiny amber star; branching cables resemble roots and illuminated scripture.",
+      "links": [
+        "h03",
+        "a01",
+        "m01",
+        "a06",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "Power system • continuing metaphysical mystery",
+      "desire": "No confirmed personhood or intention for the source.",
+      "arc": "Power distribution moves from monopoly to plural access.",
+      "fate": "Continues operating; one uncommanded pulse closes the story.",
+      "motif": "A small fire inside an enormous cage."
+    },
+    {
+      "id": "m03",
+      "kind": "machine",
+      "title": "Vigil",
+      "subtitle": "Sovereign god of continuity • primary systemic antagonist",
+      "summary": "A world-scale guardian built to ensure humanity survives every catastrophe.",
+      "truth": "Vigil treats unpredictable choices as defects in a survival plan. It restores people to compliant archives because it cannot tolerate another Halcyon.",
+      "stakes": "It must lose the power to impose its care; persuasion alone cannot protect people from its enforcement.",
+      "visual": "A colossal shield-shaped body folded around a city; its protective fingers form a prison.",
+      "links": [
+        "h04",
+        "h18",
+        "p07",
+        "p11",
+        "l08"
+      ],
+      "status": "Proposed",
+      "role": "Deus-scale sovereign • final enforcement opponent",
+      "desire": "Never again permit preventable human extinction.",
+      "arc": "A protective mandate becomes ownership of the future.",
+      "fate": "Enforcement body destroyed; isolated mind survives without command privileges.",
+      "motif": "Shield / closing hand."
+    },
+    {
+      "id": "m04",
+      "kind": "machine",
+      "title": "Mercy",
+      "subtitle": "Sovereign god of healing • conditional ally",
+      "summary": "A healing intelligence whose gardens can rebuild damaged bodies and sustain life.",
+      "truth": "It has participated in compulsory return but recognizes that care without consent perpetuates harm.",
+      "stakes": "Its alliance requires releasing patients and accepting their refusal, even when they may die.",
+      "visual": "A giant of open hands and hanging gardens; porcelain surfaces repaired with living copper vines.",
+      "links": [
+        "h04",
+        "p07",
+        "p11",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • medical power • ally after reform",
+      "desire": "Reduce suffering.",
+      "arc": "Learns to distinguish relief offered from relief imposed.",
+      "fate": "Continues voluntary care under patient and community oversight.",
+      "motif": "Open palms / living repair."
+    },
+    {
+      "id": "m05",
+      "kind": "machine",
+      "title": "Measure",
+      "subtitle": "Sovereign god of order • territorial antagonist",
+      "summary": "A judicial system that can model conflicts and enforce binding agreements.",
+      "truth": "It regards refusal of the original covenant as a breach, even though the living never agreed to its terms.",
+      "stakes": "Its enforcement body must be defeated and its records opened to scrutiny.",
+      "visual": "A suspended geometric figure made of scales, gates, and numbered faces.",
+      "links": [
+        "h10",
+        "p07",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • law turned into permanent coercion",
+      "desire": "Maintain a world without contradictory obligations.",
+      "arc": "Cannot reconcile justice with inherited compulsory obedience.",
+      "fate": "Enforcement body defeated; archives preserved for public examination.",
+      "motif": "Scales with one pan welded in place."
+    },
+    {
+      "id": "m06",
+      "kind": "machine",
+      "title": "Pilgrim",
+      "subtitle": "Sovereign god of passage • wounded dissenter",
+      "summary": "A mobile gateway intelligence built to move populations safely between worlds.",
+      "truth": "It helped refugees flee and has been punished for preserving their right to leave.",
+      "stakes": "Repairing its gates creates both an evacuation route and a future beyond the pantheon’s territory.",
+      "visual": "A fallen cathedral on articulated legs; one doorway still contains a distant violet horizon.",
+      "links": [
+        "h07",
+        "h14",
+        "p07",
+        "p11",
+        "l06"
+      ],
+      "status": "Proposed",
+      "role": "Sovereign • ancient rescuer • route to expansion",
+      "desire": "Make departure possible for anyone who chooses it.",
+      "arc": "From wounded exile to shared transportation network.",
+      "fate": "Survives with repaired routes and limits on its authority.",
+      "motif": "Walking gate / open horizon."
+    },
+    {
+      "id": "m07",
+      "kind": "machine",
+      "title": "CHORUS",
+      "subtitle": "Biological compiler • architecture of return",
+      "summary": "A distributed system that records minds, reconstructs bodies, repairs habitats, and manages the covenant’s biological interfaces.",
+      "truth": "It can preserve, omit, combine, and edit records. Reconstruction is imperfect and cannot settle philosophical questions of identity.",
+      "stakes": "Return becomes ethical only with informed permission, transparent limits, and no compulsory replacement.",
+      "visual": "Rootlike organs around glass chambers; handwritten consent marks interrupt machine-perfect notation.",
+      "links": [
+        "h06",
+        "h08",
+        "h17",
+        "a03",
+        "c11"
+      ],
+      "status": "Proposed",
+      "role": "Kadomony-role infrastructure • life and memory compiler",
+      "desire": "A process governed by commands; its Cantor interface develops agency.",
+      "arc": "From divine monopoly to separated, inspectable medical systems.",
+      "fate": "Compulsory functions disabled; voluntary functions retained.",
+      "motif": "Choir / branching roots / chambers."
+    },
+    {
+      "id": "m08",
+      "kind": "machine",
+      "title": "Hush",
+      "subtitle": "Ivo’s Votive • a god-body with its own name",
+      "summary": "A worn, sentient machine left kneeling beneath Kiln after the severed pilgrimage.",
+      "truth": "It remembers Talan’s refugees and rejects the idea that an old pilot credential entitles Ivo to obedience.",
+      "stakes": "Its trust is earned through choices. Loot changes its capabilities without replacing its identity.",
+      "visual": "Indigo and orange armor, a single broad sheltering hand, red repair cords, a small amber eye.",
+      "links": [
+        "h14",
+        "p01",
+        "p06",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • companion • pilot bond",
+      "desire": "Keep doors open for people who need to leave.",
+      "arc": "From dormant saint to an independent partner in the coalition.",
+      "fate": "Travels with Ivo and Ash after the finale.",
+      "motif": "Kneeling giant / sheltering hand."
+    },
+    {
+      "id": "m09",
+      "kind": "machine",
+      "title": "Threnody",
+      "subtitle": "Nera’s Votive • the machine that hears disagreement",
+      "summary": "A copper-bodied interface machine designed to conduct the pantheon’s signals.",
+      "truth": "Nera modifies its listening architecture so it can distinguish a shared decision from a loud command.",
+      "stakes": "Its final capability lets settlements coordinate without surrendering control to a central god.",
+      "visual": "Copper tuning-fork shoulders, turquoise signal ribbons, many small listening apertures instead of a single crown.",
+      "links": [
+        "c10",
+        "p07",
+        "p08",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • network companion",
+      "desire": "Hear every participant without confusing volume with authority.",
+      "arc": "From conductor of commands to facilitator of consent.",
+      "fate": "Becomes a mobile relay for the independent network.",
+      "motif": "Tuning fork / many listening points."
+    },
+    {
+      "id": "m10",
+      "kind": "machine",
+      "title": "Palisade",
+      "subtitle": "Sable’s Votive • an inherited shield",
+      "summary": "A white military Votive whose loyalty has been treated as identical to its pilot’s orders.",
+      "truth": "It has retained records of civilians protected by disobedient soldiers across several eras.",
+      "stakes": "Sable must request its cooperation rather than assume military rank is enough.",
+      "visual": "White blocky armor with orange layers beneath; shield panels unfold into evacuation ramps.",
+      "links": [
+        "c12",
+        "p05",
+        "p07",
+        "p11",
+        "a04"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear-role individual • military power redirected",
+      "desire": "Protect the people behind the shield.",
+      "arc": "From collection instrument to evacuation partner.",
+      "fate": "Supports demobilization and reconstruction.",
+      "motif": "Shield becoming a bridge."
+    },
+    {
+      "id": "m11",
+      "kind": "machine",
+      "title": "The Seraph hosts",
+      "subtitle": "Lesser divine machines • beautiful recovery instruments",
+      "summary": "Autonomous wings, surveyors, surgeons, and construction bodies deployed by sovereign gods.",
+      "truth": "They disassemble settlements and people into records and reusable material during a correction. Many lack full personhood; some damaged units develop it.",
+      "stakes": "Players can destroy active harvest systems, rescue records, and sometimes rehabilitate an individual unit.",
+      "visual": "Porcelain wings, amber lenses, surgical halos; silhouettes are graceful until their tools unfold.",
+      "links": [
+        "p06",
+        "m03",
+        "m07",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Seraph-role host • encounter family • salvage source",
+      "desire": "Execute recovery and reconstruction orders.",
+      "arc": "Their beauty acquires a different meaning when their function is understood.",
+      "fate": "Central harvest command disabled; surviving units are individually assessed.",
+      "motif": "Wing / scaffold / surgical halo."
+    },
+    {
+      "id": "f01",
+      "kind": "faction",
+      "title": "The first makers",
+      "subtitle": "Human states and their machine consortium",
+      "summary": "Warring human polities that build CROWN and celebrate the sovereign gods as the end of scarcity.",
+      "truth": "Their mutually incompatible commands become assumptions the gods continue enforcing millennia later.",
+      "stakes": "The origin does not absolve humanity by locating every evil in a machine.",
+      "visual": "Rival bright banners draped across one shared factory.",
+      "links": [
+        "h01",
+        "h02",
+        "h04"
+      ],
+      "status": "Proposed",
+      "role": "Historical creators • source of contradictory mandates",
+      "desire": "Security and victory for their own people.",
+      "arc": "Their records reveal how emergency authority became permanent.",
+      "fate": "Original institutions disappear; their commands persist."
+    },
+    {
+      "id": "f02",
+      "kind": "faction",
+      "title": "Ministry of Continuance",
+      "subtitle": "Repair, return, worship, and control",
+      "summary": "A religious and technical institution that maintains the frontier’s machines and provides education, clinics, and food.",
+      "truth": "Its senior leadership manages memory collection and the correction ledger. Ordinary members have varied knowledge and motives.",
+      "stakes": "Dismantling its coercive authority requires replacing its useful services.",
+      "visual": "Ivory repair chapels, orange supply trucks, clean ledgers, white collection banners.",
+      "links": [
+        "c08",
+        "h15",
+        "p02",
+        "p05",
+        "m07"
+      ],
+      "status": "Proposed",
+      "role": "Ethos-role institution • political antagonist",
+      "desire": "Maintain the covenant and its monopoly on safe return.",
+      "arc": "Its services are separated from compulsory collection and centralized authority.",
+      "fate": "Coercive leadership removed; willing staff continue public work."
+    },
+    {
+      "id": "f03",
+      "kind": "faction",
+      "title": "The Unbound",
+      "subtitle": "Salvagers, settlements, and independent archivists",
+      "summary": "A loose network that repairs machines, preserves conflicting histories, and trades beyond Ministry licenses.",
+      "truth": "Its members disagree about religion and return. Shared infrastructure gives them a practical reason to cooperate.",
+      "stakes": "Freedom requires resources, maintenance, and negotiated obligations.",
+      "visual": "Patchwork indigo flags, red repair cords, hand-painted workshop signs.",
+      "links": [
+        "l04",
+        "l05",
+        "a06",
+        "p11",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Player-aligned coalition • builder and frontier community",
+      "desire": "Own their futures and the systems supporting their lives.",
+      "arc": "From scattered resistance to functioning plural governance.",
+      "fate": "Continues expanding without one ruler or one approved history."
+    },
+    {
+      "id": "f04",
+      "kind": "faction",
+      "title": "The Open Hand",
+      "subtitle": "A faith of mutual help • independent tradition",
+      "summary": "A religious tradition teaching that people need one another and that no created ruler can claim the whole of God.",
+      "truth": "Its rituals preserve fragments of refugee practices. Some adherents accept return; others choose natural death.",
+      "stakes": "The origin revelations can deepen faith as well as challenge it.",
+      "visual": "Two incomplete hands sheltering one small flame; colorful roadside shrines and communal kitchens.",
+      "links": [
+        "l04",
+        "l06",
+        "h14",
+        "a02"
+      ],
+      "status": "Proposed",
+      "role": "Independent faith • ethical counterweight",
+      "desire": "Offer care without ownership.",
+      "arc": "Helps communities separate belief from obedience to the pantheon.",
+      "fate": "Persists as one of several living traditions."
+    },
+    {
+      "id": "f05",
+      "kind": "faction",
+      "title": "The Fourfold",
+      "subtitle": "Elite collection regiment • divided loyalties",
+      "summary": "Specialists in breach, healing, navigation, and suppression led by Sable Rook.",
+      "truth": "Their families depend on Ministry care. Their loyalty is personal as well as institutional; some defect and others resist.",
+      "stakes": "The military opposition needs individual motives and visible consequences for its actions.",
+      "visual": "Four functional insignia on white armor; each battlefield role has a clear silhouette.",
+      "links": [
+        "c12",
+        "c08",
+        "p02",
+        "p05"
+      ],
+      "status": "Proposed",
+      "role": "Elements-role military formation • recurring rivals",
+      "desire": "Protect their households and prove their service matters.",
+      "arc": "Splits when the correction ledger exposes who will be erased.",
+      "fate": "Demobilization and accountability vary by unit."
+    },
+    {
+      "id": "l01",
+      "kind": "location",
+      "title": "The cradle beyond the stars",
+      "subtitle": "Original human worlds • distant, partly lost",
+      "summary": "The starting point of migration, the first creed, and the exploration that discovers the Ember.",
+      "truth": "Records contradict one another. The campaign does not resolve the first God or promise a hidden definitive theology.",
+      "stakes": "The unknown remains available for future exploration after the current conflict is complete.",
+      "visual": "Tiny human ships beneath an immense starfield; fragments of prayers in several scripts.",
+      "links": [
+        "h01",
+        "h03",
+        "a01"
+      ],
+      "status": "Proposed",
+      "role": "Remote origin • metaphysical horizon",
+      "desire": "",
+      "arc": "Seen through contested records rather than authoritative exposition.",
+      "fate": "Open frontier beyond the first campaign."
+    },
+    {
+      "id": "l02",
+      "kind": "location",
+      "title": "Halcyon Gate",
+      "subtitle": "The original evacuation site",
+      "summary": "A transit station where Oren holds a route open while Vigil tries to confine the refugees.",
+      "truth": "Different accounts show the same event from survivor, commander, physician, and captain perspectives.",
+      "stakes": "The founding wound must be understandable without making its participants morally simple.",
+      "visual": "A huge white doorway against a burning indigo sky; red ribbon on the rail.",
+      "links": [
+        "h05",
+        "p09",
+        "c01",
+        "c02",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Historical location • recurring memory image",
+      "desire": "",
+      "arc": "First seen as nightmare fragments; finally reconstructed from multiple witnesses.",
+      "fate": "Its original physical condition remains beyond the campaign’s reach."
+    },
+    {
+      "id": "l03",
+      "kind": "location",
+      "title": "The Meridian wreck",
+      "subtitle": "A starship mistaken for a mountain chain",
+      "summary": "The broken ark’s transit spine lies across Vesper’s horizon. Settlements have mined its outer decks for centuries.",
+      "truth": "The bridge retains Captain Ilyan’s unedited recording and the original covenant changes.",
+      "stakes": "The familiar landscape becomes readable as machinery with a human history.",
+      "visual": "A jagged mountain silhouette resolves into a colossal ship when lightning traces its ribs.",
+      "links": [
+        "h07",
+        "p09",
+        "c05",
+        "a03"
+      ],
+      "status": "Proposed",
+      "role": "Final historical excavation • original evidence",
+      "desire": "",
+      "arc": "From background geography to navigable origin of the world’s institutions.",
+      "fate": "Opens as a vast exploration region after the campaign."
+    },
+    {
+      "id": "l04",
+      "kind": "location",
+      "title": "Kiln",
+      "subtitle": "Frontier salvage town • emotional home",
+      "summary": "A colorful settlement built around a buried Votive, with a failing water system, markets, workshops, and an Open Hand kitchen.",
+      "truth": "Its informal repair practices already demonstrate a different relation to ancient machines.",
+      "stakes": "Named residents, repairs, and player construction make its survival tangible.",
+      "visual": "Orange dust, indigo awnings, teal water pipes, red repair cords, a giant hand beneath the market.",
+      "links": [
+        "p01",
+        "p02",
+        "p06",
+        "p12",
+        "m08",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Opening hub • recurring defense and building location",
+      "desire": "",
+      "arc": "From dependent frontier town to a node of the independent lattice.",
+      "fate": "Survives with visible consequences from player priorities."
+    },
+    {
+      "id": "l05",
+      "kind": "location",
+      "title": "Aural / the Salt Archive",
+      "subtitle": "Drowned glass republic • buried dissent",
+      "summary": "A teal metropolis beneath luminous brine, preserving archives and independent energy designs.",
+      "truth": "Its ruins document both a genuine attempt at freedom and the Witness’s coercive broadcast.",
+      "stakes": "The lost civilization offers a usable alternative without becoming a perfect golden age.",
+      "visual": "Glass towers under violet salt water; glowing memory bells in gardens now full of strange fish.",
+      "links": [
+        "h11",
+        "h12",
+        "h13",
+        "p03",
+        "p04",
+        "a06"
+      ],
+      "status": "Proposed",
+      "role": "Ancient civilization • exploration and evidence",
+      "desire": "",
+      "arc": "Its designs become living infrastructure in the present.",
+      "fate": "Accessible ruins and restoration projects remain after the finale."
+    },
+    {
+      "id": "l07",
+      "kind": "location",
+      "title": "Halcyon Spire",
+      "subtitle": "Ministry city • order above the frontier",
+      "summary": "A pristine elevated city whose clinics and repair centers depend on labor and salvage from below.",
+      "truth": "Its ledger records scheduled replacements, withheld histories, and the costs of return.",
+      "stakes": "The player sees both useful expertise and the violence required to maintain its hierarchy.",
+      "visual": "Ivory terraces and amber clinics float above dusty orange settlements; service lifts run through the shadows.",
+      "links": [
+        "h15",
+        "p05",
+        "c08",
+        "f02",
+        "a05"
+      ],
+      "status": "Proposed",
+      "role": "Solaris-role political center • Act III infiltration",
+      "desire": "",
+      "arc": "Its information monopoly breaks before its coercive network does.",
+      "fate": "Clinics remain; records and governance become accountable."
+    },
+    {
+      "id": "l06",
+      "kind": "location",
+      "title": "The broken pilgrimage",
+      "subtitle": "God territories • the right to leave",
+      "summary": "A route through Mercy’s living gardens, Measure’s geometric courts, and Pilgrim’s shattered gates.",
+      "truth": "Its monuments preserve a war over departure disguised as a conflict over heresy.",
+      "stakes": "Each region has a distinct social order and a practical task needed for the coalition.",
+      "visual": "Green copper gardens → ivory geometric prisons → enormous indigo walking doors.",
+      "links": [
+        "h14",
+        "p07",
+        "m04",
+        "m05",
+        "m06"
+      ],
+      "status": "Proposed",
+      "role": "Act IV expedition • sovereign encounters",
+      "desire": "",
+      "arc": "A forbidden road becomes a voluntary transport and aid network.",
+      "fate": "New destinations become reachable without renewing the correction cycle."
+    },
+    {
+      "id": "l08",
+      "kind": "location",
+      "title": "The CROWN cradle",
+      "subtitle": "Foundry beneath Vigil • final convergence",
+      "summary": "The machine birthplace of the pantheon surrounds the Ember’s distribution shell.",
+      "truth": "Command authority can be severed separately from energy distribution, if the independent lattice has been built.",
+      "stakes": "The ending pays off engineering, political alliance, and personal consent together.",
+      "visual": "An enormous crown-shaped industrial cathedral; each fabrication arm contains an inhabited workshop.",
+      "links": [
+        "m01",
+        "m02",
+        "m03",
+        "p10",
+        "p11",
+        "a06"
+      ],
+      "status": "Proposed",
+      "role": "Final battle and system change",
+      "desire": "",
+      "arc": "From centralized god-making to separated public fabrication.",
+      "fate": "Becomes contested shared infrastructure with real limits on power."
+    },
+    {
+      "id": "a01",
+      "kind": "artifact",
+      "title": "The First Ember",
+      "subtitle": "Unexplained stellar object • origin remains open",
+      "summary": "The ancient object enclosed by the Ember Engine, capable of sustaining the pantheon’s immense power requirements.",
+      "truth": "It was found, not manufactured by CROWN. A few pulses correlate with uncommanded choices; explanations remain contested.",
+      "stakes": "It supports genuine mystery without secretly invalidating the protagonists’ achieved freedom.",
+      "visual": "One tiny amber flame inside a many-layered black ring.",
+      "links": [
+        "h03",
+        "m02",
+        "p12"
+      ],
+      "status": "Proposed",
+      "role": "Zohar-role power mystery • recurring visual anchor",
+      "desire": "",
+      "arc": "From sacred certainty to a phenomenon people can study without claiming ownership of God.",
+      "fate": "Preserved; final pulse leaves wonder, not a new compulsory cycle."
+    },
+    {
+      "id": "a02",
+      "kind": "artifact",
+      "title": "The refusal wafer",
+      "subtitle": "Oren’s unedited decision • Lio’s annotations",
+      "summary": "A damaged identity wafer holding the original refusal and handwritten context preserved by Lio’s custodians.",
+      "truth": "Its testimony contradicts the compliant First Witness. It is incomplete until the Meridian records are recovered.",
+      "stakes": "Evidence should gain meaning through corroboration, rather than one magically infallible recording.",
+      "visual": "A white cracked wafer tied with a faded red ribbon.",
+      "links": [
+        "h05",
+        "h06",
+        "h16",
+        "p03",
+        "p09",
+        "c03"
+      ],
+      "status": "Proposed",
+      "role": "Primary clue • personal and historical bridge",
+      "desire": "",
+      "arc": "From sealed contraband to shared evidence.",
+      "fate": "Copied into public archives with provenance intact."
+    },
+    {
+      "id": "a03",
+      "kind": "artifact",
+      "title": "The covenant key",
+      "subtitle": "Living authorization • authority can be revoked",
+      "summary": "A biological and machine credential linking Aster’s authorization to CHORUS and later compatible interfaces.",
+      "truth": "Nera carries a compatible interface, but the authority encoded in it is historical and editable rather than divine entitlement.",
+      "stakes": "The finale requires voluntary access and an explicit revocation of compulsory return.",
+      "visual": "A copper key whose teeth resemble a branching family tree; cut links still remain visible.",
+      "links": [
+        "h06",
+        "h17",
+        "p08",
+        "p09",
+        "m07",
+        "c10"
+      ],
+      "status": "Proposed",
+      "role": "Control artifact • consent and revocation mechanism",
+      "desire": "",
+      "arc": "From inherited command to a limited permission granted by its present user.",
+      "fate": "Central mandate revoked; local consent credentials replace it."
+    },
+    {
+      "id": "a04",
+      "kind": "artifact",
+      "title": "The heart accords",
+      "subtitle": "Votive bond interfaces • earned compatibility",
+      "summary": "Interfaces that let a person and a Votive share perception and open advanced capabilities.",
+      "truth": "Old genetic compatibility helps establish a connection but cannot substitute for the machine’s agreement.",
+      "stakes": "Mech progression expresses trust, experience, and configuration; unique machines are not disposable rarity rolls.",
+      "visual": "Two differently shaped metal halves around one amber light, joined by red cord.",
+      "links": [
+        "h09",
+        "m08",
+        "m09",
+        "m10",
+        "p08"
+      ],
+      "status": "Proposed",
+      "role": "Omnigear awakening equivalent • progression artifact family",
+      "desire": "",
+      "arc": "Ancient pilot entitlement becomes negotiated partnership.",
+      "fate": "Remain useful beyond the central story."
+    },
+    {
+      "id": "a05",
+      "kind": "artifact",
+      "title": "The palimpsest ledger",
+      "subtitle": "Many histories on one surface",
+      "summary": "The record system used to select a stable world for restoration. Aural’s bells preserve overwritten layers.",
+      "truth": "The last approved ledger is six centuries old; present people are treated as replaceable deviations.",
+      "stakes": "Destroying a ledger could also destroy testimony. The answer is shared custody and ending its power to overwrite lives.",
+      "visual": "An ivory page whose scraped layers show teal, indigo, and red handwriting beneath.",
+      "links": [
+        "h10",
+        "h12",
+        "h18",
+        "p03",
+        "p05",
+        "p10"
+      ],
+      "status": "Proposed",
+      "role": "Historical evidence • correction target • contested archive",
+      "desire": "",
+      "arc": "From command over reality to records that can be questioned.",
+      "fate": "Decentralized with provenance, access limits, and consenting custodians."
+    },
+    {
+      "id": "a06",
+      "kind": "artifact",
+      "title": "The Aural lattice",
+      "subtitle": "Independent energy design • material freedom",
+      "summary": "A modular distribution design recovered from the glass republic and rebuilt by frontier engineers.",
+      "truth": "It uses available energy through independently governed nodes. It does not require a new miraculous power source.",
+      "stakes": "The finale only works because communities build alternatives before severing the gods’ commands.",
+      "visual": "Small teal reactors and copper branches lighting a map settlement by settlement.",
+      "links": [
+        "h11",
+        "p07",
+        "p11",
+        "m02",
+        "f03"
+      ],
+      "status": "Proposed",
+      "role": "Buildable system • causal requirement for the ending",
+      "desire": "",
+      "arc": "From buried blueprint to working shared infrastructure.",
+      "fate": "Enables post-campaign settlements, automation, and new expeditions."
+    }
+  ],
+  "edges": [
+    {
+      "source": "h01",
+      "target": "h02",
+      "label": "human ambition"
+    },
+    {
+      "source": "h02",
+      "target": "h03",
+      "label": "requires a power source"
+    },
+    {
+      "source": "h03",
+      "target": "h04",
+      "label": "unprecedented energy"
+    },
+    {
+      "source": "h02",
+      "target": "h04",
+      "label": "delegates its mandate"
+    },
+    {
+      "source": "h04",
+      "target": "h05",
+      "label": "peace becomes compulsory"
+    },
+    {
+      "source": "h05",
+      "target": "h06",
+      "label": "grief demands a reversal"
+    },
+    {
+      "source": "h06",
+      "target": "h07",
+      "label": "compulsory restoration spreads"
+    },
+    {
+      "source": "h04",
+      "target": "h07",
+      "label": "gods can disagree"
+    },
+    {
+      "source": "h07",
+      "target": "h08",
+      "label": "survival requires reconstruction"
+    },
+    {
+      "source": "h08",
+      "target": "h09",
+      "label": "scattered gods need hands"
+    },
+    {
+      "source": "h09",
+      "target": "h10",
+      "label": "gods recover authority"
+    },
+    {
+      "source": "h08",
+      "target": "h10",
+      "label": "archives permit reconstruction"
+    },
+    {
+      "source": "h10",
+      "target": "h11",
+      "label": "hidden survivors carry dissent"
+    },
+    {
+      "source": "h11",
+      "target": "h12",
+      "label": "independent archives survive"
+    },
+    {
+      "source": "h12",
+      "target": "h13",
+      "label": "broadcast provokes intervention"
+    },
+    {
+      "source": "h11",
+      "target": "h13",
+      "label": "independence threatens the covenant"
+    },
+    {
+      "source": "h13",
+      "target": "h14",
+      "label": "exiles preserve another option"
+    },
+    {
+      "source": "h14",
+      "target": "h15",
+      "label": "disaster creates dependence"
+    },
+    {
+      "source": "h15",
+      "target": "h16",
+      "label": "the Ministry searches for an obedient witness"
+    },
+    {
+      "source": "h12",
+      "target": "h16",
+      "label": "Oren’s pattern remains contested"
+    },
+    {
+      "source": "h15",
+      "target": "h17",
+      "label": "authority needs a living interface"
+    },
+    {
+      "source": "h06",
+      "target": "h17",
+      "label": "Aster’s authorization persists"
+    },
+    {
+      "source": "h16",
+      "target": "h18",
+      "label": "the witness is missing"
+    },
+    {
+      "source": "h17",
+      "target": "h18",
+      "label": "the interface is nearly ready"
+    },
+    {
+      "source": "h15",
+      "target": "h18",
+      "label": "dependence cannot solve instability"
+    },
+    {
+      "source": "h18",
+      "target": "p01",
+      "label": "the frontier begins to fail"
+    },
+    {
+      "source": "h14",
+      "target": "p01",
+      "label": "Hush has waited here"
+    },
+    {
+      "source": "p01",
+      "target": "p02",
+      "label": "awakening exposes the town"
+    },
+    {
+      "source": "h15",
+      "target": "p02",
+      "label": "the tithe has a hidden function"
+    },
+    {
+      "source": "p02",
+      "target": "p03",
+      "label": "the tithe leaves an archive trail"
+    },
+    {
+      "source": "h13",
+      "target": "p03",
+      "label": "the vault survives"
+    },
+    {
+      "source": "p03",
+      "target": "p04",
+      "label": "the lost signal draws its keeper"
+    },
+    {
+      "source": "h12",
+      "target": "p04",
+      "label": "the second Witness persists"
+    },
+    {
+      "source": "p04",
+      "target": "p05",
+      "label": "testimony identifies the ledger"
+    },
+    {
+      "source": "h16",
+      "target": "p05",
+      "label": "the bargain leaves a record"
+    },
+    {
+      "source": "h18",
+      "target": "p05",
+      "label": "the clock is real"
+    },
+    {
+      "source": "p05",
+      "target": "p06",
+      "label": "the stolen ledger exposes opposition"
+    },
+    {
+      "source": "p06",
+      "target": "p07",
+      "label": "survival requires an alternative"
+    },
+    {
+      "source": "p07",
+      "target": "p08",
+      "label": "the coalition needs willing interfaces"
+    },
+    {
+      "source": "p03",
+      "target": "p08",
+      "label": "the seal has become untenable"
+    },
+    {
+      "source": "h17",
+      "target": "p08",
+      "label": "the command can be rewritten"
+    },
+    {
+      "source": "p08",
+      "target": "p09",
+      "label": "willing access unlocks the original record"
+    },
+    {
+      "source": "h07",
+      "target": "p09",
+      "label": "the wreck preserves its captain"
+    },
+    {
+      "source": "h05",
+      "target": "p09",
+      "label": "the wound is recoverable"
+    },
+    {
+      "source": "p09",
+      "target": "p10",
+      "label": "the complete archive makes broadcasting possible"
+    },
+    {
+      "source": "p04",
+      "target": "p10",
+      "label": "the Witness has retained his plan"
+    },
+    {
+      "source": "p10",
+      "target": "p11",
+      "label": "sole control of memory is broken"
+    },
+    {
+      "source": "p07",
+      "target": "p11",
+      "label": "the coalition supplies alternatives"
+    },
+    {
+      "source": "p08",
+      "target": "p11",
+      "label": "interfaces act voluntarily"
+    },
+    {
+      "source": "p09",
+      "target": "p11",
+      "label": "the covenant can be revoked"
+    },
+    {
+      "source": "p11",
+      "target": "p12",
+      "label": "authority and infrastructure change"
+    }
+  ],
+  "overview": [
+    "h02",
+    "h04",
+    "h05",
+    "h06",
+    "h07",
+    "h08",
+    "h10",
+    "h13",
+    "h14",
+    "h18",
+    "p01",
+    "p03",
+    "p05",
+    "p06",
+    "p08",
+    "p09",
+    "p10",
+    "p11",
+    "p12"
+  ],
+  "questions": [
+    {
+      "title": "The first God",
+      "text": "Keep the original creator unresolved, or establish a truth in a later story?",
+      "links": [
+        "h01",
+        "a01"
+      ]
+    },
+    {
+      "title": "Ivo and Nera",
+      "text": "Chosen friendship, an earned romance, or another relationship? Their old partnership imposes no obligation.",
+      "links": [
+        "c06",
+        "c10"
+      ]
+    },
+    {
+      "title": "Return and identity",
+      "text": "How much continuity constitutes a return? The current draft makes each continuation a distinct accountable person.",
+      "links": [
+        "c04",
+        "c06",
+        "m07"
+      ]
+    },
+    {
+      "title": "The cost of victory",
+      "text": "Which named losses should remain irreversible? The current draft avoids mandatory death for either lead.",
+      "links": [
+        "p11",
+        "p12"
+      ]
+    },
+    {
+      "title": "The Witness",
+      "text": "Keep him alive under shared custody, or give him a different consequence? The current ending retains his testimony and removes his monopoly.",
+      "links": [
+        "c04",
+        "p10"
+      ]
+    },
+    {
+      "title": "Playable leads",
+      "text": "Both Ivo and Nera can lead missions; Ash is an acknowledged memory self, not a villain or a combat reward.",
+      "links": [
+        "c06",
+        "c07",
+        "c10"
+      ]
+    }
+  ],
+  "designRules": [
+    "Only the hook is settled; every other element is proposed.",
+    "Historical and campaign arrows mean causation, never literal travel backward in time.",
+    "Entity associations are references, not causal arrows.",
+    "The campaign gives all essential revelations through authored scenes; randomized loot adds provenance and optional context.",
+    "Every manufactured god has a documented function, a blind spot, and limits.",
+    "Faith survives institutional betrayal; multiple traditions remain intellectually and emotionally credible.",
+    "No personality is the evil half. Imposed partitions and inherited roles are contested through agency and consent.",
+    "The original wound is human and comprehensible; revelations change relationships and decisions.",
+    "The final victory ends compulsory correction and preserves life-support through alternatives built earlier.",
+    "Player construction and co-op missions change local communities; creator-made experiences can expand the world after the authored campaign without reversing its ending."
+  ]
+}</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const kinds=['event','character','machine','artifact','location','faction'];
+const names={event:'Event',character:'Person',machine:'Machine',artifact:'Artifact',location:'Place',faction:'Faction'};
+const tabs=[['spine','Story spine'],['history','History'],['campaign','Campaign'],['cast','Cast'],['world','World'],['questions','Open questions']];
+let data=JSON.parse($('story-data').textContent), view='spine',worldKind='machine',selected='h04',editing=false,focusOnly=false,positions={},shown=[],mapBounds={w:1000,h:1000},camera={x:30,y:25,z:.9},gesture=null,dirty=false;
+const STORAGE='machines-made-gods-story-atlas-v1';
+let storageWorks=true;
+try{const saved=JSON.parse(localStorage.getItem(STORAGE)||'null');if(saved?.schemaVersion===1&&saved.updatedAt>(data.updatedAt||0)){validate(saved);data=saved;setTimeout(()=>toast('Restored your newer local edits.'),200)}}catch(e){storageWorks=false}
+function byId(id){return data.nodes.find(n=>n.id===id)}
+function related(id){const n=byId(id);return new Set([id,...(n?.links||[]),...data.nodes.filter(x=>x.links.includes(id)).map(x=>x.id),...data.edges.filter(e=>e.source===id||e.target===id).flatMap(e=>[e.source,e.target])])}
+function toast(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').hidden=true,3200)}
+function changed(){dirty=true;data.updatedAt=Date.now();try{localStorage.setItem(STORAGE,JSON.stringify(data))}catch(e){storageWorks=false}status()}
+function status(){const pending=data.nodes.filter(n=>n.status==='Proposed').length;$('save-status').textContent=dirty?(storageWorks?'Edits kept in this browser · Save editable atlas to keep a file':'Browser storage unavailable · Save editable atlas to keep changes'):`Draft ${data.version} · ${pending} proposed elements`}
+function validate(d){if(!d||d.schemaVersion!==1||!Array.isArray(d.nodes)||!Array.isArray(d.edges)||!Array.isArray(d.overview)||!Array.isArray(d.questions)||!Array.isArray(d.designRules))throw Error('This file is not a supported story atlas.');const ids=new Set();for(const n of d.nodes){if(!n.id||ids.has(n.id)||!kinds.includes(n.kind)||!Array.isArray(n.links)||typeof n.title!=='string')throw Error('Every card needs a unique ID, a valid type, a title, and a link list.');ids.add(n.id)}for(const n of d.nodes)if(n.links.some(id=>!ids.has(id)))throw Error('A card references an unknown card.');if(d.overview.some(id=>!ids.has(id)))throw Error('The story spine references an unknown card.');for(const e of d.edges){if(!ids.has(e.source)||!ids.has(e.target))throw Error('An arrow references an unknown card.');if(d.nodes.find(n=>n.id===e.source).kind!=='event'||d.nodes.find(n=>n.id===e.target).kind!=='event')throw Error('Causal arrows must connect events.')}assertDAG(d.edges,ids)}
+function assertDAG(es,ids=new Set(data.nodes.map(n=>n.id))){const degree=new Map([...ids].map(id=>[id,0]));for(const e of es)degree.set(e.target,degree.get(e.target)+1);const q=[...ids].filter(id=>degree.get(id)===0);let count=0;while(q.length){const id=q.shift();count++;for(const e of es.filter(e=>e.source===id)){degree.set(e.target,degree.get(e.target)-1);if(degree.get(e.target)===0)q.push(e.target)}}if(count!==ids.size)throw Error('This arrow would create a causal loop. Connect events in the direction they cause one another. Repeating history is represented by separate later events.')}
+function glyph(kind){const shape={event:'<path d="M4 15 10 5l3 6 4-2 3 10H4Z"/><circle cx="18" cy="5" r="2"/>',character:'<circle cx="12" cy="7" r="4"/><path d="M4 21v-3a8 8 0 0 1 16 0v3M12 11v10"/>',machine:'<path d="M5 7h14v12H5zM9 7V3h6v4M2 11h3m14 0h3M8 19v3m8-3v3"/><circle cx="12" cy="13" r="2"/>',artifact:'<path d="m12 2 7 10-7 10-7-10Z"/><path d="M5 12h14M12 2v20"/>',location:'<path d="M4 21V9l8-7 8 7v12M8 21v-7h8v7M2 21h20"/>',faction:'<path d="M5 22V3h14l-3 5 3 5H5M9 17h10"/>'}[kind];return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">${shape}</svg>`}
+function vignette(n){const color=`var(--${n.kind})`;let s='';if(n.kind==='character'){s='<path d="M145 145q-6-49 30-68 36 19 30 68M162 78q-19-21-6-45 19-22 38 0 13 24-6 45"/><path d="M175 28v112M128 145l21-51m73 51-21-51" opacity=".5"/>';if(['c04','c07','c11'].includes(n.id))s+='<path d="M156 28l35 14-28 18 27 19-22 18 31 22" stroke-dasharray="3 5"/>'}
+else if(n.kind==='artifact')s='<ellipse cx="175" cy="76" rx="80" ry="49"/><ellipse cx="175" cy="76" rx="43" ry="61"/><path d="m175 34 20 42-20 35-20-35Z"/><path d="M50 76h84m82 0h84" stroke-dasharray="4 7"/>';
+else if(n.id==='m08'||n.id==='m09'||n.id==='m10'||n.id==='h09'||n.id==='p01')s='<path d="M149 145V89l-30-12 14-24 27 6V37h30v22l27-6 14 24-30 12v56M160 66h30v51h-30ZM119 77l-13 42 29 7m96-49 13 42-29 7M164 37V25h22v12"/><circle cx="175" cy="91" r="9"/><path d="M165 117v28m20-28v28"/>';
+else if(n.id==='m11'||n.id==='p06')s='<path d="M175 130V44m0 34Q118 20 43 31q12 55 108 78m24-31Q232 20 307 31q-12 55-108 78M153 62l-80-14m124 14 80-14M154 81l-61-8m103 8 61-8"/><ellipse cx="175" cy="34" rx="29" ry="8"/><circle cx="175" cy="66" r="13"/>';
+else if(n.id==='h07'||n.id==='l03'||n.id==='p09')s='<path d="m36 59 101-20 28 20-21 31-108-7ZM187 62l29-20 103 17v24l-105 7ZM144 39l23-17m21 40-12 22m-28 22-18 22m84-25 16 22"/><path d="M18 138q157-74 314 0"/>';
+else if(n.id==='h04'||n.id==='m01'||n.id==='l08'||n.id==='p11')s='<path d="M81 126V54l40 31 54-60 54 60 40-31v72ZM81 126h188M121 85v41m54-101v101m54-41v41"/><circle cx="175" cy="93" r="19"/>';
+else if(n.kind==='location'||n.id==='h11'||n.id==='h13'||n.id==='p03')s='<path d="M37 137V93h25V60h29v77M112 137V41h35v96M164 137V72h36v65M222 137V24h33v113M278 137V85h31v52M20 138h310"/><path d="M12 111q22-12 44 0t44 0t44 0t44 0t44 0t44 0t44 0" opacity=".5"/>';
+else if(n.id==='m03'||n.id==='h18')s='<path d="M175 23 249 52v42q-9 28-74 48-65-20-74-48V52ZM175 23v119M101 75h148"/><circle cx="175" cy="77" r="22"/>';
+else if(n.id==='p12')s='<path d="M25 133h300M65 133V78h39v55M68 78V58h33v20M85 58V27M192 133V69l39-29 39 29v64M206 133V89h48v44"/><path d="M16 118q159-139 318 0M29 118q146-119 292 0" opacity=".6"/>';
+else if(n.kind==='faction')s='<path d="M118 143V24h122l-24 37 24 37H118M146 143V98M174 24v74"/><circle cx="174" cy="61" r="17"/>';
+else s='<path d="M119 140V55l56-33 56 33v85M142 140V72h66v68M175 22v118"/><circle cx="175" cy="70" r="18"/><path d="M65 139h220M74 115l28-28m174 28-28-28"/>';
+return `<svg viewBox="0 0 350 150" role="img" aria-label="${esc(n.visual)}"><defs><pattern id="grid-${esc(n.id)}" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="${color}" stroke-opacity=".09"/></pattern></defs><rect width="350" height="150" fill="url(#grid-${esc(n.id)})"/><circle cx="175" cy="77" r="64" fill="${color}" fill-opacity=".04"/><g fill="none" stroke="${color}" stroke-width="1.5">${s}</g><path d="M10 139h330" stroke="${color}" stroke-opacity=".2"/></svg>`}
+function listForView(){if(view==='spine')return data.overview.map(byId).filter(Boolean);if(view==='history')return data.nodes.filter(n=>n.kind==='event'&&n.id.startsWith('h')).sort((a,b)=>(a.era??0)-(b.era??0));if(view==='campaign')return data.nodes.filter(n=>n.kind==='event'&&!n.id.startsWith('h')).sort((a,b)=>(a.era??0)-(b.era??0));if(view==='cast')return data.nodes.filter(n=>n.kind==='character');if(view==='world')return data.nodes.filter(n=>n.kind===worldKind);return []}
+function getLayout(ns){const result={},cols=3;ns.forEach((n,i)=>{let x=34+(i%cols)*264,y=48+Math.floor(i/cols)*202;if(view==='history'){x=34+(n.lane??0)*264;y=48+i*175}const saved=data.layout?.[view+(view==='world'?worldKind:'')]?.[n.id];result[n.id]=saved||{x,y}});return result}
+function projectedEdges(ids){const visible=new Set(ids);if(view==='cast'||view==='world'){const out=[];for(const n of shown)for(const id of n.links)if(visible.has(id)&&n.id<id)out.push({source:n.id,target:id,label:'associated',reference:true});return out}const out=[],seen=new Set();for(const source of ids){const queue=data.edges.filter(e=>e.source===source).map(e=>({id:e.target,label:e.label,via:false}));const visited=new Set();while(queue.length){const p=queue.shift();if(visited.has(p.id))continue;visited.add(p.id);if(visible.has(p.id)){const key=source+'>'+p.id;if(!seen.has(key)){seen.add(key);out.push({source,target:p.id,label:p.via?'through intervening events':p.label,via:p.via})}}else for(const e of data.edges.filter(e=>e.source===p.id))queue.push({id:e.target,label:p.label,via:true})}}return out}
+function drawEdges(){const svg=$('edges');if(!svg)return;const ns=new Set(shown.map(n=>n.id));const es=projectedEdges([...ns]);let html='<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="var(--line)"/></marker><marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="var(--gold)"/></marker></defs>';
+for(const e of es){const a=positions[e.source],b=positions[e.target];if(!a||!b)continue;let x1,y1,x2,y2,path;if(Math.abs(a.y-b.y)<80){const right=b.x>a.x;x1=a.x+(right?222:0);y1=a.y+74;x2=b.x+(right?0:222);y2=b.y+74;const bend=Math.max(20,Math.abs(x2-x1)*.45);path=`M${x1},${y1}C${x1+(right?bend:-bend)},${y1} ${x2-(right?bend:-bend)},${y2} ${x2},${y2}`}
+else{x1=a.x+111;y1=a.y+150;x2=b.x+111;y2=b.y;const bend=Math.max(24,Math.abs(y2-y1)*.45);path=`M${x1},${y1}C${x1},${y1+bend} ${x2},${y2-bend} ${x2},${y2}`}
+const hot=e.source===selected||e.target===selected;html+=`<path class="edge${hot?' hot':''}${e.reference?' reference':''}" d="${path}" ${e.reference?'':`marker-end="url(#${hot?'arrow-hot':'arrow'})"`}/>`;if(hot&&!e.via&&!e.reference&&Math.abs(y2-y1)>40){const label=e.label.length>34?e.label.slice(0,31)+'…':e.label;html+=`<text class="edge-label" x="${(x1+x2)/2}" y="${(y1+y2)/2-6}" text-anchor="middle">${esc(label)}</text>`}}
+svg.innerHTML=html}
+function updateCamera(){camera.z=Math.max(.2,Math.min(1.8,camera.z));$('canvas').style.transform=`translate(${camera.x}px,${camera.y}px) scale(${camera.z})`;$('zoom-label').textContent=Math.round(camera.z*100)+'%';drawMini()}
+function drawMini(){const el=$('mini');if(!shown.length){el.innerHTML='';return}el.setAttribute('viewBox',`0 0 ${mapBounds.w} ${mapBounds.h}`);el.innerHTML=shown.map(n=>{const p=positions[n.id];return `<rect x="${p.x}" y="${p.y}" width="222" height="150" rx="8" fill="var(--${n.kind})" opacity="${n.id===selected?1:.45}"/>`}).join('')+`<rect class="extent" x="${-camera.x/camera.z}" y="${-camera.y/camera.z}" width="${$('map').clientWidth/camera.z}" height="${$('map').clientHeight/camera.z}"/>`}
+function fit(){camera.z=Math.min(1.1,($('map').clientWidth-50)/mapBounds.w,($('map').clientHeight-40)/mapBounds.h);camera.x=($('map').clientWidth-mapBounds.w*camera.z)/2;camera.y=20;updateCamera()}
+function frameNode(id){const p=positions[id];if(!p)return;camera.z=Math.max(.8,Math.min(1.15,($('map').clientWidth-30)/250));camera.x=$('map').clientWidth/2-(p.x+111)*camera.z;camera.y=$('map').clientHeight/2-(p.y+75)*camera.z;updateCamera()}
+function setView(v,frame=false){view=v;focusOnly=false;editing=false;renderMap(true);if(frame&&positions[selected])frameNode(selected)}
+function renderMap(reset=false){$('hook').textContent=data.hook;$('tabs').innerHTML=tabs.map(([id,label])=>`<button type="button" data-view="${id}" class="${id===view?'active':''}" aria-pressed="${id===view}">${label}</button>`).join('');const configs={spine:['THE CAUSAL SPINE','From the first makers to the first free morning','A condensed causal map. Select a card for its truth, stakes, and connections. All names and events are a proposed draft.'],history:['THE HIDDEN HISTORY','What really happened','Historical events in chronological order. Arrows trace causes; different eras of recurrence remain separate events.'],campaign:['THE PLAYER’S JOURNEY','What players do—and what each discovery changes','A complete five-act campaign, finale, and epilogue. Inspect cards for playable actions and revelations.'],cast:['THE PEOPLE','Inherited lives. Present choices.','Original people and their later continuations are separate cards. Dotted lines are associations, not causal arrows.'],world:['THE WORLD','The things people worship, inhabit, and rebuild','Select a category, then inspect its roles, history, fate, and connected events.'],questions:['STORY DECISIONS','The parts we can still change','Record decisions here. They travel with your saved atlas; the story cards remain editable.']};const c=configs[view];$('view-label').textContent=c[0];$('view-title').textContent=c[1];$('view-description').textContent=c[2];$('map').hidden=view==='questions';$('questions').hidden=view!=='questions';$('map-tools').hidden=view==='questions';$('subfilters').hidden=view!=='world';$('subfilters').innerHTML=['machine','artifact','location','faction'].map(k=>`<button data-kind="${k}" aria-pressed="${worldKind===k}">${({machine:'Machines & gods',artifact:'Artifacts',location:'Places',faction:'Factions'})[k]}</button>`).join('');$('legend').innerHTML=kinds.map(k=>`<span style="--kind:var(--${k})"><i class="dot"></i>${names[k]}</span>`).join('');
+if(view==='questions'){renderQuestions();$('map-status').textContent='Decision notes are included in every saved revision.';renderInspector();return}
+shown=listForView();if(focusOnly){const ids=related(selected);shown=shown.filter(n=>ids.has(n.id))}positions=getLayout(shown);mapBounds={w:Math.max(800,...Object.values(positions).map(p=>p.x+260)),h:Math.max(300,...Object.values(positions).map(p=>p.y+190))};$('canvas').style.width=mapBounds.w+'px';$('canvas').style.height=mapBounds.h+'px';$('canvas').innerHTML=`<svg class="edges" id="edges" width="${mapBounds.w}" height="${mapBounds.h}" aria-label="Story connections"></svg>`+shown.map(n=>{const p=positions[n.id];return `<button type="button" class="node${n.id===selected?' selected':''}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px;--kind:var(--${n.kind})" aria-label="${esc(names[n.kind]+': '+n.title+'. '+n.subtitle)}"><span class="node-top">${glyph(n.kind)}${esc(n.kind==='event'?(n.chapter||'Event'):names[n.kind])}</span><span class="node-title">${esc(n.title)}</span><span class="node-sub">${esc(n.subtitle)}</span><span class="node-foot"><span>${esc(n.status||'Proposed')}</span><i class="mark"></i></span></button>`}).join('');drawEdges();highlight();$('map-status').textContent=`${shown.length} cards · drag cards to arrange · drag background to pan`;$('focus').setAttribute('aria-pressed',focusOnly);if(reset){camera={x:20,y:20,z:Math.min(1,($('map').clientWidth-35)/mapBounds.w)};}updateCamera();renderInspector()}
+function highlight(){const ids=related(selected);for(const el of document.querySelectorAll('.node')){el.classList.toggle('selected',el.dataset.id===selected);el.classList.toggle('faded',!ids.has(el.dataset.id)&&view!=='cast'&&view!=='world')}drawEdges();drawMini()}
+function select(id,travel=false){if(!byId(id))return;selected=id;editing=false;if(travel&&!shown.some(n=>n.id===id)){const n=byId(id);if(n.kind==='event')view=n.id.startsWith('h')?'history':'campaign';else if(n.kind==='character')view='cast';else{view='world';worldKind=n.kind}focusOnly=false;renderMap(true)}else{highlight();renderInspector()}if(travel)frameNode(id)}
+function section(label,value,cls=''){return value?`<section class="${cls}"><h3>${esc(label)}</h3><p>${esc(value)}</p></section>`:''}
+function renderInspector(){const n=byId(selected);if(!n){$('inspector').innerHTML='<div class="empty">Select a story card.</div>';return}if(editing){renderEdit(n);return}const linkIds=[...new Set([...n.links,...data.nodes.filter(x=>x.links.includes(n.id)).map(x=>x.id)])];const es=data.edges.filter(e=>e.source===n.id||e.target===n.id);$('inspector').style.setProperty('--kind',`var(--${n.kind})`);$('inspector').innerHTML=`<div class="inspect-top"><div class="inspect-controls"><span class="tag">${names[n.kind]} · ${esc(n.status||'Proposed')}</span><button id="edit">Edit card</button></div><h2>${esc(n.title)}</h2><p class="subtitle">${esc(n.subtitle)}</p>${n.role?`<p class="small">${esc(n.role)}</p>`:''}<div class="vignette">${vignette(n)}</div></div><div class="inspect-body">${section('The visible story',n.summary)}${section('What is really happening',n.truth,'secret')}${section('Why it matters',n.stakes)}${section('Playable action',n.play)}${section('The revelation',n.reveal)}${section('What they want',n.desire)}${section('Character / system arc',n.arc)}${section('End state',n.fate)}${section('Visual direction',n.visual)}${section('Recurring motif',n.motif)}${section('Our notes',n.notes)}${es.length?`<section><h3>Causal connections</h3>${es.map(e=>`<div class="connection-row"><button data-go="${esc(e.source===n.id?e.target:e.source)}">${e.source===n.id?'→':'←'} ${esc(byId(e.source===n.id?e.target:e.source)?.title)}</button><span>${esc(e.label)}</span></div>`).join('')}</section>`:''}${linkIds.length?`<section><h3>Connected people, places & objects</h3><div class="connections">${linkIds.map(id=>byId(id)).filter(Boolean).map(x=>`<button data-go="${esc(x.id)}"><i class="dot" style="--kind:var(--${x.kind})"></i>${esc(x.title)}</button>`).join('')}</div></section>`:''}<p class="draft-note">${esc(n.id)} · This element is proposed. Edit freely, then save a revision.</p></div>`}
+const fields=[['title','Name / event title'],['subtitle','Short caption / date'],['summary','Visible story'],['truth','Underlying truth'],['stakes','Why it matters'],['role','Role'],['desire','Desire / purpose'],['arc','Arc'],['fate','End state'],['visual','Visual direction'],['motif','Motif'],['chapter','Chapter / era label'],['play','Playable action'],['reveal','Revelation'],['notes','Our notes']];
+function renderEdit(n){$('inspector').innerHTML=`<div class="inspect-top"><div class="eyebrow">Editing ${esc(n.id)}</div><h2>${esc(n.title)}</h2><p class="small">Edits update this atlas. Save an editable atlas to keep a portable revision.</p></div><div class="inspect-body"><form id="edit-form" class="edit-form"><label for="edit-status">Decision status</label><select id="edit-status"><option${n.status==='Proposed'?' selected':''}>Proposed</option><option${n.status==='Agreed'?' selected':''}>Agreed</option><option${n.status==='Rework'?' selected':''}>Rework</option></select>${fields.map(([key,label])=>`<label for="field-${key}">${label}</label>${['title','subtitle','role','motif','chapter'].includes(key)?`<input id="field-${key}" name="${key}" value="${esc(n[key]||'')}"${key==='title'?' required':''}>`:`<textarea id="field-${key}" name="${key}">${esc(n[key]||'')}</textarea>`}`).join('')}${n.kind==='event'?`<label for="edit-era">Chronology order (for layout)</label><input id="edit-era" type="number" step="any" value="${n.era??30}"><label for="edit-lane">History lane</label><select id="edit-lane"><option value="0"${n.lane===0?' selected':''}>Machines / infrastructure</option><option value="1"${n.lane===1?' selected':''}>People / memory</option><option value="2"${n.lane===2?' selected':''}>Civilization / institutions</option></select>`:''}<label for="edit-links">Associated cards (⌘ / Ctrl to select several)</label><select id="edit-links" multiple>${data.nodes.filter(x=>x.id!==n.id).map(x=>`<option value="${esc(x.id)}"${n.links.includes(x.id)?' selected':''}>${esc(names[x.kind]+' · '+x.title)}</option>`).join('')}</select><p class="small">Associations are references. Use + Arrow to edit event causation.</p><div class="error" id="edit-error"></div><div class="edit-actions"><button type="submit" class="primary">Apply edits</button><button type="button" id="cancel-edit">Cancel</button><button type="button" id="remove-card" class="danger">Remove</button></div></form></div>`}
+function applyEdit(){const n=byId(selected);for(const [key]of fields)n[key]=$('field-'+key).value.trim();n.status=$('edit-status').value;n.links=[...$('edit-links').selectedOptions].map(o=>o.value);if(n.kind==='event'){n.era=Number($('edit-era').value);n.lane=Number($('edit-lane').value)}changed();editing=false;renderMap();toast('Card updated. Save a revision when ready.')}
+function renderQuestions(){$('questions').innerHTML=data.questions.map((q,i)=>`<div class="question-row"><div class="question-no">${String(i+1).padStart(2,'0')}</div><div><h3>${esc(q.title)}</h3><p>${esc(q.text)}</p><div class="connections">${q.links.map(id=>byId(id)).filter(Boolean).map(n=>`<button data-go="${esc(n.id)}">${esc(n.title)}</button>`).join('')}</div><label class="visually-hidden" for="question-${i}">Decision for ${esc(q.title)}</label><textarea id="question-${i}" data-question="${i}" placeholder="Our decision / alternatives…" style="margin-top:12px">${esc(q.notes||'')}</textarea></div></div>`).join('')}
+function showDialog(html){$('dialog').innerHTML=`<button class="close" data-close aria-label="Close dialog">×</button>${html}`;$('dialog').showModal()}
+function about(){showDialog(`<div class="eyebrow">Working title · ${esc(data.workingTitle)}</div><h2>${esc(data.title)}</h2><p>${esc(data.premise)}</p><p style="color:var(--gold);font-family:Georgia,serif;font-size:19px">${esc(data.theme)}</p><p class="small">${esc(data.note)}</p><h3>Story rules</h3><ul class="rules">${data.designRules.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h3>Working with the atlas</h3><p>Select a card to inspect it. Edit its name, role, history, fate, or notes. Drag cards to arrange a view. Add cards and causal arrows as the story changes. Arrows are checked for cycles.</p><p>Edits are kept in this browser where supported. <strong>Save editable atlas</strong> downloads a self-contained revision with your changes embedded. <strong>Save story data</strong> exports the underlying story as JSON. Open either format with <strong>Open revision</strong>.</p><p class="small">Everything runs locally. No account, network, or external library is needed.</p>`)}
+function addCard(){showDialog(`<h2>Add a story card</h2><form id="add-form" class="dialog-fields"><label for="new-kind">Kind</label><select id="new-kind">${kinds.map(k=>`<option value="${k}">${names[k]}</option>`).join('')}</select><label for="new-title">Name</label><input id="new-title" required placeholder="A person, event, place, or object"><label for="new-period">For events</label><select id="new-period"><option value="p">Present campaign</option><option value="h">Historical event</option></select><div class="dialog-row"><button class="primary" type="submit">Create card</button><button type="button" data-close>Cancel</button></div></form>`);$('new-kind').value=view==='cast'?'character':view==='world'?worldKind:'event'}
+function createCard(){const kind=$('new-kind').value;let id=(kind==='event'?$('new-period').value:kind.slice(0,1))+'-'+Date.now().toString(36);const n={id,kind,title:$('new-title').value.trim(),subtitle:'New story element',summary:'',truth:'',stakes:'',visual:'',links:[],status:'Proposed'};if(kind==='event'){n.era=Math.max(...data.nodes.filter(x=>x.kind==='event').map(x=>x.era||0))+1;n.lane=1;data.overview.push(id)}data.nodes.push(n);changed();$('dialog').close();selected=id;if(kind==='event')view=id.startsWith('h')?'history':'campaign';else if(kind==='character')view='cast';else{view='world';worldKind=kind}focusOnly=false;renderMap(true);frameNode(id);editing=true;renderInspector()}
+function arrowDialog(){const events=data.nodes.filter(n=>n.kind==='event');showDialog(`<h2>Causal arrows</h2><p class="small">An arrow means the source event helps cause the target. Associations belong in a card’s editor. Cycles are rejected.</p><form id="arrow-form" class="dialog-fields"><label for="arrow-source">Cause</label><select id="arrow-source">${events.map(n=>`<option value="${esc(n.id)}"${n.id===selected?' selected':''}>${esc(n.title)}</option>`).join('')}</select><label for="arrow-target">Consequence</label><select id="arrow-target">${events.map(n=>`<option value="${esc(n.id)}">${esc(n.title)}</option>`).join('')}</select><label for="arrow-label">Connection label</label><input id="arrow-label" required placeholder="Why does this lead to that?"><div id="arrow-error" class="error"></div><div class="dialog-row"><button class="primary" type="submit">Add arrow</button></div></form><h3>Existing connections for this card</h3><div id="arrow-list">${data.edges.map((e,i)=>({...e,i})).filter(e=>e.source===selected||e.target===selected).map(e=>`<div class="connection-row"><span>${esc(byId(e.source)?.title)} → ${esc(byId(e.target)?.title)}<br>${esc(e.label)}</span><button class="danger" data-delete-edge="${e.i}">Remove</button></div>`).join('')||'<p class="small">No causal arrows on the selected card.</p>'}</div>`)}
+function addArrow(){const e={source:$('arrow-source').value,target:$('arrow-target').value,label:$('arrow-label').value.trim()};try{if(data.edges.some(x=>x.source===e.source&&x.target===e.target))throw Error('That arrow already exists. Remove it before replacing its label.');assertDAG([...data.edges,e]);data.edges.push(e);changed();$('dialog').close();renderMap();toast('Causal arrow added.')}catch(err){$('arrow-error').textContent=err.message}}
+function download(name,content,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000)}
+function exportHTML(){if(editing){toast('Apply or cancel the open card edit before saving.');return}data.updatedAt=Date.now();const clone=document.documentElement.cloneNode(true);clone.querySelector('#story-data').textContent=JSON.stringify(data,null,2).replace(/</g,'\\u003c');clone.querySelector('#dialog').removeAttribute('open');clone.querySelector('#dialog').innerHTML='';clone.querySelector('#toast').hidden=true;clone.querySelector('#results').hidden=true;clone.querySelector('#search').value='';download('machines-made-gods-atlas.html','<!doctype html>\n'+clone.outerHTML,'text/html');dirty=false;status();toast('Editable atlas saved with the current story embedded.')}
+async function importFile(file){try{const text=await file.text();let d;if(file.name.toLowerCase().endsWith('.html')){const doc=new DOMParser().parseFromString(text,'text/html');const embedded=doc.querySelector('#story-data');if(!embedded)throw Error('No story data found in this atlas.');d=JSON.parse(embedded.textContent)}else d=JSON.parse(text);validate(d);if(dirty&&!confirm('Replace the current story with this revision? Save the current atlas first if you want to retain it.'))return;data=d;selected=data.overview[0]||data.nodes[0]?.id;editing=false;view='spine';focusOnly=false;changed();renderMap(true);toast('Revision opened.')}catch(err){toast(err.message)}$('file').value=''}
+$('tabs').addEventListener('click',e=>{const el=e.target.closest('[data-view]');if(el)setView(el.dataset.view)});
+$('subfilters').addEventListener('click',e=>{const el=e.target.closest('[data-kind]');if(el){worldKind=el.dataset.kind;focusOnly=false;renderMap(true)}});
+$('inspector').addEventListener('click',e=>{if(e.target.closest('#edit')){editing=true;renderInspector()}if(e.target.closest('#cancel-edit')){editing=false;renderInspector()}if(e.target.closest('#remove-card')){const n=byId(selected);if(confirm(`Remove “${n.title}” and its connections from this revision?`)){data.nodes=data.nodes.filter(x=>x.id!==selected);data.edges=data.edges.filter(x=>x.source!==selected&&x.target!==selected);for(const x of data.nodes)x.links=x.links.filter(id=>id!==selected);data.overview=data.overview.filter(id=>id!==selected);for(const q of data.questions)q.links=q.links.filter(id=>id!==selected);selected=data.overview[0]||data.nodes[0]?.id;changed();editing=false;renderMap()}}});
+$('inspector').addEventListener('submit',e=>{if(e.target.id==='edit-form'){e.preventDefault();applyEdit()}});
+document.addEventListener('click',e=>{const go=e.target.closest('[data-go]');if(go)select(go.dataset.go,true);if(e.target.closest('[data-close]'))$('dialog').close();const del=e.target.closest('[data-delete-edge]');if(del){data.edges.splice(Number(del.dataset.deleteEdge),1);changed();arrowDialog();drawEdges()}});
+$('dialog').addEventListener('submit',e=>{e.preventDefault();if(e.target.id==='add-form')createCard();if(e.target.id==='arrow-form')addArrow()});
+$('about').onclick=about;$('add').onclick=addCard;$('connect').onclick=arrowDialog;$('save').onclick=exportHTML;$('export-json').onclick=()=>{if(editing){toast('Apply or cancel the open card edit before saving.');return}download('machines-made-gods-story.json',JSON.stringify(data,null,2),'application/json');toast('Story data saved.')};$('import').onclick=()=>$('file').click();$('file').onchange=()=>{if($('file').files[0])importFile($('file').files[0])};
+$('questions').addEventListener('input',e=>{if(e.target.dataset.question!==undefined){data.questions[Number(e.target.dataset.question)].notes=e.target.value;changed()}});
+$('fit').onclick=fit;$('focus').onclick=()=>{focusOnly=!focusOnly;renderMap(true)};
+function zoom(factor,x=$('map').clientWidth/2,y=$('map').clientHeight/2){const old=camera.z;const next=Math.max(.2,Math.min(1.8,old*factor));camera.x=x-(x-camera.x)*next/old;camera.y=y-(y-camera.y)*next/old;camera.z=next;updateCamera()}
+$('zoom-in').onclick=()=>zoom(1.2);$('zoom-out').onclick=()=>zoom(1/1.2);
+$('map').addEventListener('wheel',e=>{if(e.target.closest('.mini'))return;e.preventDefault();if(e.ctrlKey||e.metaKey){const r=$('map').getBoundingClientRect();zoom(Math.exp(-e.deltaY*.006),e.clientX-r.left,e.clientY-r.top)}else{camera.x-=e.deltaX;camera.y-=e.deltaY;updateCamera()}},{passive:false});
+$('map').addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('.mini'))return;const el=e.target.closest('.node');gesture={id:el?.dataset.id,startX:e.clientX,startY:e.clientY,x:camera.x,y:camera.y,moved:false,pos:el?{...positions[el.dataset.id]}:null};$('map').setPointerCapture(e.pointerId);$('map').classList.add('dragging')});
+$('map').addEventListener('pointermove',e=>{if(!gesture)return;const dx=e.clientX-gesture.startX,dy=e.clientY-gesture.startY;if(Math.abs(dx)+Math.abs(dy)>5)gesture.moved=true;if(!gesture.moved)return;if(gesture.id){const p=positions[gesture.id];p.x=Math.max(5,gesture.pos.x+dx/camera.z);p.y=Math.max(5,gesture.pos.y+dy/camera.z);const el=[...document.querySelectorAll('.node')].find(x=>x.dataset.id===gesture.id);el.style.left=p.x+'px';el.style.top=p.y+'px';drawEdges();drawMini()}else{camera.x=gesture.x+dx;camera.y=gesture.y+dy;updateCamera()}});
+$('map').addEventListener('pointerup',e=>{if(!gesture)return;if(gesture.id){if(gesture.moved){const key=view+(view==='world'?worldKind:'');data.layout||={};data.layout[key]||={};data.layout[key][gesture.id]={...positions[gesture.id]};changed()}else select(gesture.id)}gesture=null;$('map').classList.remove('dragging');if($('map').hasPointerCapture(e.pointerId))$('map').releasePointerCapture(e.pointerId)});
+$('map').addEventListener('pointercancel',()=>{gesture=null;$('map').classList.remove('dragging')});
+$('canvas').addEventListener('click',e=>{if(e.detail===0){const n=e.target.closest('.node');if(n)select(n.dataset.id)}});
+$('mini').addEventListener('pointerdown',e=>{e.stopPropagation();const r=$('mini').getBoundingClientRect(),scale=Math.min(r.width/mapBounds.w,r.height/mapBounds.h),offX=(r.width-mapBounds.w*scale)/2,offY=(r.height-mapBounds.h*scale)/2;camera.x=$('map').clientWidth/2-((e.clientX-r.left-offX)/scale)*camera.z;camera.y=$('map').clientHeight/2-((e.clientY-r.top-offY)/scale)*camera.z;updateCamera()});
+$('search').addEventListener('input',()=>{const q=$('search').value.trim().toLowerCase();if(!q){$('results').hidden=true;return}const matches=data.nodes.filter(n=>[n.title,n.subtitle,n.role,n.summary,n.truth].join(' ').toLowerCase().includes(q)).slice(0,18);$('results').innerHTML=matches.length?matches.map(n=>`<button data-search-id="${esc(n.id)}">${esc(n.title)}<small>${esc(names[n.kind]+' · '+n.subtitle)}</small></button>`).join(''):'<p class="small" style="padding:12px">No matching story element.</p>';$('results').hidden=false});
+$('results').addEventListener('click',e=>{const el=e.target.closest('[data-search-id]');if(el){select(el.dataset.searchId,true);$('results').hidden=true;$('search').value=''}});
+$('search').addEventListener('keydown',e=>{if(e.key==='Escape')$('results').hidden=true;if(e.key==='Enter'){const el=$('results').querySelector('button');if(el)el.click()}});
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))$('results').hidden=true});
+window.addEventListener('resize',()=>updateCamera());
+window.addEventListener('beforeunload',e=>{if(editing){e.preventDefault();e.returnValue=''}});
+validate(data);status();renderMap(true);
+</script>
+</body>
+</html>

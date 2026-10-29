@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DUST // STEEL — Development arsenal lab</title>
+    <style>
+      .arsenal-lab-banner { position: fixed; z-index: 8; top: 12px; left: 50%; transform: translateX(-50%); padding: 9px 14px; background: #15251fe8; border: 1px solid #b9cda34d; color: #e4e9cd; font: 800 9px/1.5 system-ui, sans-serif; letter-spacing: .07em; text-align: center; pointer-events: none; }
+      .arsenal-lab-banner small { display: block; margin-top: 3px; color: #b8c7aa; font: 500 8px/1.5 system-ui, sans-serif; letter-spacing: .02em; }
+      @media(max-width: 760px) { .arsenal-lab-banner { top: 5px; max-width: 350px; width: calc(100% - 28px); padding: 6px 10px; font-size: 7px; } .arsenal-lab-banner small { font-size: 6px; } }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <aside class="arsenal-lab-banner" aria-label="Development fixture notice">
+      ARSENAL LAB / 12 PROJECTILES · 8 ELEMENTS · 8 BRANDS
+      <small>I: choose weapon · N: reset targets · H: heal · F: nearby frame · Isolated save; reload resets this fixture.</small>
+    </aside>
+    <script type="module" src="/src/dev/arsenalLab.ts"></script>
+  </body>
+</html>

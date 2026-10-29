@@ -1,0 +1,14 @@
+{
+  "source_directory": "/Users/steven/.codex/.chatgpt-projects/g-p-67c61c55a3b0819180e8828ab83e8f6d/output/story-atlas",
+  "imported_on": "2026-10-29",
+  "status": "Only the hook is agreed; all other story content is proposed.",
+  "files_sha256": {
+    "START-HERE.txt": "837b725e2449b2ae23aa0a592e57babf62c777874dba081babefa6841ea6384c",
+    "_source/atlas-template.html": "d878615fc1c0fee0898a20225f29ddba684623d77fec635cb2061f7e346740ff",
+    "_source/check-atlas.cjs": "d47ae4273b86607cf8809a5cd0596db42a9e4888978ed129806f88accbb8c65f",
+    "_source/rebuild.py": "0efbf7c67e743877aac78ad19af85ceb9bbb16365fe8f52f178bfe21ec110af5",
+    "machines-made-gods-atlas.html": "5f5226f0678bf90c26dbeb8c7f56540932aae8641669f19d879d0b7292257c8e",
+    "preview-desktop.png": "df48e112e2e1df2fa447ef4b2913000f366e147f1ca91ce17ab3d1c9c8a6144a",
+    "story.json": "8dd5202191281046e1ba3539483b7366e1d18977e19e100ce8724fce38e4f9b1"
+  }
+}

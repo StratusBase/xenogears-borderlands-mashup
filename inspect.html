@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DUST // STEEL — Surface inspection</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; overflow: hidden; background: #221c23; font: 13px system-ui, sans-serif; color: #f5dea4; }
+      canvas { display: block; }
+      nav { position: fixed; bottom: 16px; left: 16px; right: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px; background: #17131bed; border: 1px solid #f5dea44d; }
+      button { cursor: pointer; border: 1px solid #f5dea466; color: #f5dea4; background: #29202b; padding: 9px 12px; font: inherit; }
+      button[aria-pressed="true"] { color: #17131b; background: #ffc23f; }
+      button:focus-visible { outline: 2px solid #4bddcd; outline-offset: 2px; }
+      strong { margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <nav aria-label="Development surface inspection">
+      <strong>SHARED GAME WORLD</strong>
+      <button data-view="crossing" aria-pressed="true">Road junction</button>
+      <button data-view="hazard" aria-pressed="false">Hazard paint</button>
+      <button data-view="mesa" aria-pressed="false">Rock shadows</button>
+      <button data-view="rockContact" aria-pressed="false">Rock contact</button>
+      <button data-view="rockContactNorth" aria-pressed="false">North rock contact</button>
+      <button data-view="gateJoint" aria-pressed="false">Gate joint</button>
+      <button data-view="gateJointClose" aria-pressed="false">Gate joint close</button>
+      <button data-view="gateJointReverse" aria-pressed="false">Gate joint reverse</button>
+      <button data-view="loot" aria-pressed="false">Loot glow</button>
+      <button data-view="vitals" aria-pressed="false">Enemy bars</button>
+      <button id="height" aria-pressed="true">Mech eye height</button>
+      <button id="shadows" aria-pressed="true">Rock shadows on</button>
+      <button id="filter" aria-pressed="true">Soft shadow filter</button>
+      <span id="view-label" role="status">Road junction</span>
+    </nav>
+    <script type="module" src="/src/dev/inspect.ts"></script>
+  </body>
+</html>

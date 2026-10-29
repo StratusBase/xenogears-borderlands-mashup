@@ -1,0 +1,26 @@
+THEN, MACHINES MADE GODS — STORY ATLAS v0.1
+
+Open machines-made-gods-atlas.html in a browser.
+The file works offline and includes the whole proposed story.
+
+• Story spine: condensed causal history through the ending.
+• History: the actual historical sequence.
+• Campaign: the player’s discoveries, actions, and consequences.
+• Cast: protagonists, antagonists, and their roles, motives, and fates.
+• World: gods, machines, artifacts, places, and factions.
+• Open questions: decisions we can record as we revise.
+
+Select a card, then choose Edit card. Drag cards to rearrange the map.
+Use + Card and + Arrow to change its structure. Causal loops are rejected.
+Arrows mean causation. Dotted entity connections mean association.
+
+Browser edits are kept locally when supported. They do not automatically
+overwrite this file. Choose Save editable atlas to download a portable revision
+with your current story embedded. Save story data downloads editable JSON.
+Open revision imports either a saved atlas or its JSON.
+
+Only the three-sentence hook is agreed. All other content is proposed.
+The story is original; the reference games are influences, not shared canon.
+
+For future workspace edits: story.json is the workspace master. The HTML embeds
+its own copy. Import newer exported story data before rebuilding from _source.
