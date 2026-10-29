@@ -19,11 +19,13 @@ export function corrosiveSources(root:THREE.Group):THREE.Mesh[]{
  const explicit:THREE.Mesh[]=[],fallback:THREE.Mesh[]=[];
  root.traverse(object=>{
   if(!(object instanceof THREE.Mesh)||object instanceof THREE.InstancedMesh||!object.geometry.attributes.normal)return;
-  for(let n:THREE.Object3D|null=object;n;n=n.parent)if(n.userData.comicOverlay||n.userData.equipmentSlot||n.userData.visualOwner&&n.userData.visualOwner!=='body')return;
-  if(corrosiveSurfaceOf(object)){explicit.push(object);return;}
+  for(let n:THREE.Object3D|null=object;n;n=n.parent)if(!n.visible||n.userData.comicOverlay||n.userData.equipmentSlot||n.userData.visualOwner&&n.userData.visualOwner!=='body')return;
   const materials=Array.isArray(object.material)?object.material:[object.material];
-  if(materials.some(m=>m.name==='quality-paint')&&!/optic|muzzle|light|warning/i.test(object.name))fallback.push(object);
- });return explicit.length?explicit:fallback.slice(0,6);
+  if(!materials.some(m=>m.visible&&m.colorWrite&&(!m.transparent||m.opacity>0)))return;
+  if(corrosiveSurfaceOf(object)){explicit.push(object);return;}
+  const physical=Number.isFinite(object.userData.enemyId),authored=materials.some(m=>m.name==='quality-paint');
+  if((physical||authored)&&!/(?:^|-)(?:optic|visor|eye|core|muzzle|light|warning|status|sensor|rifle|cannon|blade|sight|weak-point)(?:-|$)/i.test(object.name))fallback.push(object);
+ });return explicit.length?explicit:fallback;
 }
 export function corrosiveTargetSpan(root?:THREE.Group):number{
  if(!root)return 2;root.updateWorldMatrix(true,true);const bounds=new THREE.Box3(),part=new THREE.Box3();

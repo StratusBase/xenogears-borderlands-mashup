@@ -45,7 +45,7 @@ export class GamePresentation {
  private audioWasUnlocked=false;
  private frameTime=0;
  private audioError:string|null=null;
- private elementalFactory=(scene:THREE.Scene,camera:THREE.Camera)=>new ElementalPresentation(scene,camera);
+ private elementalFactory=(scene:THREE.Scene,camera:THREE.Camera)=>new ElementalPresentation(scene,camera,{corrosiveAB:true});
  constructor(private readonly context:GamePresentationContext){}
  /** Optional review/integration seam. Change only while disabled; Game owns the lifecycle transition. */
  setElementalFactory(factory:(scene:THREE.Scene,camera:THREE.Camera)=>ElementalPresentation):void{

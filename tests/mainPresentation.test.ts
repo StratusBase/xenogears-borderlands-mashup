@@ -10,9 +10,11 @@ import {PlayerBallistics,type BallisticPresentation} from '../src/rendering/Play
 import {updateEquipmentEffects} from '../src/rendering/equipmentEffects.ts';
 import {GamePresentation,type PresentationEquipment} from '../src/rendering/quality/GamePresentation.ts';
 import {ElementalPresentation} from '../src/rendering/quality/elementalPresentation.ts';
+import {createTestDummy} from '../src/rendering/testDummy.ts';
+import {corrosiveSources} from '../src/rendering/quality/corrosive/surfaces.ts';
 
 let originalDocument:PropertyDescriptor|undefined;
-before(()=>{originalDocument=Object.getOwnPropertyDescriptor(globalThis,'document');Object.defineProperty(globalThis,'document',{configurable:true,value:{createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){}})})}});});
+before(()=>{originalDocument=Object.getOwnPropertyDescriptor(globalThis,'document');Object.defineProperty(globalThis,'document',{configurable:true,value:{createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},clearRect(){},fillText(){}})})}});});
 after(()=>{if(originalDocument)Object.defineProperty(globalThis,'document',originalDocument);else Reflect.deleteProperty(globalThis,'document');});
 function fixture(){
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),weaponRoot=new THREE.Group();scene.add(camera);camera.add(weaponRoot);
@@ -90,4 +92,23 @@ test('muted preference survives presentation toggles and paused updates freeze e
  const before=snapshots();f.controller.update({dt:0,time:1,paused:true,mode:'pilot',distance:0,grounded:true,spec:createWeaponSpec('bullet','ice')});assert.deepEqual(snapshots(),before);assert.equal(f.controller.diagnostics.physicalVoices,0);assert.equal(f.controller.diagnostics.elementalVoices,0);
  f.controller.setEnabled(false);f.controller.setEnabled(true);assert.equal(f.controller.diagnostics.soundEnabled,false);
  f.controller.release(actor.group);f.dispose();actor.dispose();
+});
+
+test('normal quality startup uses approved directional corrosion on actual dummy and enemy armor with reversible legacy mode',()=>{
+ const f=fixture(),dummy=createTestDummy(-1),rusher=createEncounterEnemy(52,'rusher'),heavy=createEncounterEnemy(53,'heavy',true),flanker=createEncounterEnemy(54,'flanker');
+ const targets=[dummy.group,rusher.group,heavy.group,flanker.group];targets.forEach(root=>f.scene.add(root));const originals=targets.map(resources);
+ assert.ok(corrosiveSources(dummy.group).includes(dummy.group.getObjectByName('dummy-pilot-bullseye-critical') as THREE.Mesh),'painted bullseye faces must not be confused with enemy optics');
+ f.controller.setEnabled(true);f.controller.enemy({root:flanker.group,id:54,role:'flanker',heavy:false});const layer=f.active as ElementalPresentation;
+ assert.ok(layer.corrosive,'normal startup must use the approved response without a lab factory');assert.equal(typeof layer.splash,'function');
+ for(const root of targets){
+  const sources=corrosiveSources(root);assert.ok(sources.length>0,root.name);assert.ok(sources.every(m=>(Array.isArray(m.material)?m.material:[m.material]).some(material=>material.colorWrite)),'invisible combat proxies cannot be surface sources');
+  assert.ok(sources.every(m=>!/rifle|cannon|blade|muzzle|nameplate|warning/i.test(m.name)),'weapon, sign and warning geometry stays isolated');
+  const armor=sources.find(m=>m.name==='heavy-front-shield')??sources.find(m=>/body-target|torso|upper/.test(m.name))??sources[0];root.updateWorldMatrix(true,true);
+  const bounds=new THREE.Box3().setFromBufferAttribute(armor.geometry.attributes.position as THREE.BufferAttribute),point=bounds.getCenter(new THREE.Vector3());point.z=bounds.max.z;point.applyMatrix4(armor.matrixWorld);
+  layer.impact({target:root,point,normal:new THREE.Vector3(0,0,1),spec:createWeaponSpec('sticky','corrosive'),phase:'detonate',radius:2.5,energy:70});const status=f.controller.status(root,'corrosive')!;status.update(.1,1);
+  const effect=layer.corrosive.status(root);assert.ok(effect.bindings.some(b=>b.mesh.visible),root.name+' needs a visible coating');assert.ok(effect.bindings.every(b=>!b.mesh.visible||sources.includes(b.source)));
+ }
+ const mesh=layer.corrosive.group.children.find(o=>o instanceof THREE.Mesh&&o.visible) as THREE.Mesh;assert.equal(mesh.geometry.name,'corrosive-directional-moving-ribbons');
+ f.controller.setEnabled(false);originals.forEach(assertResources);assert.equal(f.scene.getObjectByName('corrosive-ab-response'),undefined);f.controller.setEnabled(true);assert.ok((f.active as ElementalPresentation).corrosive);
+ f.dispose();dummy.dispose();rusher.dispose();heavy.dispose();flanker.dispose();
 });

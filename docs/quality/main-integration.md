@@ -1,5 +1,7 @@
 # Enhanced presentation in the normal game
 
+The approved directional corrosive style is now enabled in normal Enhanced gameplay; see the [corrosive integration receipt](corrosive-main-integration.md). Earlier measurements below remain a separate frozen build.
+
 This receipt records the earlier integration build. The later [crowd-feedback pass](../crowd-feedback-verification.md) addresses its damage-number clutter and repeated CPU work; its measurements remain separate from the results below.
 
 Enhanced reference assets, elemental VFX and both sound layers are now the normal `/` presentation. The pause menu retains Enhanced/Legacy and Sound controls. The old comparison labs remain usable with isolated saves.

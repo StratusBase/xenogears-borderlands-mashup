@@ -1,6 +1,6 @@
 # Corrosive A+B: directional rupture
 
-29 October 2026. Existing prototype committed first as **547cc49**, following the user's request. The directional revision was approved after gameplay review and remains an opt-in prototype.
+29 October 2026. Existing prototype committed first as **547cc49**, following the user's request. The directional revision was approved after gameplay review. It is now enabled in normal Enhanced gameplay; see [the main-entry integration receipt](corrosive-main-integration.md). The measurements below remain the frozen revision 4 comparison prototype.
 
 - [Actual gameplay with live sound, motion frames and performance](http://127.0.0.1:5202/artifacts/corrosive-ab/).
 - [Play the measured compiled build](http://127.0.0.1:5203/corrosive-lab.html).
@@ -32,7 +32,7 @@ The effect remains stylized, authored liquid motion, rather than a fluid solver.
 
 ## Verification
 
-**648 tests pass**, including 35 corrosive checks and 4 footstep checks. New checks require actual mesh deformation beyond uniform scale, a dominant leading stream, paused geometry stability, exact prior/after event sizes and secondary instance transforms, and separate primary reveal clocks. Existing tests cover original collision/critical hits, immutable specs, slot isolation, local visible-material binding, finite values, cleanup and bounded resources.
+**648 tests passed for the frozen motion prototype**, including 35 corrosive checks and 4 footstep checks. New checks require actual mesh deformation beyond uniform scale, a dominant leading stream, paused geometry stability, exact prior/after event sizes and secondary instance transforms, and separate primary reveal clocks. Existing tests cover original collision/critical hits, immutable specs, slot isolation, local visible-material binding, finite values, cleanup and bounded resources.
 
 Ordinary production and isolated prototype builds pass; the existing large-bundle advisory remains. Exact old-engine/current-engine replay against Git baseline ddb86b155e4e9979303894a0501b544458997f3d matches all 13 deliveries, 600 steps each, including moving neighbors, cover and critical hits: [source compatibility evidence](../../artifacts/corrosive-ab/ballistics-before-after.json).
 
@@ -70,7 +70,7 @@ Walking clips are retained revision 2 auditions; footsteps are unchanged here.
 
 ## Integration handoff
 
-1. Use ElementalPresentation(scene, camera, {corrosiveAB:true}) for the new motion. Add corrosiveMotion:'previous' to retain revision 3 motion with the same sizing and falloff. Default constructors keep the prior main-entry renderer. The lab exposes a separate rupture toggle. The visual direction is approved; main-entry integration remains with the combat lead.
+1. Use ElementalPresentation(scene, camera, {corrosiveAB:true}) for the new motion. Add corrosiveMotion:'previous' to retain revision 3 motion with the same sizing and falloff. Standalone ElementalPresentation defaults retain the prior profile. Production GamePresentation now explicitly selects the approved corrosive profile. The lab exposes a separate rupture toggle. The approved visual direction is now integrated through production GamePresentation without combat-owned source edits.
 2. GamePresentation.setElementalFactory(factory) remains available only while disabled. Game owns presentation mode/status/equipment lifecycle. No edits to combat-owned files are required for this prototype.
 3. Body meshes should tag userData.corrosiveSurface as skin, cloth or armor. All equipment-slot and presentation descendants are excluded. CorrosiveStatus borrows geometry, owns/disposes only overlays and uses source-local anchors with world-unit radii.
 4. Existing BallisticPresentationImpact energy/exposure and optional splash notification are unchanged. CorrosiveResponse.impact presents the primary response; splash skips primary recipients and presents existing secondary deposition. Never use these callbacks to apply damage.
