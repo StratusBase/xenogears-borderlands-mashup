@@ -9,10 +9,10 @@ import { createElementalProjectile, createElementalTrail, createElementalBeam, u
 import { ElementalImpacts } from './elementalImpacts';
 import { ElementalAudio } from '../../audio/elementalAudio';
 import { corrosiveABAudioRecipe } from '../../audio/corrosiveAudio';
-import { CorrosiveResponse } from './corrosive/liquid';
+import { CorrosiveResponse,type CorrosiveMotion } from './corrosive/liquid';
 import type { CorrosiveStatusVisual } from './corrosive/surfaces';
 
-export interface ElementalPresentationOptions { corrosiveAB?: boolean }
+export interface ElementalPresentationOptions { corrosiveAB?: boolean;corrosiveMotion?:CorrosiveMotion }
 type StatusPresentation=ElementalStatus|CorrosiveStatusVisual;
 
 /** Complete opt-in presentation adapter. It consumes authoritative combat events only. */
@@ -24,7 +24,7 @@ export class ElementalPresentation implements BallisticPresentation{
  private restoreFactory:()=>void;
  private activeEquipment=new Set<ElementType>();private mode:Mode='pilot';
  constructor(private scene:THREE.Scene,private camera:THREE.Camera,options:ElementalPresentationOptions={}){this.impacts=new ElementalImpacts(scene);
-  this.corrosive=options.corrosiveAB?new CorrosiveResponse(scene,camera):null;this.audio=options.corrosiveAB?new ElementalAudio(corrosiveABAudioRecipe):new ElementalAudio();
+  this.corrosive=options.corrosiveAB?new CorrosiveResponse(scene,camera,options.corrosiveMotion):null;this.audio=options.corrosiveAB?new ElementalAudio(corrosiveABAudioRecipe):new ElementalAudio();
   if(this.corrosive)this.splash=event=>this.splashImpact(event);
   this.restoreFactory=setEquipmentEffectFactory(root=>{
    const owners=new Map<THREE.Object3D,ElementType[]>();

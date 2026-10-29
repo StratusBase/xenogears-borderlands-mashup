@@ -9,7 +9,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const errors=[];let context;
 const url=process.env.CORROSIVE_REVIEW_URL??'http://127.0.0.1:5203/corrosive-lab.html';
 async function setup(after,kind,delivery,count=2,move=false,mode='pilot'){
- await page.evaluate(({after,kind,delivery,count,move,mode})=>{const r=window.corrosiveReview;r.setVersion(after);r.fixture(kind,delivery,count,move,mode);r.clean();},{after,kind,delivery,count,move,mode});
+ await page.evaluate(({after,kind,delivery,count,move,mode})=>{const r=window.corrosiveReview;r.setMotion(after?'directional':'previous');r.fixture(kind,delivery,count,move,mode);r.clean();},{after,kind,delivery,count,move,mode});
  await page.locator('#ab-sound').evaluate(b=>{b.closest('aside').hidden=false;document.body.classList.remove('corrosive-clean');});
  await page.getByRole('button',{name:/Enable sound|Sound enabled/}).click();
  await page.evaluate(()=>window.corrosiveReview.clean());
@@ -58,6 +58,6 @@ try{
   assert.deepEqual(normalized(runs[1].snapshot),normalized(runs[0].snapshot),`${test.id}: presentation must preserve complete combat outcomes`);assert.deepEqual(normalized(runs[2].snapshot),normalized(runs[0].snapshot),`${test.id}: repeated baseline must be deterministic`);
   performance.push({...test,runs});await writeFile(join(out,'performance.partial.json'),JSON.stringify({hardware,bundle,performance},null,2));console.log('PERF',test.id,JSON.stringify(runs.map(r=>({label:r.label,frame:r.cost.frameMs,submit:r.cost.submitMs,calls:r.cost.calls,gpu:r.cost.gpuMs}))));
  }
- const result={capturedAt:new Date().toISOString(),url,browser:await browser.version(),hardware,bundle,viewport:[1440,900],dpr:1,protocol:'One compiled build, same target geometry and combat seed, previous elemental pass -> A+B -> repeated previous pass, 90 warmup + 360 measured displayed frames, one existing 1/60 Game simulation step per frame, normal cadence/heat/reload, sound enabled, no recording during timing.',visuals,skin,ground,other,pauses,performance,errors};
+ const result={capturedAt:new Date().toISOString(),url,browser:await browser.version(),hardware,bundle,viewport:[1440,900],dpr:1,protocol:'One compiled build, same target geometry, current sizing/falloff and combat seed, previous rupture -> directional rupture -> repeated previous rupture, 90 warmup + 360 measured displayed frames, one existing 1/60 Game simulation step per frame, normal cadence/heat/reload, sound enabled, no recording during timing.',visuals,skin,ground,other,pauses,performance,errors};
  await writeFile(join(out,'verification.json'),JSON.stringify(result,null,2)+'\n');assert.deepEqual(errors,[]);console.log('PASS',JSON.stringify({visuals:visuals.length,coverage:other.length,matchedPerformance:performance.length,skin:true,ground:true,pause:true,errors}));
 }finally{await context?.close();await browser.close();}

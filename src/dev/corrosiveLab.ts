@@ -28,12 +28,12 @@ for(const mode of['pilot','mech']as const){const item=createWorkbenchWeapon({...
 const shots:EvaluationShot[]=[],hits:unknown[]=[],measurements:unknown[]=[];
 const game=new Game(document.querySelector<HTMLElement>('#app')!,{initialProgression:progression,saveKey:'dust-steel.corrosive-ab.review.v1',autoEncounters:false,trainingTargets:false,evaluationDriver:true,manualEvaluation:true,presentation:'legacy',onEvaluationShot:shot=>{shots.push(structuredClone(shot));},onMeasurement:event=>{if(measurements.length<8000)measurements.push(structuredClone(event));}});
 const g=game as unknown as Bridge;
-let after=true,selected:'human'|'armored'='human',delivery:ProjectileType='sticky',secondary:ElementType|'none'='none',layer:ElementalPresentation;
+let after=true,motion:'directional'|'previous'='directional',selected:'human'|'armored'='human',delivery:ProjectileType='sticky',secondary:ElementType|'none'='none',layer:ElementalPresentation;
 let bench=false,benchFire=true,moving=false,pairTargets:ReviewTarget[]=[],lastTime=0,tick=0;
 const perf=new QualityPerformance(g.renderer);
 function setVersion(value:boolean){
  game.setPresentationMode('legacy');after=value;
- g.presentation.setElementalFactory((scene,camera)=>{layer=new ElementalPresentation(scene,camera,{corrosiveAB:after});return layer;});
+ g.presentation.setElementalFactory((scene,camera)=>{layer=new ElementalPresentation(scene,camera,{corrosiveAB:after,corrosiveMotion:motion});return layer;});
  game.setPresentationMode('quality');
  document.querySelector('#ab-version')?.setAttribute('aria-pressed',String(after));
  const button=document.querySelector('#ab-version');if(button)button.textContent=after?'A+B prototype':'Previous elemental pass';updateMark();
@@ -63,6 +63,8 @@ document.querySelector('#ab-version')!.addEventListener('click',()=>{setVersion(
 document.querySelector('#ab-target')!.addEventListener('change',event=>fixture((event.target as HTMLSelectElement).value as typeof selected));
 document.querySelector('#ab-delivery')!.addEventListener('change',event=>fixture(selected,(event.target as HTMLSelectElement).value as ProjectileType));
 document.querySelector('#ab-reset')!.addEventListener('click',()=>fixture());
+const motionButton=document.createElement('button');motionButton.id='ab-motion';motionButton.textContent='Rupture: directional';document.querySelector('#ab-version')!.after(motionButton);motionButton.addEventListener('click',()=>{setMotion(motion==='directional'?'previous':'directional');fixture();});
+function setMotion(value:'directional'|'previous'){motion=value;setVersion(true);motionButton.textContent=`Rupture: ${motion}`;}
 const sizingButton=document.createElement('button');sizingButton.id='ab-sizing';sizingButton.textContent='Compare direct / near / edge';document.querySelector('#ab-reset')!.after(sizingButton);sizingButton.addEventListener('click',()=>fixture(selected,'sticky',3,false,'pilot',true));
 document.querySelector('#ab-sound')!.addEventListener('click',async()=>{g.presentation.setSoundEnabled(true);await g.presentation.unlockAudio();document.querySelector('#ab-sound')!.textContent='Sound enabled';});
 function play(){bench=false;g.evaluationInput=undefined;g.manualEvaluation=false;g.resume(false);}
@@ -85,7 +87,7 @@ async function startRecording(){
 }
 async function stopRecording():Promise<string>{const current=recorder!;await new Promise<void>(resolve=>{current.onstop=()=>resolve();current.stop();});const blob=new Blob(chunks,{type:current.mimeType});const result=await new Promise<string>(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',').at(-1)!);reader.readAsDataURL(blob);});recordStream?.getTracks().forEach(t=>t.stop());await mix?.close();recorder=undefined;return result;}
 g.start(false);setVersion(true);fixture();
-(window as unknown as {corrosiveReview:unknown}).corrosiveReview={game,g,perf,get layer(){return layer;},get after(){return after;},fixture,setVersion,shots,hits,measurements,
+(window as unknown as {corrosiveReview:unknown}).corrosiveReview={game,g,perf,get layer(){return layer;},get after(){return after;},fixture,setVersion,setMotion,get motion(){return motion;},shots,hits,measurements,
  sizingReview:()=>fixture('armored','sticky',3,false,'pilot',true),
  step:(dt:number,fire=false)=>{game.driveEvaluation({fire,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(dt);},
  aimSkin:()=>aimAt(new THREE.Vector3(-2.17,1.20,-1.90)),

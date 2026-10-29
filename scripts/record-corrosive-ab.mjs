@@ -14,7 +14,7 @@ try{
  await verifyBuild(page);
  for(const test of[{kind:'human',after:false,delivery:'sticky'},{kind:'human',after:true,delivery:'sticky'},{kind:'armored',after:false,delivery:'sticky'},{kind:'armored',after:true,delivery:'sticky'},{kind:'human',after:true,delivery:'bullet'},{kind:'armored',after:true,delivery:'bullet'}]){
   const name=`${test.kind}-${test.after?'ab':'before'}-${test.delivery}`;
-  await page.evaluate(({after,kind,delivery})=>{const r=window.corrosiveReview;r.setVersion(after);r.fixture(kind,delivery);r.clean(false);},test);
+  await page.evaluate(({after,kind,delivery})=>{const r=window.corrosiveReview;r.setMotion(after?'directional':'previous');r.fixture(kind,delivery);r.clean(false);},test);
   await page.getByRole('button',{name:/Enable sound|Sound enabled/}).click();
   await page.waitForFunction(()=>window.corrosiveReview.g.presentation.diagnostics.qualityAudioUnlocked&&window.corrosiveReview.g.presentation.diagnostics.elementalAudioUnlocked);
   await page.evaluate(()=>{const r=window.corrosiveReview;r.clean();r.play();});
@@ -25,7 +25,7 @@ try{
   await input(true);await page.waitForTimeout(test.delivery==='bullet'?1300:90);await input(false);await page.waitForTimeout(test.delivery==='bullet'?2000:2700);
   const snapshot=await page.evaluate(()=>window.corrosiveReview.snapshot());const encoded=await page.evaluate(()=>window.corrosiveReview.stopRecording());
   const bytes=Buffer.from(encoded,'base64');assert.ok(bytes.length>10000,'Recorded clip must contain media, not a MIME fragment');assert.equal(bytes.subarray(0,4).toString('hex'),'1a45dfa3','Valid WebM EBML header');await writeFile(join(out,name+'.webm'),bytes);assert.ok(snapshot.hits.length>1);assert.equal(snapshot.presentation.audioError,null);
-  results.push({...test,file:name+'.webm',wallTimeMs:Date.now()-start,recording,simulationSeconds:snapshot.time-20.004166666666666,shots:snapshot.shots.length,hits:snapshot.hits.length,final:snapshot});console.log('RECORDED',name,JSON.stringify(results.at(-1)));
+  results.push({...test,motion:test.after?'directional':'previous',file:name+'.webm',wallTimeMs:Date.now()-start,recording,simulationSeconds:snapshot.time-20.004166666666666,shots:snapshot.shots.length,hits:snapshot.hits.length,final:snapshot});console.log('RECORDED',name,JSON.stringify(results.at(-1)));
  }
- await verifyBuild(page);assert.deepEqual(errors,[]);await writeFile(join(out,'recordings.json'),JSON.stringify({capturedAt:new Date().toISOString(),bundle,compiledAssetsVerifiedBeforeAndAfter:true,provenance:'Unmodified WebGL canvas captureStream(60), mixed capture taps on the actual physical and elemental final WebAudio buses. Native Game.run clock, normal scripted trigger inputs, no slow motion, rendered image edits, offline sound replacement, added VFX or simulation retiming. Review target vitals are raised to survive repeated shots; this is an isolated Game harness, not the normal main encounter.',results,errors},null,2)+'\n');
+ await verifyBuild(page);assert.deepEqual(errors,[]);await writeFile(join(out,'recordings.json'),JSON.stringify({capturedAt:new Date().toISOString(),bundle,compiledAssetsVerifiedBeforeAndAfter:true,provenance:'Unmodified WebGL canvas captureStream(60), mixed capture taps on the actual physical and elemental final WebAudio buses. Both modes retain revision 3 sizing/falloff. Before=previous rupture, after=directional rupture in the same measured build. Native Game.run clock, normal scripted trigger inputs, no slow motion, rendered image edits, offline sound replacement, added VFX or simulation retiming. Review target vitals are raised to survive repeated shots; this is an isolated Game harness, not the normal main encounter.',results,errors},null,2)+'\n');
 }finally{await browser.close();}
