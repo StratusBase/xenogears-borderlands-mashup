@@ -21,7 +21,7 @@ import { resolveEquipmentAppearance } from './core/appearance';
 import { HealingAction } from './core/healingAction';
 import { createEquipmentWeapon, createEquipmentCharacter, disposeEquipmentModel, type WeaponRig } from './rendering/equipmentModels';
 import { createHealingVisual, type HealingVisual } from './rendering/healingVisual';
-import { getWeaponSpec, getWeaponElements, elementColors } from './core/arsenal';
+import { getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, elementColors, type ElementType } from './core/arsenal';
 import { createStatusState, applyStatus, advanceStatuses, getStatusDps, getStatusModifiers, activeStatusElements, type StatusState, type StatusElement } from './core/statusEffects';
 import { PlayerBallistics, type BallisticHit } from './rendering/PlayerBallistics';
 import type { DamageEffect } from './core/feedback';
@@ -73,6 +73,8 @@ export interface GameOptions {
   presentation?: 'quality' | 'legacy';
   /** Same-build diagnostic selector; ordinary gameplay uses bounded crowd feedback. */
   feedbackQuality?: DamageFeedbackQuality;
+  /** Evaluation harnesses start muted; normal gameplay starts with sound enabled. */
+  soundEnabled?: boolean;
   initialProgression?: Progression;
   saveKey?: string;
   startingHealthFraction?: number;
@@ -89,6 +91,11 @@ export interface GameOptions {
   /** Driver-owned clock from construction; RAF may draw but cannot step gameplay. */
   manualEvaluation?: boolean;
   onEvaluationShot?: (shot: EvaluationShot) => void;
+  onEvaluationProc?: (proc: EvaluationProc) => void;
+}
+export interface EvaluationProc {
+  at: number; mode: Mode; targetId: number; element: ElementType;
+  projectile: ReturnType<typeof getWeaponSpec>['projectile']; chance: number; power: number;
 }
 export interface EvaluationShot {
   at: number; sequence: number; mode: Mode;
@@ -182,6 +189,7 @@ export class Game {
   private readonly weaponPose = new SimulationWeaponPose();
   private shotSequence = 0;
   private readonly onEvaluationShot?: (shot: EvaluationShot) => void;
+  private readonly onEvaluationProc?: (proc: EvaluationProc) => void;
   private time = 0;
   private frames = 0;
   private hudTime = 0;
@@ -217,8 +225,10 @@ export class Game {
     this.onEncounterEvent = options.onEncounterEvent;
     this.onMeasurement = options.onMeasurement;
     this.evaluationDriver = options.evaluationDriver ?? false;
+    this.soundEnabled = options.soundEnabled ?? !this.evaluationDriver;
     this.manualEvaluation = this.evaluationDriver && (options.manualEvaluation ?? false);
     this.onEvaluationShot = this.evaluationDriver ? options.onEvaluationShot : undefined;
+    this.onEvaluationProc = this.evaluationDriver ? options.onEvaluationProc : undefined;
     this.weaponBalance = Object.freeze(options.evaluationDriver && options.evaluationBalanceRules
       ? { secondaryElementCost: options.evaluationBalanceRules.secondaryElementCost, mechHeat: options.evaluationBalanceRules.mechHeat }
       : { ...DEFAULT_WEAPON_BALANCE });
@@ -709,8 +719,8 @@ export class Game {
       if (event.code === 'Space') this.jump();
     });
     window.addEventListener('keyup', event => this.keys.delete(event.code));
-    window.addEventListener('blur', () => { if (this.screen === 'none') this.menu('pause'); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.screen === 'none') this.menu('pause'); });
+    window.addEventListener('blur', () => { if (!this.manualEvaluation && this.screen === 'none') this.menu('pause'); });
+    document.addEventListener('visibilitychange', () => { if (!this.manualEvaluation && document.hidden && this.screen === 'none') this.menu('pause'); });
     this.renderer.domElement.addEventListener('contextmenu', event => event.preventDefault());
     this.renderer.domElement.addEventListener('mousedown', event => {
       if (this.screen !== 'none') return;
@@ -892,8 +902,10 @@ export class Game {
     const enemy = this.combatTargets.find(candidate => candidate.id === hit.targetId);
     const movable = this.enemies.find(candidate => candidate === enemy);
     if (!enemy || movable && movable.health <= 0) return;
-    const procs = new Set(getWeaponElements(hit.spec).filter(element => element !== 'kinetic' && this.combatRandom() < hit.spec.statusChance
-      && applyStatus(enemy.statuses, element, this.time, hit.damage * hit.spec.statusPower)));
+    const procs = new Set(getWeaponElements(hit.spec).filter(element => element !== 'kinetic' && this.combatRandom() < getHitStatusChance(hit.spec)
+      && applyStatus(enemy.statuses, element, this.time, getHitStatusPower(hit.damage, hit.spec))));
+    for (const element of procs) this.onEvaluationProc?.({ at: this.time, mode: this.mode, targetId: enemy.id, element,
+      projectile: hit.spec.projectile, chance: getHitStatusChance(hit.spec), power: getHitStatusPower(hit.damage, hit.spec) });
     const modifiers = getStatusModifiers(enemy.statuses, this.time);
     const exposed = !movable?.heavy || movable.brain.phase === 'recover' || movable.brain.phase === 'stagger';
     const critical = hit.critical && exposed;
@@ -912,7 +924,7 @@ export class Game {
         const delta = hit.point.clone().sub(other.mesh.position); delta.y = 0;
         const distance = delta.length();
         if (distance > 6 || !this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5))) continue;
-        applyStatus(other.statuses, 'gravity', this.time, hit.damage * hit.spec.statusPower);
+        applyStatus(other.statuses, 'gravity', this.time, getHitStatusPower(hit.damage, hit.spec));
         other.gravityPoint = hit.point.clone();
         if (distance > 0.05) {
           delta.multiplyScalar(Math.min(1.4, distance * 0.3) / distance);
@@ -1062,7 +1074,9 @@ export class Game {
       navigation: this.evaluationDriver ? this.world.colliders.map(bounds => ({ ...bounds })) : undefined,
       position: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
       enemies: this.enemies.map(e => ({ id: e.id, position: { x: e.mesh.position.x, z: e.mesh.position.z },
-        health: e.health, shield: e.shield, role: e.role, boss: e.boss, weakPointOpen: e.brain.phase === 'recover' || e.brain.phase === 'stagger' })),
+        health: e.health, shield: e.shield, role: e.role, boss: e.boss, weakPointOpen: e.brain.phase === 'recover' || e.brain.phase === 'stagger',
+        conditions: this.evaluationDriver ? { frozen: getStatusModifiers(e.statuses, this.time).frozen, moveSpeed: getStatusModifiers(e.statuses, this.time).moveSpeed } : undefined,
+        brainPhase: this.evaluationDriver ? e.brain.phase : undefined })),
       defenses: ENCOUNTER.relays.map(r => ({ ...r, disabled: this.encounter.snapshot.disabledRelays.includes(r.id) })),
       body: { ...this.body }, progression: deserializeProgression(serializeProgression(this.progression))! };
   }
