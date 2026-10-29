@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getStats, seededRandom, type Mode, type Progression } from '../core/index';
 import { ammoReserveCapacity, reloadAmmo } from '../core/ammo';
-import { getWeaponElements, getWeaponSpec } from '../core/arsenal';
+import { getWeaponElements, getWeaponSpec, getHitStatusChance, getHitStatusPower } from '../core/arsenal';
 import { shieldAdjustedDamage } from '../core/combat';
 import { createStatusState, applyStatus, advanceStatuses, activeStatusElements, getStatusModifiers } from '../core/statusEffects';
 import { TestDummyMeter } from '../core/testDummy';
@@ -126,7 +126,7 @@ export function simulateDummy(options: DummySimulationOptions): DummySimulationR
     },
     hit(hit) {
       for (const element of getWeaponElements(hit.spec)) {
-        if (element !== 'kinetic' && random() < hit.spec.statusChance) applyStatus(statuses, element, now, hit.damage * hit.spec.statusPower);
+        if (element !== 'kinetic' && random() < getHitStatusChance(hit.spec)) applyStatus(statuses, element, now, getHitStatusPower(hit.damage, hit.spec));
       }
       const modifiers = getStatusModifiers(statuses, now);
       const damage = shieldAdjustedDamage(0, hit.damage * (hit.critical ? 1.7 : 1) * modifiers.incomingDamage, modifiers.shieldDamage);

@@ -8,13 +8,13 @@ The compact comparison card puts direct DPS and five icon stats first. Damage is
 
 | Brand | Weapon identity | Equipment tendencies |
 | --- | --- | --- |
-| Ironvale | Heavy physical rounds and ordnance; damage over cycling speed | Heavier protection and capacity |
+| Ironvale | Heavy physical rounds, rockets, and cluster ordnance; damage over cycling speed | Heavier protection and capacity |
 | Prism | Beams, orbs, and discs; precision, ice, and gravity | Efficient shields, fast cooling |
 | Kestrel | Guided rounds, light bullets, and scatter; fast handling | Mobility and reload speed over protection |
 | Rebound | Ricochets and bouncing discs; kinetic and shock | Larger magazines and balanced durability |
 | Tackwork | Sticky charges and spikes; adhesive and corrosive payloads | Reinforcement and capacity |
 | Nullward | Orbs, guided rounds, and discs; gravity and ice | Large shields and reactors |
-| Cindergrid | Rockets, slugs, and scatter; fire, radiation, and corrosion | Aggressive damage and cooling |
+| Cindergrid | Rockets, clusters, slugs, and scatter; fire, radiation, and corrosion | Aggressive damage and cooling |
 | Voltaic | Chain arcs, beams, and spikes; shock and radiation | Fast cycling, cooling, and servos |
 
 These tendencies modify actual rolled stats. They are not brand labels applied to otherwise identical items. Existing saved items retain their original numeric stats when receiving legacy metadata.
@@ -51,9 +51,13 @@ Receiver design and paint stay stable when changing only elements or flight styl
 
 Moving rounds use swept mesh collision. Explosions and chain hops check cover. Sticky charges follow the target's local attachment point and fall away if the target disappears. Simulation time controls flight, fuses, effects, and statuses, so opening a menu pauses them.
 
-Cluster fires one carrier, which deals no damage itself. It splits after **0.45 seconds**, or earlier on contact, into **six pilot children** or **eight mech children**. Children spread from the carrier's direction, travel at 65% of its speed, and detonate on collision or after their own **0.65-second fuse**. Their blast radius is **2.2m** for pilot weapons and **3.2m** for mech weapons. Children do not split again. Unlike scatter, these rounds separate after the carrier has traveled rather than at the muzzle.
+Cluster fires one carrier, which deals no damage itself. It splits after **0.45 seconds**, or earlier on contact, into **six pilot children** or **eight mech children**. Children spread from the carrier's direction, travel at 65% of its speed, and detonate on collision or after their own **0.65-second fuse**. Their blast radius is **3m** for pilot weapons and **4m** for mech weapons. Pilot children use a **0.12-radian** cone; mech children use a tighter **0.08-radian** cone to retain more of the payload at distance. Children do not split again. Unlike scatter, these rounds separate after the carrier has traveled rather than at the muzzle.
 
-Cluster preserves the selected manufacturer, primary/secondary elements, flight style, and variant. Its effective carrier damage is divided among the children before direct hits, splash, or status-power calculations; card damage and per-proc rates describe that child damage. Child count, split delay, child fuse, and child blast radius appear as projectile properties. Cluster is available explicitly through the workbench and arsenal fixture; ordinary loot pools and their RNG draw sequence remain unchanged. Optional saved split metadata also supports other physical carrier profiles without adding fields to legacy weapons.
+Cluster preserves the selected manufacturer, primary/secondary elements, flight style, and variant. Direct impact damage is divided among the children before contacts and splash. Elemental chance is shared across children independently for each channel: `child chance = 1 − (1 − carrier chance)^(1 / child count)`. When all children connect to one target in one impact stage, the chance of at least one proc matches the carrier chance. At a 35% carrier chance, pilot children each have about 6.9% and mech children about 5.2%. Successful procs use the carrier's status strength, with actual splash falloff and the one-time secondary-element cost retained. This reduces excessive control reliability without dividing nonstacking periodic effects twice. Item cards show child direct damage, child proc chance, and carrier-strength damage per proc.
+
+Cluster appears in **Ironvale** and **Cindergrid** ordinary weapon loot for both forms, alongside the workbench and arsenal fixture. It takes half the existing rocket weight: **12.5% of Ironvale weapon profiles** and **16.7% of Cindergrid weapon profiles**. All other profile-selection intervals, element pools, and RNG draw counts remain unchanged. Other manufacturers retain their established pools. Existing saved items keep their numeric stats and explicit split settings; revised cone/radius defaults apply to newly generated weapons. Optional saved split metadata also supports other physical carrier profiles without adding fields to legacy weapons.
+
+The [Cluster balance pass](cluster-balance.md) records the actual-game comparison, controlled range/cover evidence, loot compatibility, and limitations.
 
 ## Damage and status effects
 
@@ -61,7 +65,7 @@ A valid secondary elemental channel costs **15% effective projectile damage**, i
 
 Mech shots generate `min(31, 120 / fireRate)` heat per consumed round, regardless of pellet count or subsequent hits. Overheating begins at capacity and unlocks strictly below **45%** capacity. Slower mech weapons retain 31 heat per shot. Pilot shots retain 8 heat and the 30% unlock threshold. Cooling, equipment capacity, and the mech's normal 40-heat vent on a nine-second cooldown retain their existing values.
 
-An elemental impact rolls its saved status chance independently for each non-kinetic channel. A kinetic primary can carry a secondary status payload. Direct normal-hit numbers remain white and critical hits red; status damage uses the effect's color and floats above the affected enemy, including fractional damage. Fire, corrosion, radiation, and shock tick every half second. Tick amounts are half of their per-second rate. Aimed targets show an active-effect ribbon with the current damage rate (including their active vulnerability/shield modifiers) and remaining time. Item cards show each channel's independent base rate per successful proc, chance, and duration before target modifiers; comparisons match the same element even when its channel order changes. A newly added secondary compares against zero.
+An elemental impact rolls independently for each non-kinetic channel. Unsplit deliveries use the saved chance; split deliveries derive the per-child chance described above. A kinetic primary can carry a secondary status payload. Direct normal-hit numbers remain white and critical hits red; status damage uses the effect's color and floats above the affected enemy, including fractional damage. Fire, corrosion, radiation, and shock tick every half second. Tick amounts are half of their per-second rate. Aimed targets show an active-effect ribbon with the current damage rate (including their active vulnerability/shield modifiers) and remaining time. Item cards show each channel's independent base rate per successful proc, chance, and duration before target modifiers; comparisons match the same element even when its channel order changes. A newly added secondary compares against zero.
 
 | Type | Effect when applied |
 | --- | --- |

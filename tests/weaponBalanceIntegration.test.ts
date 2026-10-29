@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { createWeaponSpec, getWeaponElements, getWeaponSpec, type ProjectileType, type WeaponSpec } from '../src/core/arsenal.ts';
+import { createWeaponSpec, getHitStatusChance, getHitStatusPower, getWeaponElements, getWeaponSpec, type ProjectileType, type WeaponSpec } from '../src/core/arsenal.ts';
 import { deserializeProgression, seededRandom, serializeProgression } from '../src/core/index.ts';
 import { applyStatus, advanceStatuses, createStatusState, type StatusState } from '../src/core/statusEffects.ts';
 import { BASELINE_WEAPON_BALANCE, DEFAULT_WEAPON_BALANCE, effectiveProjectileDamage, type WeaponBalanceRules } from '../src/core/weaponBalance.ts';
@@ -19,6 +19,7 @@ interface Observation {
 function delivered(projectile: ProjectileType, rules: WeaponBalanceRules) {
   const scene = new THREE.Scene(), targets: BallisticTarget[] = [];
   const statuses = new Map<number, StatusState>(), hits: Observation[] = [];
+  // Seed 7 exercises both Cluster channels even after child-chance normalization.
   const random = seededRandom(7);
   let now = 0;
   const spec: WeaponSpec = { ...createWeaponSpec(projectile, 'fire'), secondaryElement: 'shock', spread: 0,
@@ -42,8 +43,8 @@ function delivered(projectile: ProjectileType, rules: WeaponBalanceRules) {
     hit(hit: BallisticHit) {
       hits.push({ id: hit.targetId, at: now, point: hit.point.toArray(), damage: hit.damage, critical: hit.critical });
       for (const element of getWeaponElements(hit.spec)) {
-        if (element !== 'kinetic' && random() < hit.spec.statusChance) {
-          applyStatus(statuses.get(hit.targetId)!, element, now, hit.damage * hit.spec.statusPower);
+        if (element !== 'kinetic' && random() < getHitStatusChance(hit.spec)) {
+          applyStatus(statuses.get(hit.targetId)!, element, now, getHitStatusPower(hit.damage, hit.spec));
         }
       }
     },
@@ -102,6 +103,10 @@ for (const projectile of ['bullet', 'scatter', 'rocket', 'sticky', 'arc', 'clust
       assert.equal(splash.length, count, 'Each physical bomblet produces its own cover-tested splash');
       assert.ok(splash.every(hit => hit.damage < 85 / count), 'Each splash retains bomblet-level falloff');
       assert.ok(combined.active.some(({ state }) => state.fire) && combined.active.some(({ state }) => state.shock), 'Both saved elemental channels produce real statuses after splitting');
+      const mainStatus = combined.active.find(({ id }) => id === 1)!.state;
+      assert.ok(mainStatus.fire && mainStatus.shock, 'Seed 7 must retain both real primary-target procs at normalized child chance');
+      near(mainStatus.fire.power, 85 * combined.spec.statusPower);
+      near(mainStatus.shock.power, 85 * combined.spec.statusPower);
     }
     if (projectile === 'sticky') {
       near(combined.hits[0].damage, 17);

@@ -26,8 +26,8 @@ test('generated equipment carries valid branded metadata, and established weapon
     }
   }
   assert.deepEqual([...seenBrands].sort(), brandList.map(brand => brand.id).sort());
-  assert.deepEqual([...projectiles].sort(), Object.keys(projectileLabels).filter(projectile => projectile !== 'cluster').sort());
-  assert.ok(!projectiles.has('cluster'), 'Cluster is an explicit workbench/demo profile; normal loot pools and RNG remain unchanged');
+  assert.deepEqual([...projectiles].sort(), Object.keys(projectileLabels).sort());
+  assert.ok(projectiles.has('cluster'), 'Cluster appears in ordinary heavy-ordnance loot');
   assert.deepEqual([...elements].sort(), Object.keys(elementLabels).sort());
 });
 
@@ -143,8 +143,8 @@ test('cluster defaults split one launcher carrier and retain independent element
       assert.equal(spec.pellets, 1);
       assert.equal(spec.speed, 58);
       assert.equal(spec.fuse, 0.65);
-      assert.equal(spec.blastRadius, mode === 'mech' ? 3.2 : 2.2);
-      assert.deepEqual(spec.split, { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: 0.32 });
+      assert.equal(spec.blastRadius, mode === 'mech' ? 4 : 3);
+      assert.deepEqual(spec.split, { count: mode === 'mech' ? 8 : 6, delay: 0.45, spread: mode === 'mech' ? 0.08 : 0.12 });
       assert.deepEqual(normalizeWeaponSpec(spec, mode), spec);
     }
   }

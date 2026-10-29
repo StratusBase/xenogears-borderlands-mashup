@@ -1,5 +1,5 @@
 import type { Item, Stats } from './index';
-import { elementColors, elementLabels, getWeaponSpec, getWeaponElements, type ElementType, type WeaponSpec } from './arsenal';
+import { elementColors, elementLabels, getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, type ElementType, type WeaponSpec } from './arsenal';
 import { ELEMENT_STATUS, elementEffectDescriptions, getStatusDps, getStatusDuration } from './statusEffects';
 import { DEFAULT_WEAPON_BALANCE, effectiveProjectileDamage, hasSecondaryElementCost, type WeaponBalanceRules } from './weaponBalance';
 
@@ -130,11 +130,11 @@ function weaponNumbers(item: Item, spec: WeaponSpec, rules: WeaponBalanceRules) 
 
 function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): CardStatus {
   const info = ELEMENT_STATUS[spec.element];
-  const power = damage * spec.statusPower;
+  const power = getHitStatusPower(damage, spec);
   const applied = getStatusDuration(spec.element) > 0 && power > 0;
   const duration = applied ? getStatusDuration(spec.element) : 0;
   const dps = applied && info.dpsMultiplier > 0 ? getStatusDps(spec.element, power) : null;
-  const chancePercent = spec.element === 'kinetic' ? 0 : spec.statusChance * 100;
+  const chancePercent = spec.element === 'kinetic' ? 0 : getHitStatusChance(spec) * 100;
   const movement = `${number(info.moveSpeed * 100)}% move`;
   const seconds = `${number(duration)} s`;
   let effect: string;
@@ -221,7 +221,7 @@ export function buildItemCard(item: Item, equipped?: Item, rules: WeaponBalanceR
   const statuses = getWeaponElements(spec).map((element, index) => statusCard({ ...spec, element }, values.damage,
     previousStatuses.find(status => status.element === element) ?? (index === 0 ? previousStatuses[0]
       : previousSpec ? statusCard({ ...previousSpec, element: 'kinetic' }, 0) : undefined)));
-  if (values.splitCount > 1) for (const status of statuses) status.description += ' Per-proc damage uses one child hit after dividing the carrier damage budget among its children.';
+  if (values.splitCount > 1) for (const status of statuses) status.description += " Each successful child proc uses the carrier's status strength, with splash falloff preserved. The per-child chance shares the saved carrier chance; all children connecting in one impact stage retain that chance of at least one proc.";
   if (costNotice) for (const status of statuses) status.description += costNotice;
   return { comparison, weapon, stats, secondary: secondarySpecs(spec), status: statuses[0] ?? null, statuses };
 }
