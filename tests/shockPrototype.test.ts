@@ -11,6 +11,7 @@ import { PlayerBallistics } from '../src/rendering/PlayerBallistics.ts';
 import { ElementalPresentation } from '../src/rendering/quality/elementalPresentation.ts';
 import { shockABAudioRecipe } from '../src/audio/shockAudio.ts';
 import { corrosiveABAudioRecipe } from '../src/audio/corrosiveAudio.ts';
+import {createElementalProjectile} from '../src/rendering/quality/elementalFlight.ts';
 
 function target(scene:THREE.Scene,kind='cloth',id=1,x=0){
  const root=new THREE.Group(),mesh=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.28),new THREE.MeshBasicMaterial({color:0x665060}));mesh.userData.corrosiveSurface=kind;mesh.userData.enemyId=id;mesh.name=`${kind}-front`;root.position.set(x,1.5,-3);root.add(mesh);scene.add(root);scene.updateMatrixWorld(true);return{root,mesh,id,radius:.45};
@@ -217,4 +218,28 @@ test('all eight C directions preserve outward clearance on floors, walls, slopes
    layer.group.traverse(mesh=>{if(!(mesh instanceof THREE.Mesh)||mesh.name!=='shock-capacitor-blades-and-shards'||!mesh.parent?.visible)return;const p=mesh.geometry.attributes.position;for(let j=0;j<p.count;j++){const v=new THREE.Vector3().fromBufferAttribute(p,j).applyMatrix4(mesh.matrixWorld).sub(point);assert.ok(v.toArray().every(Number.isFinite)&&v.dot(normal)>.02);}});
   }assert.equal(new Set(layer.directions.map(d=>d.sector)).size,8);layer.dispose();
  }
+});
+
+test('fixed Shock sticky charge stays inside its carrier envelope, never rotates, and leaves the other channel intact',()=>{
+ const scene=new THREE.Scene(),layer=new ShockPresentation(scene,new THREE.PerspectiveCamera(),'capacitor',{cosmeticSeed:37391});
+ for(const spec of [createWeaponSpec('sticky','shock'),{...createWeaponSpec('sticky','fire'),secondaryElement:'shock' as const},{...createWeaponSpec('sticky','shock'),secondaryElement:'fire' as const}]){
+  const frozen=structuredClone(spec),root=layer.projectile(spec,'ironvale'),reference=createElementalProjectile(spec,'ironvale');
+  assert.deepEqual(spec,frozen);assert.deepEqual(root.userData,reference.userData);
+  const fixed=root.getObjectByName('shock-fixed-sticky-charge');assert.ok(fixed);assert.ok(!root.children.some(c=>c.userData.element==='shock'&&c.name.includes('payload')));
+  const bounds=new THREE.Box3().setFromObject(fixed),size=bounds.getSize(new THREE.Vector3());assert.ok(size.x<=.15&&size.y<=.15&&size.z<=.10);
+  assert.deepEqual(root.scale.toArray(),reference.scale.toArray());
+  root.position.set(1,2,3);root.rotation.set(.2,.4,.1);root.updateMatrixWorld(true);const before=fixed.matrixWorld.clone(),pose=root.matrix.clone();
+  const light=fixed.getObjectByName('shock-sticky-charge-light') as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>;let previous=light.material.opacity,changed=false;
+  for(let i=1;i<90;i++){layer.updateProjectile(root,1/60,i/60);root.updateMatrixWorld(true);assert.deepEqual(fixed.matrixWorld.elements,before.elements);assert.deepEqual(root.matrix.elements,pose.elements);changed ||= light.material.opacity!==previous;previous=light.material.opacity;}
+  assert.ok(changed);layer.updateProjectile(root,0,6);assert.equal(light.material.opacity,previous);
+  const fire=root.children.find(c=>c.userData.element==='fire'),referenceFire=reference.children.find(c=>c.userData.element==='fire');
+  if(fire&&referenceFire){const meshes=(o:THREE.Object3D)=>{const values:unknown[]=[];o.traverse(c=>{if(c instanceof THREE.Mesh)values.push({name:c.name,position:Array.from(c.geometry.attributes.position.array),color:c.material.color.getHex()});});return values;};assert.deepEqual(meshes(fire),meshes(referenceFire));}
+ }
+ layer.dispose();
+});
+test('fixed sticky decoration does not change other Shock deliveries or non-Shock sticky visuals',()=>{
+ const layer=new ShockPresentation(new THREE.Scene(),new THREE.PerspectiveCamera());
+ const signature=(root:THREE.Group)=>{const values:unknown[]=[];root.traverse(c=>{if(c instanceof THREE.Mesh)values.push({name:c.name,positions:Array.from(c.geometry.attributes.position.array),material:c.material.name});});return values;};
+ for(const spec of [createWeaponSpec('rocket','shock'),createWeaponSpec('bullet','shock'),createWeaponSpec('sticky','fire')])assert.deepEqual(signature(layer.projectile(spec,'ironvale')),signature(createElementalProjectile(spec,'ironvale')));
+ layer.dispose();
 });

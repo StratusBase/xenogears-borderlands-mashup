@@ -1,17 +1,28 @@
 import * as THREE from 'three';
-import { getWeaponElements,type ElementType } from '../../../core/arsenal';
+import { getWeaponElements,type ElementType,type BrandId } from '../../../core/arsenal';
 import type { Mode } from '../../../core/index';
 import type { WeaponSpec } from '../../../core/arsenal';
 import type { BallisticPresentationImpact,BallisticPresentationSplash } from '../../PlayerBallistics';
 import { ElementalPresentation } from '../elementalPresentation';
 import { ShockResponse,type ShockChainEvent,type ShockVisualProfile,type ShockResponseOptions } from './response';
 import { shockABAudioRecipe } from '../../../audio/shockAudio';
+import {EffectVariationSequence} from '../shared/variation';
+import {installShockStickyCharge,animateShockStickyCharge} from './sticky';
+
+export interface ShockPresentationOptions extends ShockResponseOptions {stickyCharge?:'fixed'|'legacy'}
 
 /** Opt-in A+B adapter. Existing presentation remains the default until moving-prototype approval. */
 export class ShockPresentation extends ElementalPresentation{
  readonly shock:ShockResponse;
  private shockMode:Mode='pilot';
- constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:ShockVisualProfile='capacitor',options:ShockResponseOptions={}){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile,options);}
+ private flightVariation:EffectVariationSequence;
+ constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:ShockVisualProfile='capacitor',private options:ShockPresentationOptions={}){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile,options);this.flightVariation=new EffectVariationSequence(options.cosmeticSeed);}
+ override projectile(spec:WeaponSpec,brand:BrandId):THREE.Group{
+  const root=super.projectile(spec,brand);
+  if(spec.projectile==='sticky'&&getWeaponElements(spec).includes('shock')&&this.options.stickyCharge!=='legacy')installShockStickyCharge(root,this.flightVariation.next(4,'sticky-charge'));
+  return root;
+ }
+ override updateProjectile(root:THREE.Group,dt:number,age:number):void{super.updateProjectile(root,dt,age);animateShockStickyCharge(root,dt,age);}
  override impact(event:BallisticPresentationImpact):void{
   const elements=getWeaponElements(event.spec);if(!elements.includes('shock')){super.impact(event);return;}
   const surface=this.shock.impact(event),corrosive=elements.includes('corrosive')&&this.corrosive;
@@ -31,6 +42,6 @@ export class ShockPresentation extends ElementalPresentation{
  }
  override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{this.shockMode=mode;super.update(dt,time,paused,spec,mode);if(!paused)this.shock.update(dt);}
  override get diagnostics(){return{...super.diagnostics,shock:this.shock.diagnostics};}
- override clear():void{super.clear();this.shock?.clear();}
+ override clear():void{super.clear();this.shock?.clear();this.flightVariation?.reset();}
  override dispose():void{super.dispose();this.shock.dispose();}
 }

@@ -35,6 +35,8 @@ interface Bridge {
 }
 type SurfaceCase='raised'|'slope'|'ceiling'|'ledge'|'wall';
 type SceneCase='crowd-rifle'|'crowd-sticky'|'crowd-and-surfaces';
+const contactReview=import.meta.env.VITE_SHOCK_REVIEW==='contact';
+const previousLabel=contactReview?'SPINNING STICKY COIL':'RIGHT-BIASED C',currentLabel=contactReview?'FIXED STICKY CHARGE':'VARIED C / A+B';
 const progression=createProgression(), item=createWorkbenchWeapon({...DEFAULT_WORKBENCH_CONFIG,element:'shock',guaranteedStatus:true},'shock-ab');
 progression.inventory.push(item); progression.loadouts.pilot.weapon=item.id;
 const shots:EvaluationShot[]=[], hits:unknown[]=[], contacts:{phase:string;point:number[];normal:number[];surface?:string;target:number;at:number}[]=[];
@@ -50,7 +52,7 @@ let directionSequenceReady=false;
 let study:'surface'|'human'='surface',studyDelivery:ProjectileType='bullet',studyTarget=0,showPrevious=false;
 const simulationCosts:number[]=[], peaks={bolts:0,segments:0,heavyFans:0,worldSurfaces:0,statuses:0,capacitorBlades:0,capacitorShards:0,capacitorVertices:0,physicalVoices:0,elementalVoices:0};
 function shockLayer(){return layer instanceof ShockPresentation?layer.shock:undefined;}
-let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;requestAt:number;case:SurfaceCase;initialShots?:number;initialContacts?:number}|undefined;
+let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;requestAt:number;case:SurfaceCase;initialShots?:number;initialContacts?:number;contactOnly?:boolean}|undefined;
 const errors:string[]=[], surfaceResults:unknown[]=[], performanceResults:unknown[]=[];
 window.addEventListener('error',event=>errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
@@ -58,6 +60,7 @@ const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHT
 <label>Target<select id="study-target"><option value="0">Clothed human</option><option value="1">Armored human</option><option value="skin">Exposed forearm</option></select></label>
 <label>Delivery<select id="study-delivery"><option value="bullet">Rifle</option><option value="sticky">Sticky / heavy</option><option value="rocket">Rocket / heavy</option><option value="beam">Beam</option><option value="scatter">Scatter</option><option value="slug">Slug</option><option value="arc">Arc</option></select></label>
 <button id="study-run">Reset & fire study</button><button id="direction-next">Next heavy hit / freeze</button><button id="study-linger">Show lingering charge</button><button id="study-live">Play target shot with sound</button><button id="study-repeat">Play repeated target hits</button><button id="study-version" aria-pressed="false">View right-biased C</button>
+<button id="study-contact">Show attached charge before detonation</button>
 <label>Surface case<select id="surface-case"><option value="raised">Raised platform</option><option value="wall">Vertical wall</option><option value="slope">Sloped face</option><option value="ceiling">Ceiling / underside</option><option value="ledge">Finite ledge</option></select></label>
 <button id="surface-run">Fire surface test</button><button id="surface-settle">Show surface aftermath</button><button id="surface-live">Play surface shot with sound</button>
 <label>Performance scene<select id="perf-scene"><option value="crowd-rifle">Six humans / rifle</option><option value="crowd-sticky">Six humans / sticky</option><option value="crowd-and-surfaces">Six humans + raised surface / sticky</option></select></label>
@@ -65,6 +68,7 @@ const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHT
 <button id="record-start">Record live gameplay with sound</button><button id="record-stop" disabled>Stop recording</button><a id="record-download" hidden download="shock-ab.webm">Download gameplay recording</a><textarea id="record-data" aria-label="Recording export" hidden></textarea>
 <output id="signoff-state">Ready · before = right-biased C · current = balanced directions</output><details><summary>Raw verification results</summary><pre id="signoff-results">{}</pre></details>`;
 document.body.append(ui);
+if(contactReview){ui.querySelector('strong')!.textContent='SHOCK / STICKY CONTACT';ui.querySelector('#study-version')!.textContent='View spinning coil';ui.querySelector('#signoff-state')!.textContent='Ready · fixed charge / previous spinning coil';}
 const caption=document.createElement('div');caption.className='signoff-caption';document.body.append(caption);
 function state(text:string){document.querySelector('#signoff-state')!.textContent=text;}
 function publish(){document.querySelector('#signoff-results')!.textContent=JSON.stringify({surfaces:surfaceResults,studies:studyResults,performance:performanceResults,directions:shockLayer()?.directions??[],directionSeed:shockLayer()?.directionSeed,errors},null,2);}
@@ -79,7 +83,7 @@ function standOnPlatform(x:number,z:number){
 function response(old:boolean){
  game.setPresentationMode('legacy');before=old;
  g.presentation.setElementalFactory((scene,camera)=>{
-  layer=new ShockPresentation(scene,camera,'capacitor',{capacitorDirection:old?'legacy':'balanced',cosmeticSeed:37391});
+  layer=new ShockPresentation(scene,camera,'capacitor',{capacitorDirection:old&&!contactReview?'legacy':'balanced',stickyCharge:old?'legacy':'fixed',cosmeticSeed:37391});
   const impact=layer.impact.bind(layer);layer.impact=(event:BallisticPresentationImpact)=>{contacts.push({phase:event.phase,point:event.point.toArray(),normal:event.normal.toArray(),surface:event.hitSurface?.name,target:targets.findIndex(t=>t.mesh===event.target),at:g.time});impact(event);};
   return layer;
  });
@@ -136,11 +140,12 @@ function humanFixture(){
  setup(showPrevious,studyDelivery,3);study='human';g.camera.position.set(targets[studyTarget].mesh.position.x,1.8,4);
  const point=targets[studyTarget].mesh.position.clone().add(new THREE.Vector3(targetValue==='skin'?-.56:0,targetValue==='skin'?1.20:1.55,targetValue==='skin'?.10:0));aim(point);
  game.driveEvaluation({fire:false,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/240);
- caption.innerHTML=`SHOCK / ${showPrevious?'RIGHT-BIASED C':'VARIED C / A+B'}<span>${targetValue==='skin'?'Exposed forearm':studyTarget===0?'Clothed human':'Armored human'} · ${studyDelivery} · real Game / intact characters</span>`;
+ caption.innerHTML=`SHOCK / ${showPrevious?previousLabel:currentLabel}<span>${targetValue==='skin'?'Exposed forearm':studyTarget===0?'Clothed human':'Armored human'} · ${studyDelivery} · real Game / intact characters</span>`;
 }
 function humanAudit(){const surface=targets[studyTarget].mesh.getObjectByName('shock-live-wire-surface');const bindings:unknown[]=[];
  targets[studyTarget].mesh.traverse(mesh=>{if(mesh instanceof THREE.Mesh&&mesh.name==='shock-local-charge-overlay'&&mesh.visible){const u=(mesh.material as THREE.ShaderMaterial).uniforms;bindings.push({source:mesh.parent?.name,kind:mesh.parent?.userData.corrosiveSurface,radii:[...u.radii.value],ages:[...u.ages.value]});}});
- return{target:studyTarget,delivery:studyDelivery,previous:showPrevious,directions:structuredClone(shockLayer()?.directions??[]),events:structuredClone(shockLayer()?.events??[]),bindings,statusVisual:!!surface,snapshot:snapshot()};
+ const projectiles=g.scene.children.filter(o=>o.name.includes('projectile')).map(root=>{const meshes:unknown[]=[];root.traverse(o=>{if(o instanceof THREE.Mesh)meshes.push({name:o.name,parts:o.userData.authoredParts,parent:o.parent?.name});});return{name:root.name,metadata:root.userData,meshes};});
+ return{target:studyTarget,delivery:studyDelivery,previous:showPrevious,projectiles,directions:structuredClone(shockLayer()?.directions??[]),events:structuredClone(shockLayer()?.events??[]),bindings,statusVisual:!!surface,snapshot:snapshot()};
 }
 function surfaceAudit(){
  const contact=contacts.find(c=>c.phase==='contact'&&c.surface===probe?.name);
@@ -162,6 +167,7 @@ async function fireSurface(){
  pendingSurface={phase:'launch',frame:0,requestAt:performance.now(),case:surfaceCase};frozen=false;state('Firing actual sticky projectile…');
 }
 async function fireStudy(){humanFixture();await unlock();pendingSurface={phase:'launch',frame:0,requestAt:performance.now(),case:surfaceCase};frozen=false;state('Firing actual target study…');}
+async function fireContactStudy(){humanFixture();await unlock();pendingSurface={phase:'launch',frame:0,requestAt:performance.now(),case:surfaceCase,contactOnly:true};frozen=false;state('Firing real projectile / freezing during the existing fuse…');}
 async function nextDirectionStudy(){
  if(!directionSequenceReady){humanFixture();directionSequenceReady=true;}
  if(!['sticky','rocket'].includes(studyDelivery))throw new Error('Choose Sticky or Rocket for the direction sequence');
@@ -172,11 +178,11 @@ function updateSurface(){
  if(!pendingSurface)return;const p=pendingSurface;
  if(p.phase==='launch'){shotStep(true);p.frame++;if(shots.length>(p.initialShots??0)){p.phase='wait';p.frame=0;}if(p.frame>360)throw new Error('No real shot after reload/cadence wait');return;}
  shotStep(false);p.frame++;
- const phase=study==='surface'||['sticky','rocket'].includes(studyDelivery)?'detonate':'contact';
+ const phase=p.contactOnly?'contact':study==='surface'||['sticky','rocket'].includes(studyDelivery)?'detonate':'contact';
  if(p.phase==='wait'&&contacts.slice(p.initialContacts??0).some(e=>e.phase===phase)){p.phase='onset';p.frame=0;}
- if(p.phase==='onset'&&p.frame>=6){
+ if(p.phase==='onset'&&p.frame>=(p.contactOnly?18:6)){
   pendingSurface=undefined;frozen=true;
-  if(study==='human'){const result={stage:'onset',...humanAudit()};studyResults.push(result);publish();state(`Human study frozen +100 ms · ${result.bindings.length} visible charge bindings · ${result.events.filter(e=>e.size.heavy).length} heavy events`);}
+  if(study==='human'){const result={stage:p.contactOnly?'contact':'onset',...humanAudit()};studyResults.push(result);publish();state(p.contactOnly?'Attached charge frozen +300 ms after real contact':`Human study frozen +100 ms · ${result.bindings.length} visible charge bindings · ${result.events.filter(e=>e.size.heavy).length} heavy events`);}
   else{const result={stage:'onset',...surfaceAudit()};surfaceResults.push(result);publish();state(`${surfaceCase}: impact frozen +100 ms · ${result.visibleFans} capacitor fans · clearance ${result.minimumClearance?.toFixed(4)} m`);}
  }
  if(p.frame>300)throw new Error('No sticky detonation on requested surface');
@@ -186,7 +192,7 @@ function lingerStudy(){for(let i=0;i<36;i++)shotStep(false);studyResults.push({s
 function crowdedFixture(old:boolean,scene:SceneCase){
  setup(old,scene==='crowd-rifle'?'bullet':'sticky');
  if(scene==='crowd-and-surfaces'){solid('signoff-benchmark-raised-top',[3,.45,2.0],[-1.7,.9,1.25]);standOnPlatform(-1.8,5.4);}
- caption.innerHTML=`${scene.toUpperCase()} / ${old?'RIGHT-BIASED C':'VARIED C / A+B'}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
+ caption.innerHTML=`${scene.toUpperCase()} / ${old?previousLabel:currentLabel}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
 }
 function benchmarkAim(frame:number){
  const slot=Math.floor(frame/90)%6;
@@ -243,11 +249,12 @@ document.querySelector('#crowd-live')!.addEventListener('click',guard(liveCrowd)
 document.querySelector('#record-start')!.addEventListener('click',guard(startRecording));
 document.querySelector('#record-stop')!.addEventListener('click',guard(stopRecording));
 document.querySelector('#study-run')!.addEventListener('click',guard(fireStudy));
+document.querySelector('#study-contact')!.addEventListener('click',guard(fireContactStudy));
 document.querySelector('#direction-next')!.addEventListener('click',guard(nextDirectionStudy));
 document.querySelector('#study-linger')!.addEventListener('click',guard(lingerStudy));
 document.querySelector('#study-live')!.addEventListener('click',guard(liveHuman));
 document.querySelector('#study-repeat')!.addEventListener('click',guard(liveRepeat));
-document.querySelector('#study-version')!.addEventListener('click',()=>{showPrevious=!showPrevious;const button=document.querySelector('#study-version')!;button.setAttribute('aria-pressed',String(showPrevious));button.textContent=showPrevious?'View varied C':'View right-biased C';});
+document.querySelector('#study-version')!.addEventListener('click',()=>{showPrevious=!showPrevious;const button=document.querySelector('#study-version')!;button.setAttribute('aria-pressed',String(showPrevious));button.textContent=contactReview?(showPrevious?'View fixed charge':'View spinning coil'):(showPrevious?'View varied C':'View right-biased C');});
 const draw=g.comicRenderer.render.bind(g.comicRenderer);let previous=performance.now();
 g.comicRenderer.render=()=>{
  const now=performance.now(),dt=Math.min(.05,(now-previous)/1000);previous=now;
@@ -262,6 +269,6 @@ g.comicRenderer.render=()=>{
 };
 g.start(false);surfaceFixture('raised');publish();
 const gl=g.renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');
-const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:'3660665 / right-biased dense C',current:'Balanced eight-direction dense C',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
+const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:contactReview?'4f748fc / spinning sticky coil':'3660665 / right-biased dense C',current:contactReview?'Fixed Shock sticky charge':'Balanced eight-direction dense C',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
 const meta=document.createElement('script');meta.type='application/json';meta.id='signoff-metadata';meta.textContent=JSON.stringify(metadata);document.body.append(meta);
 window.addEventListener('pagehide',()=>perf.dispose());game.run();
