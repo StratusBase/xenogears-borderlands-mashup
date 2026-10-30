@@ -1,5 +1,7 @@
 # Corrosive splash on horizontal surfaces
 
+The later [final gameplay verification](corrosive-signoff.md) closes the manual surface coverage and final-build matched performance gaps described in this original fix receipt.
+
 The approved wall splash was being rotated flat onto horizontal faces. Its curls and gravity-driven tail could cross that face and be depth-clipped. Floor particles could also be stopped immediately by the old world-ground clamp, while residue on a raised surface was placed at world y=0.025.
 
 The directional response now uses a contact frame selected once from the surface normal and shot approach. Horizontal sheets lift outward, then compress smoothly onto the contact plane as they settle. They remain in world space when the camera moves. Slopes blend into the horizontal treatment; underside impacts use their outward normal. The approved vertical frame and vertex animation remain byte-identical.
