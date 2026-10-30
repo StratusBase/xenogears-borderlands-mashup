@@ -61,4 +61,4 @@ Generated art/prompt history is local ignored evidence, not the only home of the
 
 ## Playable visual revision
 
-Review rejected the first six evenly spaced curved ribbons because they resembled flower petals. The current prototype removes the radial rosette and leaf-shaped width envelope: eight unequal solid-angle paths carry narrow inward-moving streaks, with skewed broken pressure arcs and sparse grit. This is an implemented art revision for review, not a claim of final visual approval or true background refraction. Gameplay tuning is unchanged by this revision.
+Review rejected the first six evenly spaced curved ribbons because they resembled flower petals. The [stronger-core and pressure-fold pass](gravity-pressure.md) now replaces the thin-strand revision: a dark contracting core, asymmetric curved pressure sheets, fine inward traces and sparse grit. Cached per-source profiles vary shape and timing without a radial rosette or leaf-shaped width envelope. This is implemented art for review, not final visual approval or background refraction. Gameplay tuning is unchanged. The previous thin-strand renderer remains a development-only same-build comparison.

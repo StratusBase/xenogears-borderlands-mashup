@@ -11,7 +11,8 @@ The review entry is `gravity-lab.html` (`src/dev/effects/gravity/lab.ts`). It ru
 | `core/effects/gravity/profile.ts` | Provisional balance and finite budgets |
 | `core/effects/shared/collision.ts` | Swept AABB movement, visibility, body clearance, raised-support pose helper |
 | `rendering/PlayerBallistics.ts` | Optional `worldImpact` callback / `setWorldImpactHandler`, including world-only contacts and detonations |
-| `rendering/quality/gravity/response.ts` | `gravityModule`, `GravityResponse.sync(snapshot)` / `.event(event)`; presentation only |
+| `rendering/quality/gravity/response.ts` | `gravityModule`, `GravityView` / `GravityResponse.sync(snapshot)` / `.event(event)`; presentation only |
+| `rendering/quality/gravity/flow.ts` | Cached pressure paths, arc-length sampling and cosmetic profiles; no combat state |
 | `rendering/quality/shared/composedPresentation.ts` | One generic composition layer, alongside existing carrier effects |
 | `audio/gravityAudio.ts` | Recipe in existing shared audio engine; no new runtime context/engine |
 
@@ -26,7 +27,7 @@ Imports are relative to `src/`. No Three.js, DOM or audio dependency exists in t
 5. Feed the immutable `BallisticWorldImpact` to `GravityActivation.impact`. Use the constructor callback **or** the setter; the setter takes precedence and is a single owner, not an event bus. Clear it on teardown. The event includes a stable projectile ID, phase, copied world point/normal, frozen fired spec, energy, radius and optional target ID. Delayed sticky detonation retains its ID. Source placement works without an initial enemy hit.
 6. Advance ballistics, then fields, then publish their snapshot to presentation **once per simulation tick**. Skip field updates while paused. Never advance physics per camera or renderer. Let fields continue when art is disabled or Legacy is selected.
 7. While `fields.owns(targetId)` is true, avoid a competing AI movement write, including during the release fall. Keep attack/AI policy explicit; this prototype does not authorize globally disabling enemy attacks or boss/player capture. Ordinary weapon raycasts continue against the moved meshes; no separate airborne proxy is needed.
-8. Register `gravityModule` at the production composition root. Forward authoritative events to its response and snapshots through `.sync`. `GamePresentation` still owns update/pause/audio/clear/dispose. Its factory supports this generic composition without changing existing standalone renderers.
+8. Register `gravityModule` at the production composition root. Forward authoritative events to its response and snapshots through `.sync` once per tick. Its cosmetic `update` handles pulse/end envelopes and audio without rebuilding geometry again. Optional `{seed}` is for reproducible presentation only; never feed it to simulation. `GamePresentation` still owns update/pause/audio/clear/dispose. Its factory supports this generic composition without changing existing standalone renderers. Do not register the dev-only `gravityReferenceModule` in production.
 9. Replace the **legacy gravity proc / planar displacement** for deliveries using the new field. Do not combine both pulls. The lab explicitly gives its gravity weapon `statusChance=0` and activates qualifying blasts through the new event; this is isolated to its fixture, not a silent weapon balance edit.
 
 ## Explicit prototype policies
@@ -37,7 +38,7 @@ Imports are relative to `src/`. No Three.js, DOM or audio dependency exists in t
 - Full 3D range and cover checks include late entrants. Captured bodies hang around/below the core; floor and raised support can keep them grounded. Distinct ring/layer slots avoid one shared coordinate. This is not a crowd-body collision solver.
 - At most three active wells; oldest replacement releases its members. One source owns a target. Existing ownership is stable until invalid; new ownership chooses nearest normalized distance with insertion-order ties. No duplicate overlapping crush loops for one body.
 - `clear()` ends sources but retains members for collision-aware falling/landing. Keep updating until landing. `dispose()` also forgets bodies and is only for encounter teardown when the host removes/resets those actors. Dead/removed members disappear without resurrection. No added slam or fall damage.
-- Current renderer budget: three wells, eight uneven streak paths per well, 24 segments per path, 144 grit instances total and 32 hold contours. Owned resources are disposed; source resources are borrowed intact. Core size comes from the gameplay profile.
+- Current renderer budget: three wells, eight uneven pressure paths per well, 24 segments per path, 144 grit instances total and 12 short body-edge wakes per well. Owned resources are disposed; source resources are borrowed intact. Core size comes from the gameplay profile. See the [pressure-fold review](gravity-pressure.md) for same-build evidence and limits.
 
 ## Compatibility and remaining production checks
 

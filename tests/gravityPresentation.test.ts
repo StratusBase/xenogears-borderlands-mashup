@@ -10,8 +10,8 @@ import {createWeaponSpec} from '../src/core/arsenal';
 import type {GravityWell} from '../src/core/effects/gravity/field';
 const well=(id='one'):GravityWell=>({id,ownerId:'pilot',point:{x:0,y:3.2,z:-5},center:{x:0,y:3.2,z:-3.5},normal:{x:0,y:0,z:1},radius:5,captureRadius:1,duration:4.5,age:1,power:1});
 test('field art deforms along uneven inward paths, is world-anchored and never moves authoritative bodies or accepts ray hits',()=>{
- const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),audio=new ElementalAudio(gravityAudioRecipe),visual=new GravityResponse(scene,camera,audio),state={wells:[well()],members:[]},copy=structuredClone(state);visual.sync(state);
- const group=visual.group.getObjectByName('gravity-source-one')!,fold=group.getObjectByName('gravity-inward-streaks')as THREE.Mesh;assert.equal(fold.geometry.attributes.position.count,GRAVITY_VFX_CAPACITY.lanes*25*2);const before=Array.from(fold.geometry.attributes.position.array);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),audio=new ElementalAudio(gravityAudioRecipe),visual=new GravityResponse(scene,camera,audio,{seed:104729}),state={wells:[well()],members:[]},copy=structuredClone(state);visual.sync(state);
+ const group=visual.group.getObjectByName('gravity-source-one')!,fold=group.getObjectByName('gravity-pressure-folds')as THREE.Mesh;assert.equal(fold.geometry.attributes.position.count,GRAVITY_VFX_CAPACITY.lanes*25*2);const before=Array.from(fold.geometry.attributes.position.array);
  visual.sync({wells:[{...well(),age:1.2}],members:[]});assert.notDeepEqual(Array.from(fold.geometry.attributes.position.array),before);assert.deepEqual(state,copy);
  const matrix=group.matrixWorld.clone();camera.position.set(7,9,3);camera.lookAt(group.position);scene.updateMatrixWorld(true);assert.deepEqual(group.position.toArray(),[0,3.2,-3.5]);assert.ok(Array.from(fold.geometry.attributes.position.array).every(Number.isFinite));
  const ray=new THREE.Raycaster(new THREE.Vector3(0,3.2,0),new THREE.Vector3(0,0,-1));assert.deepEqual(ray.intersectObject(visual.group,true),[]);assert.ok(visual.diagnostics.grains<=GRAVITY_VFX_CAPACITY.grains);

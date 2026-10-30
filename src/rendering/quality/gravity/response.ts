@@ -4,98 +4,111 @@ import type {GravityEvent,GravityFields,GravityWell} from '../../../core/effects
 import type {ElementalAudio} from '../../../audio/elementalAudio';
 import type {BallisticPresentationImpact} from '../../PlayerBallistics';
 import type {ElementModule,ElementResponse} from '../shared/composedPresentation';
+import {EffectVariationSequence} from '../shared/variation';
 import {gravityAudioRecipe} from '../../../audio/gravityAudio';
+import {infallDistance,focusDisplacement,pressureProfile,samplePressure,type PressureProfile} from './flow';
 
-export const GRAVITY_VFX_CAPACITY=Object.freeze({wells:3,lanes:8,segments:24,grains:144,holds:32,events:128});
+export const GRAVITY_VFX_CAPACITY=Object.freeze({wells:3,lanes:8,segments:24,grains:144,holds:32,events:128,wakes:12,history:24});
 type Snapshot=ReturnType<GravityFields['snapshot']>;
-interface Visual {id:string;group:THREE.Group;well:GravityWell;folds:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;core:THREE.Mesh;arcs:THREE.Mesh[];mark:THREE.Mesh;fade:number;ending:boolean;bedBeat:number;pulse:number}
-const Z=new THREE.Vector3(0,0,1),UP=new THREE.Vector3(0,1,0);
-// Unequal solid-angle paths and timings: no radial rosette, paired spokes or leaf-shaped width envelope.
-const FLOW_PATHS=[[-.92,.48,.08,.055],[.78,.12,.64,.035],[-.3,-.72,.8,.08],[.12,.85,-.5,.028],[.65,-.5,-.3,.065],[-.8,-.25,-.55,.04],[.35,.55,.75,.09],[.05,-.4,-.95,.045]] as const;
-const foldVertex=`varying vec2 vUv;varying vec3 vView;void main(){vUv=uv;vec4 p=modelViewMatrix*vec4(position,1.);vView=-p.xyz;gl_Position=projectionMatrix*p;}`;
-const foldFragment=`uniform float presence,pulse;varying vec2 vUv;varying vec3 vView;void main(){float across=abs(vUv.y*2.-1.);float edge=smoothstep(.65,.98,across);float ends=smoothstep(0.,.12,vUv.x)*(1.-smoothstep(.75,1.,vUv.x));float alpha=(.32+.63*edge)*ends*presence;if(alpha<.01)discard;vec3 n=normalize(cross(dFdx(vView),dFdy(vView)));float light=dot(n,normalize(vec3(-.4,.7,.8)));vec3 c=mix(vec3(.075,.025,.14),vec3(.43,.19,.74),smoothstep(-.1,.7,light));c=mix(c,vec3(.78,.62,.98),edge*.90);c+=vec3(.20,.13,.28)*pulse*edge;gl_FragColor=vec4(c,alpha);}`;
+export interface GravityVisualOptions {seed?:number}
+export interface GravityView extends ElementResponse {sync(state:Snapshot):void;event(event:GravityEvent):void;readonly diagnostics:Record<string,unknown>}
+interface Visual {id:string;group:THREE.Group;well:GravityWell;folds:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;core:THREE.Mesh;wakes:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;profile:PressureProfile;endAge:number;pulse:number;bedBeat:number}
+const foldVertex=`attribute float visibility;varying vec3 vLocal;varying float vVisibility;varying vec2 vUv;void main(){vLocal=position;vVisibility=visibility;vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+const foldFragment=`uniform float presence,pulse,seed,wake,bodyScale;uniform int bodyCount;uniform vec3 bodies[12];varying vec3 vLocal;varying float vVisibility;varying vec2 vUv;
+float hash(float n){return fract(sin(n)*43758.5453);}
+void main(){float x=vUv.x,y=vUv.y;float tear=.035*sin(x*53.+seed)+.025*sin(x*107.+seed*2.3);float lower=.035+tear,upper=.965+.065*sin(x*37.+seed);if(y<lower||y>upper)discard;
+float ends=smoothstep(0.,.22,x)*(1.-smoothstep(.90,1.,x));float edge=min(y-lower,upper-y);float ink=1.-smoothstep(.025,.08,edge);float lit=smoothstep(.78,.85,y)*(1.-smoothstep(.92,.98,y))*(1.-ink);float body=1.-ink-lit;
+vec3 c=vec3(.012,.004,.026)*ink+vec3(.028,.006,.052)*body+vec3(.70,.39,.95)*lit;c+=vec3(.13,.07,.18)*pulse*lit;
+float targetClear=1.;for(int i=0;i<12;i++){if(i>=bodyCount)break;vec3 gap=(vLocal-bodies[i])*bodyScale;gap.y*=.55;targetClear=min(targetClear,smoothstep(.48,.85,length(gap)));}float cut=step(.11,hash(floor(x*23.)+seed));float alpha=presence*vVisibility*ends*mix(.88,.45,wake)*mix(.72,1.,cut);alpha*=mix(.14,1.,targetClear);if(alpha<.015)discard;gl_FragColor=vec4(c,alpha);}`;
 const coreVertex=`varying vec3 vN,vV;void main(){vec4 p=modelViewMatrix*vec4(position,1.);vV=-p.xyz;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*p;}`;
-const coreFragment=`uniform float pulse,presence;varying vec3 vN,vV;void main(){vec3 n=normalize(vN),v=normalize(vV);float rim=pow(1.-max(0.,dot(n,v)),3.5);float lit=max(0.,dot(n,normalize(vec3(-.4,.8,.9))));vec3 c=mix(vec3(.010,.006,.025),vec3(.065,.035,.12),step(.55,lit));c+=vec3(.71,.40,.98)*rim*(.75+pulse*.4);gl_FragColor=vec4(c,presence);}`;
+const coreFragment=`uniform float presence,pulse;varying vec3 vN,vV;void main(){float facing=max(0.,dot(normalize(vN),normalize(vV)));float rim=1.-smoothstep(.015,.15,facing);float inner=(1.-smoothstep(.17,.31,facing))*(1.-rim);vec3 c=vec3(.0015,.0007,.004)+vec3(.16,.052,.26)*inner+vec3(.85,.51,1.)*rim*(.8+.2*pulse);gl_FragColor=vec4(c,presence);}`;
 const particleVertex=`attribute float opacity;attribute vec3 tint;varying float vA;varying vec3 vC;void main(){vA=opacity;vC=tint;gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.);}`;
 const particleFragment=`varying float vA;varying vec3 vC;void main(){if(vA<.01)discard;gl_FragColor=vec4(vC,vA);}`;
-function foldGeometry(){const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
- for(let lane=0;lane<GRAVITY_VFX_CAPACITY.lanes;lane++)for(let i=0;i<=GRAVITY_VFX_CAPACITY.segments;i++){positions.push(0,0,0,0,0,0);uvs.push(i/GRAVITY_VFX_CAPACITY.segments,0,i/GRAVITY_VFX_CAPACITY.segments,1);if(i<GRAVITY_VFX_CAPACITY.segments){const k=(lane*(GRAVITY_VFX_CAPACITY.segments+1)+i)*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}}
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);return g;
-}
+const GRIT=[new THREE.Color(0xb39a77),new THREE.Color(0x493246),new THREE.Color(0xc9a0eb)];
+function geometry(lanes:number,segments:number){const positions=new Float32Array(lanes*(segments+1)*6),uv=new Float32Array(lanes*(segments+1)*4),indices:number[]=[];for(let lane=0;lane<lanes;lane++)for(let i=0;i<=segments;i++){const k=lane*(segments+1)+i;uv.set([i/segments,0,i/segments,1],k*4);if(i<segments){const v=k*2;indices.push(v,v+1,v+2,v+1,v+3,v+2);}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setAttribute('visibility',new THREE.BufferAttribute(new Float32Array(positions.length/3).fill(1),1));g.setIndex(indices);return g;}
 function cosmetic<T extends THREE.Object3D>(object:T):T{object.userData.presentationOnly=true;object.userData.comicOverlay=true;object.raycast=()=>{};object.frustumCulled=false;return object;}
+function material(seed:number,wake=false){return new THREE.ShaderMaterial({vertexShader:foldVertex,fragmentShader:foldFragment,uniforms:{presence:{value:1},pulse:{value:0},seed:{value:seed%4096},wake:{value:wake?1:0},bodyCount:{value:0},bodyScale:{value:1},bodies:{value:Array.from({length:12},()=>new THREE.Vector3())}},transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});}
 
-/** Read-only rendering of authoritative fields and bodies; never applies movement or damage. */
-export class GravityResponse implements ElementResponse {
+/** Read-only source presentation. Placement, membership, damage, bodies and clocks remain gameplay-owned. */
+export class GravityResponse implements GravityView {
  readonly group=cosmetic(new THREE.Group());readonly events:GravityEvent[]=[];
- private visuals=new Map<string,Visual>();private state:Snapshot={wells:[],members:[]};private clock=0;private disposed=false;
- private dummy=new THREE.Object3D();private grains:THREE.InstancedMesh;private holds:THREE.InstancedMesh;private alpha:THREE.InstancedBufferAttribute;private tint:THREE.InstancedBufferAttribute;
- constructor(scene:THREE.Scene,private camera:THREE.Camera,private audio:ElementalAudio){
-  this.group.name='gravity-well-presentation';scene.add(this.group);
+ private visuals=new Map<string,Visual>();private state:Snapshot={wells:[],members:[]};private disposed=false;private variation:EffectVariationSequence;
+ private history:{id:string;seed:number;variant:number;widths:number[];lengths:number[]}[]=[];private updates=0;
+ private dummy=new THREE.Object3D();private grains:THREE.InstancedMesh;private alpha:THREE.InstancedBufferAttribute;private tint:THREE.InstancedBufferAttribute;
+ private p=new THREE.Vector3();private next=new THREE.Vector3();private tangent=new THREE.Vector3();private side=new THREE.Vector3();private view=new THREE.Vector3();private cameraPosition=new THREE.Vector3();private center=new THREE.Vector3();
+ constructor(scene:THREE.Scene,private camera:THREE.Camera,private audio:ElementalAudio,options:GravityVisualOptions={}){
+  this.variation=new EffectVariationSequence(options.seed);this.group.name='gravity-well-presentation';scene.add(this.group);
   const g=new THREE.IcosahedronGeometry(1,0);this.alpha=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains),1);this.tint=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains*3),3);g.setAttribute('opacity',this.alpha);g.setAttribute('tint',this.tint);
   this.grains=cosmetic(new THREE.InstancedMesh(g,new THREE.ShaderMaterial({vertexShader:particleVertex,fragmentShader:particleFragment,transparent:true,depthWrite:false,toneMapped:false}),GRAVITY_VFX_CAPACITY.grains));this.grains.name='gravity-inward-grit';this.grains.count=0;this.group.add(this.grains);
-  this.holds=cosmetic(new THREE.InstancedMesh(new THREE.TorusGeometry(.62,.011,4,28,Math.PI*1.2),new THREE.MeshBasicMaterial({color:0xad86df,transparent:true,opacity:.38,depthWrite:false,toneMapped:false}),GRAVITY_VFX_CAPACITY.holds));this.holds.name='gravity-capture-contours';this.holds.count=0;this.group.add(this.holds);
  }
- impact(_event:BallisticPresentationImpact):void{/* The base carrier owns compact per-shot contacts; persistent wells come only from simulation state. */}
+ impact(_event:BallisticPresentationImpact):void{/* Existing carrier presentation owns the projectile/contact. */}
  event(event:GravityEvent):void{
   if(this.disposed)return;this.events.push(event);if(this.events.length>GRAVITY_VFX_CAPACITY.events)this.events.shift();
-  const well='well'in event?event.well:undefined,distance=well?new THREE.Vector3(well.center.x,well.center.y,well.center.z).distanceTo(this.camera.getWorldPosition(new THREE.Vector3())):0;
-  if(event.kind==='pulse'){this.audio.cue('gravity','impact',{splash:true,strength:.6,distance});const entry=this.visuals.get(event.well.id);if(entry)entry.pulse=1;}
-  if(event.kind==='end'){this.audio.cue('gravity','release',{distance});const entry=this.visuals.get(event.well.id);if(entry)entry.ending=true;}
+  const well='well'in event?event.well:undefined,distance=well?this.center.set(well.center.x,well.center.y,well.center.z).distanceTo(this.camera.getWorldPosition(this.cameraPosition)):0;
+  if(event.kind==='pulse'){this.audio.cue('gravity','impact',{splash:true,strength:.6,distance});const v=this.visuals.get(event.well.id);if(v)v.pulse=1;}
+  if(event.kind==='end'){this.audio.cue('gravity','release',{distance});const v=this.visuals.get(event.well.id);if(v&&v.endAge<0)v.endAge=0;}
  }
  sync(state:Snapshot):void{
-  if(this.disposed)return;this.state=state;
-  const ids=new Set(state.wells.map(w=>w.id));for(const v of this.visuals.values())if(!ids.has(v.id))v.ending=true;
-  for(const well of state.wells){let visual=this.visuals.get(well.id);if(!visual){if(this.visuals.size>=GRAVITY_VFX_CAPACITY.wells){const old=[...this.visuals.values()].find(v=>v.ending)??this.visuals.values().next().value!;this.remove(old);}visual=this.create(well);this.visuals.set(well.id,visual);}visual.well=well;visual.ending=false;}
+  if(this.disposed)return;this.state=state;const ids=new Set(state.wells.map(w=>w.id));for(const v of this.visuals.values())if(!ids.has(v.id)&&v.endAge<0)v.endAge=0;
+  for(const well of state.wells){let v=this.visuals.get(well.id);if(!v){if(this.visuals.size>=GRAVITY_VFX_CAPACITY.wells)this.remove([...this.visuals.values()].find(v=>v.endAge>=0)??this.visuals.values().next().value!);v=this.create(well);this.visuals.set(well.id,v);}v.well=well;}
+  // One geometry write per authoritative snapshot. update() only advances the cosmetic end envelope and audio cues.
   this.draw();
  }
  private create(well:GravityWell):Visual{
+  const profile=pressureProfile(this.variation.next(4,'gravity-well'),new THREE.Vector3(well.normal.x,well.normal.y,well.normal.z),new THREE.Vector3(well.center.x-well.point.x,well.center.y-well.point.y,well.center.z-well.point.z).length()/(well.radius/6));
   const group=cosmetic(new THREE.Group());group.name=`gravity-source-${well.id}`;this.group.add(group);
-  const material=new THREE.ShaderMaterial({vertexShader:foldVertex,fragmentShader:foldFragment,uniforms:{presence:{value:1},pulse:{value:0}},transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});const folds=cosmetic(new THREE.Mesh(foldGeometry(),material));folds.name='gravity-inward-streaks';folds.renderOrder=3;group.add(folds);
-  const core=cosmetic(new THREE.Mesh(new THREE.IcosahedronGeometry(GRAVITY_PROTOTYPE.coreRadius,2),new THREE.ShaderMaterial({vertexShader:coreVertex,fragmentShader:coreFragment,uniforms:{pulse:{value:0},presence:{value:1}},transparent:true,toneMapped:false})));core.name='gravity-dark-core';group.add(core);
-  const arcs=[.68,1.04].map((r,i)=>{const arc=cosmetic(new THREE.Mesh(new THREE.TorusGeometry(r,i?.015:.023,4,40,Math.PI*(i?.72:1.22)),new THREE.MeshBasicMaterial({color:i?0x9c6acd:0xd8c0fa,transparent:true,opacity:.7,depthWrite:false,toneMapped:false})));arc.rotation.set(.75+i*.9,.4,.3);arc.scale.set(1,i?.67:1.12,1);group.add(arc);return arc;});
-  const mark=cosmetic(new THREE.Mesh(new THREE.RingGeometry(.28,.34,40,1,0,Math.PI*1.35),new THREE.MeshBasicMaterial({color:0x8a58bb,transparent:true,opacity:.32,depthWrite:false,side:THREE.DoubleSide,toneMapped:false})));mark.name='gravity-contact-marker';this.group.add(mark);
-  return{id:well.id,group,well,folds,core,arcs,mark,fade:1,ending:false,bedBeat:-1,pulse:1};
+  const folds=cosmetic(new THREE.Mesh(geometry(GRAVITY_VFX_CAPACITY.lanes,GRAVITY_VFX_CAPACITY.segments),material(profile.seed)));folds.name='gravity-pressure-folds';folds.renderOrder=3;group.add(folds);
+  const core=cosmetic(new THREE.Mesh(new THREE.IcosahedronGeometry(GRAVITY_PROTOTYPE.coreRadius,2),new THREE.ShaderMaterial({vertexShader:coreVertex,fragmentShader:coreFragment,uniforms:{presence:{value:1},pulse:{value:0}},transparent:true,toneMapped:false})));core.name='gravity-dark-core';group.add(core);
+  const wakes=cosmetic(new THREE.Mesh(geometry(GRAVITY_VFX_CAPACITY.wakes,8),material(profile.seed+719,true)));wakes.name='gravity-member-pressure';wakes.renderOrder=3;group.add(wakes);
+  this.history.push({id:well.id,seed:profile.seed,variant:profile.variant,widths:profile.lanes.map(l=>l.width),lengths:profile.lanes.map(l=>l.length)});if(this.history.length>GRAVITY_VFX_CAPACITY.history)this.history.shift();
+  return{id:well.id,group,well,folds,core,wakes,profile,endAge:-1,pulse:1,bedBeat:-1};
  }
  update(dt:number,_time:number):void{
-  if(this.disposed||!Number.isFinite(dt)||dt<=0)return;this.clock+=dt;
-  for(const v of [...this.visuals.values()]){v.pulse=Math.max(0,v.pulse-dt*7);if(v.ending){v.fade=Math.max(0,v.fade-dt*4);if(!v.fade){this.remove(v);continue;}}
-   const beat=Math.floor(v.well.age/.55);if(!v.ending&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(new THREE.Vector3()))});}
-  }this.draw();
+  if(this.disposed||!Number.isFinite(dt)||dt<=0)return;
+  for(const v of [...this.visuals.values()]){v.pulse=Math.max(0,v.pulse-dt*7);if(v.endAge>=0){v.endAge+=dt;if(v.endAge>=.45){this.remove(v);continue;}}
+   const beat=Math.floor(v.well.age/.55);if(v.endAge<0&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(this.cameraPosition))});}
+  }
+ }
+ private ribbon(v:Visual){
+  const positions=v.folds.geometry.attributes.position as THREE.BufferAttribute,visibility=v.folds.geometry.attributes.visibility as THREE.BufferAttribute,segments=GRAVITY_VFX_CAPACITY.segments;
+  this.view.copy(this.cameraPosition).sub(v.group.position).divideScalar(v.well.radius/6);
+  for(let index=0;index<v.profile.lanes.length;index++){
+   const lane=v.profile.lanes[index],age=v.well.age+(v.endAge>=0?v.endAge:0),phase=(age/lane.duration+lane.offset)%1,head=index===0?lane.length:infallDistance(phase)*lane.length,window=(index===0?.98:lane.window)*lane.length;
+   for(let segment=0;segment<=segments;segment++){
+    const u=segment/segments,d=head-window*(1-u);samplePressure(lane,d,this.p);samplePressure(lane,d+.015,this.next);if(index===0){const wave=focusDisplacement(u,age);this.p.x+=wave;this.next.x+=wave;this.p.multiplyScalar(1-v.pulse*.09);this.next.multiplyScalar(1-v.pulse*.09);}
+    this.tangent.copy(this.next).sub(this.p).normalize();this.next.copy(this.view).sub(this.p).normalize();const projected=Math.sqrt(Math.max(0,1-Math.pow(this.tangent.dot(this.next),2)));this.side.crossVectors(this.tangent,this.next).normalize();if(this.side.lengthSq()<.01)this.side.set(1,0,0);
+    const torn=1+.14*Math.sin(u*33+lane.roughness)+.08*Math.sin(u*71+lane.roughness*2),width=d<=0?0:lane.width*Math.min(1,u*7)*(1-u*.74)*torn*(v.endAge>=0?Math.max(0,1-v.endAge/.45):1),k=(index*(segments+1)+segment)*2;
+    const envelope=(index===0?1:Math.min(1,phase*8)*Math.min(1,(1-phase)*8))*Math.min(1,projected/.15);visibility.setX(k,envelope);visibility.setX(k+1,envelope);positions.setXYZ(k,this.p.x-this.side.x*width,this.p.y-this.side.y*width,this.p.z-this.side.z*width);positions.setXYZ(k+1,this.p.x+this.side.x*width*.82,this.p.y+this.side.y*width*.82,this.p.z+this.side.z*width*.82);
+   }
+  }positions.needsUpdate=true;visibility.needsUpdate=true;
+ }
+ private memberWakes(v:Visual){
+  const positions=v.wakes.geometry.attributes.position as THREE.BufferAttribute,scale=v.well.radius/6;let lane=0;
+  for(const m of this.state.members){if(m.wellId!==v.id||lane>=GRAVITY_VFX_CAPACITY.wakes)continue;const x=(m.position.x-v.well.center.x)/scale,y=(m.position.y-v.well.center.y)/scale,z=(m.position.z-v.well.center.z)/scale;this.p.set(x,y,z);const distance=this.p.length(),held=m.phase==='held',length=held?.45:Math.min(1.6,distance*.55);this.tangent.copy(this.p).normalize();this.next.copy(this.view).sub(this.p).normalize();const projected=Math.sqrt(Math.max(0,1-Math.pow(this.tangent.dot(this.next),2)));this.side.crossVectors(this.tangent,this.next).normalize();if(this.side.lengthSq()<.01)this.side.set(1,0,0);
+   // Along the body edge, not a closed waist ring or a full core-to-body tether.
+   for(let i=0;i<=8;i++){const u=i/8,offset=(1-u)*length-.12,curve=Math.sin(u*Math.PI)*.18,px=x+this.tangent.x*offset+this.side.x*(.45+curve),py=y+this.tangent.y*offset-.18,pz=z+this.tangent.z*offset+this.side.z*(.45+curve),width=Math.sin(u*Math.PI)*(held?.025:.055),k=(lane*9+i)*2;positions.setXYZ(k,px-this.side.x*width,py-this.side.y*width,pz-this.side.z*width);positions.setXYZ(k+1,px+this.side.x*width,py+this.side.y*width,pz+this.side.z*width);}lane++;
+  }
+  v.wakes.geometry.setDrawRange(0,lane*8*6);positions.needsUpdate=true;
  }
  private draw(){
-  let grainCount=0;
+  this.updates++;let count=0;this.camera.getWorldPosition(this.cameraPosition);
   for(const v of this.visuals.values()){
-   const w=v.well,scale=w.radius/6,age=w.age,presence=v.fade*Math.min(1,age/.12),center=new THREE.Vector3(w.center.x,w.center.y,w.center.z),normal=new THREE.Vector3(w.normal.x,w.normal.y,w.normal.z);
-   v.group.position.copy(center);v.group.scale.setScalar(scale);v.core.rotation.set(age*.2,age*.3,age*.13);v.core.scale.setScalar(1+v.pulse*.08);
-   for(const mesh of [v.core,v.folds]){const m=mesh.material as THREE.ShaderMaterial;m.uniforms.presence.value=presence;m.uniforms.pulse.value=v.pulse;}
-   v.arcs.forEach((arc,i)=>{arc.rotation.z=age*(i?-.8:.6);(arc.material as THREE.MeshBasicMaterial).opacity=presence*(i?.4:.75);});
-   v.mark.position.set(w.point.x,w.point.y,w.point.z).addScaledVector(normal,.014);v.mark.quaternion.setFromUnitVectors(Z,normal);v.mark.scale.setScalar(scale*(.95+v.pulse*.15));(v.mark.material as THREE.MeshBasicMaterial).opacity=presence*.3;
-   const positions=v.folds.geometry.attributes.position as THREE.BufferAttribute;
-   for(let lane=0;lane<GRAVITY_VFX_CAPACITY.lanes;lane++){
-    const path=FLOW_PATHS[lane],direction=new THREE.Vector3(path[0],path[1],path[2]).normalize();
-    if(direction.dot(normal)<-.35)direction.addScaledVector(normal,-direction.dot(normal)-.35).normalize();
-    const tangent=new THREE.Vector3().crossVectors(direction,UP).normalize(),progress=(age*(.46+lane*.037)+lane*.271)%1;
-    const start=.04+progress*.69,end=Math.min(.99,start+.16+(lane%3)*.047),reach=3.1+(lane%3)*.41;
-    const point=(q:number)=>{const r=.16+Math.pow(1-q,1.25)*reach,turn=q*(1.0+(lane%3)*.37);return direction.clone().multiplyScalar(Math.cos(turn)*r).addScaledVector(tangent,Math.sin(turn)*r).addScaledVector(UP,Math.sin(q*Math.PI+lane)*.12*(1-q));};
-    for(let segment=0;segment<=GRAVITY_VFX_CAPACITY.segments;segment++){
-     const u=segment/GRAVITY_VFX_CAPACITY.segments,q=start+(end-start)*u,p=point(q),next=point(Math.min(1,q+.01)),directionAt=next.sub(p).normalize(),side=new THREE.Vector3().crossVectors(directionAt,UP).normalize();if(side.lengthSq()<.01)side.set(1,0,0);side.applyAxisAngle(directionAt,.65+lane*.71+age*(lane%2?.9:-.65));
-     const width=path[3]*(.75+.25*(1-q))*Math.min(1,u*9)*(1-u*.78),index=(lane*(GRAVITY_VFX_CAPACITY.segments+1)+segment)*2;
-     positions.setXYZ(index,p.x-side.x*width,p.y-side.y*width,p.z-side.z*width);positions.setXYZ(index+1,p.x+side.x*width,p.y+side.y*width,p.z+side.z*width);
-    }
-   }positions.needsUpdate=true;
-   for(let i=0;i<48&&grainCount<GRAVITY_VFX_CAPACITY.grains;i++){
-    const phase=(age*(.42+(i%5)*.06)+i*.618)%1,angle=i*2.39996+age*.4,r=(1-phase)*(1.65+(i%7)*.18)+.20;
-    const p=new THREE.Vector3(Math.cos(angle)*r,Math.sin(angle*1.7)*r*.46,Math.sin(angle)*r);if(p.dot(normal)<-1.05)p.addScaledVector(normal,-p.dot(normal)-1.05);
-    this.dummy.position.copy(center).addScaledVector(p,scale);this.dummy.rotation.set(i+age*1.1,i*.4+age*.7,age*.8);this.dummy.scale.setScalar((i%6===0?.045:.018+(i%3)*.005)*scale);this.dummy.updateMatrix();this.grains.setMatrixAt(grainCount,this.dummy.matrix);
-    this.alpha.setX(grainCount,presence*Math.sin(phase*Math.PI)*.8);const color=i%6===0?new THREE.Color(0x816953):i%4===0?new THREE.Color(0xaa84d2):new THREE.Color(0x322737);this.tint.setXYZ(grainCount,color.r,color.g,color.b);grainCount++;
+   const w=v.well,scale=w.radius/6,ending=v.endAge>=0,presence=Math.min(1,w.age/.10)*(ending?Math.max(0,1-v.endAge/.45):1);
+   v.group.position.set(w.center.x,w.center.y,w.center.z);v.group.scale.setScalar(scale);v.core.rotation.set(w.age*.13,w.age*.21,w.age*.07);v.core.scale.setScalar((1-v.pulse*.12)*(ending?Math.max(.02,1-v.endAge/.17):1));
+   for(const mesh of [v.core,v.folds,v.wakes]){(mesh.material as THREE.ShaderMaterial).uniforms.presence.value=presence;(mesh.material as THREE.ShaderMaterial).uniforms.pulse.value=v.pulse;}
+   let bodyCount=0;const bodies=v.folds.material.uniforms.bodies.value as THREE.Vector3[];for(const member of this.state.members)if(member.wellId===v.id&&bodyCount<12)bodies[bodyCount++].set((member.position.x-w.center.x)/scale,(member.position.y-w.center.y)/scale,(member.position.z-w.center.z)/scale);v.folds.material.uniforms.bodyCount.value=bodyCount;v.folds.material.uniforms.bodyScale.value=scale;
+   this.ribbon(v);this.memberWakes(v);
+   for(let i=0;i<48&&count<GRAVITY_VFX_CAPACITY.grains;i++){
+    const lane=v.profile.lanes[i%v.profile.lanes.length],phase=(w.age/(lane.duration*1.05)+i*.618+lane.offset)%1;samplePressure(lane,infallDistance(phase)*lane.length,this.p);this.p.x+=Math.sin(i*7.3)*.09;this.p.y+=Math.cos(i*3.7)*.12;this.p.z+=Math.sin(i*2.9)*.09;if(ending){this.p.y-=v.endAge*v.endAge*3;const limit=-Math.hypot(w.center.x-w.point.x,w.center.y-w.point.y,w.center.z-w.point.z)/scale+.06,dot=this.p.x*w.normal.x+this.p.y*w.normal.y+this.p.z*w.normal.z;if(dot<limit){this.p.x+=w.normal.x*(limit-dot);this.p.y+=w.normal.y*(limit-dot);this.p.z+=w.normal.z*(limit-dot);}}
+    this.dummy.position.set(w.center.x+this.p.x*scale,w.center.y+this.p.y*scale,w.center.z+this.p.z*scale);this.dummy.rotation.set(i+w.age,i*.4+w.age*.7,w.age*.8);this.dummy.scale.setScalar((i%5===0?.075:.028+(i%3)*.012)*scale);this.dummy.updateMatrix();this.grains.setMatrixAt(count,this.dummy.matrix);
+    this.alpha.setX(count,presence*Math.min(1,phase*8)*(1-Math.pow(phase,6))*.95);const color=GRIT[i%5===0?0:i%4===0?2:1];this.tint.setXYZ(count,color.r,color.g,color.b);count++;
    }
   }
-  this.grains.count=grainCount;this.grains.instanceMatrix.needsUpdate=true;this.alpha.needsUpdate=true;this.tint.needsUpdate=true;
-  let count=0;for(const member of this.state.members){if(!member.wellId||count>=GRAVITY_VFX_CAPACITY.holds)continue;this.dummy.position.set(member.position.x,member.position.y-.25,member.position.z);this.dummy.rotation.set(Math.PI/2+.15,member.slot,.1);this.dummy.scale.setScalar(member.phase==='held'?1:.6);this.dummy.updateMatrix();this.holds.setMatrixAt(count++,this.dummy.matrix);}this.holds.count=count;this.holds.instanceMatrix.needsUpdate=true;
+  this.grains.count=count;this.grains.instanceMatrix.needsUpdate=true;this.alpha.needsUpdate=true;this.tint.needsUpdate=true;
  }
- private remove(v:Visual){v.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});v.mark.geometry.dispose();(v.mark.material as THREE.Material).dispose();v.mark.removeFromParent();v.group.removeFromParent();this.visuals.delete(v.id);}
- get diagnostics(){return{wells:this.visuals.size,grains:this.grains.count,heldContours:this.holds.count,foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0)};}
- clear():void{for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.holds.count=0;this.events.length=0;this.clock=0;}
- dispose():void{if(this.disposed)return;this.clear();for(const mesh of [this.grains,this.holds]){mesh.geometry.dispose();(mesh.material as THREE.Material).dispose();mesh.dispose();}this.group.removeFromParent();this.disposed=true;}
+ private remove(v:Visual){v.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});v.group.removeFromParent();this.visuals.delete(v.id);}
+ get diagnostics(){return{wells:this.visuals.size,grains:this.grains.count,heldContours:0,foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths]}))};}
+ clear():void{for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
+ dispose():void{if(this.disposed)return;this.clear();this.grains.geometry.dispose();(this.grains.material as THREE.Material).dispose();this.grains.dispose();this.group.removeFromParent();this.disposed=true;}
 }
-export function gravityModule(onCreate?:(response:GravityResponse)=>void):ElementModule{return{recipe:gravityAudioRecipe,create:({scene,camera,audio})=>{const response=new GravityResponse(scene,camera,audio);onCreate?.(response);return response;}};}
+export function gravityModule(onCreate?:(response:GravityResponse)=>void,options:GravityVisualOptions={}):ElementModule{return{recipe:gravityAudioRecipe,create:({scene,camera,audio})=>{const response=new GravityResponse(scene,camera,audio,options);onCreate?.(response);return response;}};}
