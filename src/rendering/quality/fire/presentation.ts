@@ -10,8 +10,8 @@ import { FireResponse } from './response';
 export class FirePresentation extends ElementalPresentation {
  readonly fire:FireResponse;
  private fireMode:Mode='pilot';private fireDisposed=false;
- constructor(scene:THREE.Scene,private readonly fireCamera:THREE.Camera){
-  super(scene,fireCamera,{corrosiveAB:true,audioRecipe:fireABCAudioRecipe});this.fire=new FireResponse(scene,fireCamera);
+ constructor(scene:THREE.Scene,private readonly fireCamera:THREE.Camera,options:{hybrid?:boolean}={}){
+  super(scene,fireCamera,{corrosiveAB:true,audioRecipe:fireABCAudioRecipe});this.fire=new FireResponse(scene,fireCamera,options);
  }
  protected override splashImpact(event:BallisticPresentationSplash){super.splashImpact(event);if(event.primary||!getWeaponElements(event.spec).includes('fire'))return;const surface=this.fire.splash(event);this.audio.impact('fire',{mode:this.fireMode,delivery:event.spec.projectile,splash:true,surface,distance:event.point.distanceTo(this.fireCamera.getWorldPosition(new THREE.Vector3())),strength:Math.min(.28,.07+event.exposure*.22)});}
  override impact(event:BallisticPresentationImpact){

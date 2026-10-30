@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { BallisticPresentationImpact,BallisticPresentationSplash } from '../../PlayerBallistics';
 import { nearestCorrosiveSurface as visibleContact,corrosiveSources as visibleSources,corrosiveTargetSpan as targetSpan,type CorrosiveSurface as SurfaceKind } from '../corrosive/surfaces';
 import { fireSizing } from './sizing';
+import { FireHybrid } from './hybrid';
 import { FIRE_LOBES,fireLobes,createFireVolumeGeometry,fireVolumeVertex,fireVolumeFragment,fireParticleVertex,fireParticleFragment } from './flame';
 import { FireStatus,FireMask,type FireContact } from './surface';
 
@@ -12,10 +13,12 @@ interface Particle {active:boolean;age:number;life:number;size:number;seed:numbe
 interface Pool {mesh:THREE.InstancedMesh;items:Particle[];next:number;alpha:THREE.InstancedBufferAttribute;age:THREE.InstancedBufferAttribute;seed:THREE.InstancedBufferAttribute}
 /** Fixed-capacity, presentation-only A ignition + B aftermath + C actual detonation. */
 export class FireResponse {
+ readonly hybrid:FireHybrid|undefined;private warmSurface:{source:THREE.Mesh;mask:FireMask}|undefined;private preparation:Promise<void>|undefined;
  readonly group=new THREE.Group();readonly events:{phase:string;role:string;explosive:boolean;surface:SurfaceKind;size:number;coatingRadius:number;embers:number;exposure:number;point:number[]}[]=[];
  private readonly sheets:Sheet[]=[];private readonly pools=new Map<string,Pool>();private readonly statuses=new Map<THREE.Group,FireStatus>();private contacts=new WeakMap<THREE.Group,FireContact[]>();
  private readonly scorches=new Map<THREE.Mesh,{mask:FireMask;age:number}>();private randomState=319;private serial=0;private nextSheet=0;private time=0;private disposed=false;private readonly dummy=new THREE.Object3D();
- constructor(scene:THREE.Scene,private readonly camera:THREE.Camera){
+ constructor(scene:THREE.Scene,private readonly camera:THREE.Camera,options:{hybrid?:boolean}={}){
+  if(options.hybrid)this.hybrid=new FireHybrid(scene,camera);
   this.group.name='fire-abc-response';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;scene.add(this.group);
   for(let i=0;i<FIRE_CAPACITY.sheets;i++){
    const lobes=Array.from({length:FIRE_LOBES},()=>new THREE.Vector4());
@@ -28,7 +31,7 @@ export class FireResponse {
  private pool(name:string,count:number,geometry:THREE.BufferGeometry,kind:number){
   const alpha=new THREE.InstancedBufferAttribute(new Float32Array(count),1),age=new THREE.InstancedBufferAttribute(new Float32Array(count),1),seed=new THREE.InstancedBufferAttribute(new Float32Array(count),1);
   geometry.setAttribute('fxAlpha',alpha);geometry.setAttribute('fxAge',age);geometry.setAttribute('fxSeed',seed);
-  const material=new THREE.ShaderMaterial({name:`fire-${name}`,uniforms:{kind:{value:kind}},vertexShader:fireParticleVertex,fragmentShader:fireParticleFragment,transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
+  const material=new THREE.ShaderMaterial({name:`fire-${name}`,uniforms:{kind:{value:kind},hybrid:{value:this.hybrid?1:0}},vertexShader:fireParticleVertex,fragmentShader:fireParticleFragment,transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
   const mesh=new THREE.InstancedMesh(geometry,material,count);mesh.name=`fire-${name}-pool`;mesh.count=0;mesh.frustumCulled=false;mesh.raycast=()=>{};mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.renderOrder=name==='smoke'?5:4;this.group.add(mesh);
   this.pools.set(name,{mesh,alpha,age,seed,next:0,items:Array.from({length:count},()=>({active:false,age:0,life:1,size:1,seed:0,position:new THREE.Vector3(),velocity:new THREE.Vector3(),drift:new THREE.Vector3(),normal:Z.clone(),intensity:1}))});
  }
@@ -47,7 +50,8 @@ export class FireResponse {
   if(along.lengthSq()<.01){along=this.camera.getWorldPosition(new THREE.Vector3()).sub(point);along.addScaledVector(normal,-along.dot(normal));if(along.lengthSq()<.01)along.set(0,0,1);}
   along.normalize();const right=along.clone().cross(normal).normalize(),basis=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(right,normal.clone().cross(right),normal));
   if(sizes.sheetSize>0){
-   const sheet=this.sheets[this.nextSheet++%this.sheets.length];sheet.age=0;sheet.size=sizes.sheetSize;sheet.seed=seed;sheet.life=sizes.life;sheet.explosive=sizes.explosive;sheet.active=true;
+   if(!secondary)this.hybrid?.emit(contact.point,normal,sizes.sheetSize,sizes.explosive,seed,contact.source);
+   const sheet=this.sheets[this.nextSheet++%this.sheets.length];sheet.age=0;sheet.size=sizes.sheetSize*(this.hybrid?.24:1);sheet.seed=seed;sheet.life=this.hybrid?.18:sizes.life;sheet.explosive=sizes.explosive;sheet.active=true;
    // Fire rises in world space; an underside redirects the plume beneath its support.
    const rise=UP.clone();if(normal.y<-.65)rise.addScaledVector(normal,-normal.y*1.7).normalize();
    let forward=normal.clone().addScaledVector(rise,-normal.dot(rise));
@@ -60,7 +64,7 @@ export class FireResponse {
    fireLobes(0,seed,sheet.explosive,sheet.lobes);
   }
   for(let i=0;i<sizes.emberCount;i++){
-   const p=this.emit('embers',point,sizes.emberSize*(.65+this.random()*.7),secondary?.20+this.random()*.20:.42+this.random()*.52);
+   const p=this.emit('embers',point,sizes.emberSize*(this.hybrid&&!secondary?1.6:1)*(.65+this.random()*.7),secondary?.20+this.random()*.20:.42+this.random()*.52);
    const angle=this.random()*Math.PI*2;p.velocity.copy(right).multiplyScalar((this.random()-.35)*(secondary?.7:sizes.explosive?3.5:2.4));p.velocity.addScaledVector(normal,.6+this.random()*(secondary?.5:1.4));p.velocity.y+=.4+this.random()*1.1;p.velocity.addScaledVector(along,Math.sin(angle)*.25);
   }
   for(let i=0;i<sizes.smokeCount;i++){const p=this.emit('smoke',point,sizes.explosive?.50:.24,.55+this.random()*.30);p.velocity.copy(normal).multiplyScalar(.15);p.velocity.y+=.38;p.position.addScaledVector(right,(i-1)*.12);}
@@ -90,7 +94,7 @@ export class FireResponse {
   if(this.random()<.55){const p=this.emit('embers',contact.point,.009,.40);p.velocity.copy(contact.normal).multiplyScalar(.20);p.velocity.y=.4;}
  }
  update(dt:number){
-  if(this.disposed||!Number.isFinite(dt)||dt<=0)return;const step=Math.min(.1,dt);this.time+=step;
+  if(this.disposed||!Number.isFinite(dt)||dt<=0)return;const step=Math.min(.1,dt);this.time+=step;this.hybrid?.update(step);
   for(const sheet of this.sheets){if(!sheet.active)continue;sheet.age+=step;sheet.mesh.material.uniforms.age.value=sheet.age;fireLobes(sheet.age,sheet.seed,sheet.explosive,sheet.lobes);if(sheet.age>=sheet.life){sheet.active=false;sheet.mesh.visible=false;}}
   for(const [source,scorch] of this.scorches){scorch.age+=step;if(scorch.age>=2.8||!source.parent){scorch.mask.dispose();this.scorches.delete(source);}else scorch.mask.update(step,this.time,Math.min(1,(2.8-scorch.age)*2));}
   this.upload(step);
@@ -110,7 +114,17 @@ export class FireResponse {
    pool.mesh.count=index;pool.mesh.visible=index>0;pool.mesh.instanceMatrix.needsUpdate=true;pool.alpha.needsUpdate=true;pool.age.needsUpdate=true;pool.seed.needsUpdate=true;
   }
  }
- get diagnostics(){return{sheets:this.sheets.filter(s=>s.active).length,embers:this.pools.get('embers')!.items.filter(p=>p.active).length,tongues:this.pools.get('tongues')!.items.filter(p=>p.active).length,smoke:this.pools.get('smoke')!.items.filter(p=>p.active).length,scorches:this.scorches.size,statuses:this.statuses.size};}
- clear(){for(const sheet of this.sheets){sheet.active=false;sheet.mesh.visible=false;}for(const pool of this.pools.values()){for(const item of pool.items){item.active=false;item.anchor=undefined;item.local=undefined;}pool.next=0;pool.mesh.count=0;pool.mesh.visible=false;}for(const status of [...this.statuses.values()])status.dispose();for(const scorch of this.scorches.values())scorch.mask.dispose();this.scorches.clear();this.contacts=new WeakMap();this.events.length=0;this.nextSheet=0;this.serial=0;this.time=0;this.randomState=319;}
- dispose(){if(this.disposed)return;this.clear();this.disposed=true;for(const sheet of this.sheets){sheet.mesh.geometry.dispose();sheet.mesh.material.dispose();}for(const pool of this.pools.values()){pool.mesh.geometry.dispose();(pool.mesh.material as THREE.Material).dispose();pool.mesh.dispose();}this.group.removeFromParent();}
+ /** Prepare exact offscreen shader variants without shooting, stepping combat, or displaying dummy effects. */
+ prepare(renderer:THREE.WebGLRenderer,scene:THREE.Scene){
+  return this.preparation??= (async()=>{
+   await this.hybrid?.prepareTexture(renderer);if(this.disposed)return;
+   const source=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial()),mask=new FireMask(source,'armor');mask.material.uniforms.presence.value=0;this.warmSurface={source,mask};
+   const target=new THREE.WebGLRenderTarget(1,1),previous=renderer.getRenderTarget();let ready:Promise<unknown>;
+   try{renderer.setRenderTarget(target);ready=Promise.all([renderer.compileAsync(scene,this.camera),renderer.compileAsync(mask.mesh,this.camera,scene)]);}finally{renderer.setRenderTarget(previous);target.dispose();}
+   await ready;
+  })();
+ }
+ get diagnostics(){return{sheets:this.sheets.filter(s=>s.active).length,embers:this.pools.get('embers')!.items.filter(p=>p.active).length,tongues:this.pools.get('tongues')!.items.filter(p=>p.active).length,smoke:this.pools.get('smoke')!.items.filter(p=>p.active).length,scorches:this.scorches.size,statuses:this.statuses.size,...(this.hybrid?{authoredBursts:this.hybrid.activeCount}:{})};}
+ clear(){this.hybrid?.clear();for(const sheet of this.sheets){sheet.active=false;sheet.mesh.visible=false;}for(const pool of this.pools.values()){for(const item of pool.items){item.active=false;item.anchor=undefined;item.local=undefined;}pool.next=0;pool.mesh.count=0;pool.mesh.visible=false;}for(const status of [...this.statuses.values()])status.dispose();for(const scorch of this.scorches.values())scorch.mask.dispose();this.scorches.clear();this.contacts=new WeakMap();this.events.length=0;this.nextSheet=0;this.serial=0;this.time=0;this.randomState=319;}
+ dispose(){if(this.disposed)return;this.clear();this.disposed=true;this.hybrid?.dispose();if(this.warmSurface){this.warmSurface.mask.dispose();this.warmSurface.source.geometry.dispose();(this.warmSurface.source.material as THREE.Material).dispose();this.warmSurface=undefined;}for(const sheet of this.sheets){sheet.mesh.geometry.dispose();sheet.mesh.material.dispose();}for(const pool of this.pools.values()){pool.mesh.geometry.dispose();(pool.mesh.material as THREE.Material).dispose();pool.mesh.dispose();}this.group.removeFromParent();}
 }

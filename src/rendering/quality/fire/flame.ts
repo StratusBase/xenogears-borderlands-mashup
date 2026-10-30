@@ -88,11 +88,11 @@ export const fireParticleVertex=/* glsl */`
  if(kind>.5){p.y+=.5;float q=p.y;p.x+=sin(q*7.-fxAge*14.+fxSeed*13.)*.18*q*q;p.z+=cos(q*5.-fxAge*9.+fxSeed*7.)*.12*q*q;}
  gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(p,1.);}`;
 export const fireParticleFragment=/* glsl */`
- uniform float kind;varying vec2 vUv;varying float vAlpha,vAge,vSeed;
+ uniform float kind,hybrid;varying vec2 vUv;varying float vAlpha,vAge,vSeed;
  float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
  float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
  void main(){if(vAlpha<.012)discard;
- if(kind<.5){gl_FragColor=vec4(mix(vec3(.90,.055,.001),vec3(1.5,.65,.04),max(0.,1.-vAge*2.)),vAlpha);return;}
+ if(kind<.5){vec3 color=hybrid>.5?mix(vec3(1.,.25,.008),vec3(1.,.95,.54),max(0.,1.-vAge*3.)):mix(vec3(.90,.055,.001),vec3(1.5,.65,.04),max(0.,1.-vAge*2.));gl_FragColor=vec4(color,vAlpha);return;}
  vec2 p=vec2(vUv.x*2.-1.,vUv.y);float q=p.y;
  vec2 adv=vec2(p.x*3.+vSeed*17.,q*6.-vAge*11.);
  float n=noise(adv)*.65+noise(adv*2.1+7.)*.35;
