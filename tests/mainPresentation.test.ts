@@ -31,6 +31,18 @@ function fixture(){
 function resources(root:THREE.Object3D){const result:{mesh:THREE.Mesh;geometry:THREE.BufferGeometry;material:THREE.Material|THREE.Material[];visible:boolean}[]=[];root.traverse(object=>{if(object instanceof THREE.Mesh)result.push({mesh:object,geometry:object.geometry,material:object.material,visible:object.visible});});return result;}
 function assertResources(snapshot:ReturnType<typeof resources>){for(const entry of snapshot){assert.equal(entry.mesh.geometry,entry.geometry);assert.equal(entry.mesh.material,entry.material);assert.equal(entry.mesh.visible,entry.visible);}}
 
+test('a stale audio-unlock rejection cannot overwrite the replacement renderer diagnostics',async()=>{
+ const f=fixture();f.controller.setEnabled(true);
+ const owner=f.controller as unknown as {quality:{audio:{unlock():Promise<void>}}};
+ let rejectOld!:(error:Error)=>void;const pending=new Promise<void>((_resolve,reject)=>{rejectOld=reject;});
+ owner.quality.audio.unlock=()=>pending;(f.active as ElementalPresentation).audio.unlock=async()=>{};
+ const old=f.controller.unlockAudio();f.controller.setSoundEnabled(false);f.controller.setEnabled(false);f.controller.setEnabled(true);
+ owner.quality.audio.unlock=async()=>{};(f.active as ElementalPresentation).audio.unlock=async()=>{};
+ f.controller.setSoundEnabled(true);await f.controller.unlockAudio();rejectOld(new Error('Old context closed'));await old;
+ assert.equal(f.controller.diagnostics.audioError,null);
+ owner.quality.audio.unlock=async()=>{throw new Error('Current context failed');};await f.controller.unlockAudio();assert.equal(f.controller.diagnostics.audioError,'Current context failed');f.dispose();
+});
+
 test('production presentation has no startup side effects and repeated legacy toggles restore original equipment and ink',()=>{
  const f=fixture();const originals=[f.binding.pilotRig.group,f.binding.mechRig.group,f.binding.parkedMech].map(resources);
  assert.equal(f.controller.mode,'legacy');assert.equal(f.active,undefined);assert.equal(f.renderer.outlineWidth,3);

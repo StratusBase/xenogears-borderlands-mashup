@@ -1,6 +1,6 @@
 # Effects architecture and organization
 
-Recorded 30 October 2026 at the user's explicit request for persistent organization guidance: keep effects DRY, open/closed, extensible and composable while keeping files organized. This is the guide for new effects work and incremental shared extraction. It does not claim the extension contracts or new folders below are already implemented.
+Recorded 30 October 2026 at the user's explicit request for persistent organization guidance: keep effects DRY, open/closed, extensible and composable while keeping files organized. This is the guide for new effects work and incremental shared extraction. The gravity prototype now supplies the concrete shared extraction and composition listed below; production integration remains an explicit handoff.
 
 ## Core rule
 
@@ -81,7 +81,7 @@ The separate [project structure proposal](project-structure-proposal.md) has not
 
 Reuse existing `surfacePoseCache.ts`, `primitives.ts`, `performance.ts`, `elementalAudio.ts` and established presentation seams before creating alternatives. Do not create per-element copies of those services.
 
-Observed extraction candidate: ice and shock currently import reusable visible-surface/contact helpers from `corrosive/surfaces.ts` and `corrosive/surfaceFrame.ts`. That is real reuse, but the owning path is misleading and couples siblings. Before adding another consumer, coordinate extraction of the genuinely common pieces to `quality/shared/`, retain old-path compatibility exports, and update users together. Leave corrosion-specific streak reveal, wet masks, liquid support policy and tuning in `corrosive/`; a similarly named function is not automatically generic.
+Implemented extraction: `quality/shared/surfaces.ts` owns visible-surface selection and `quality/shared/contactFrame.ts` owns the common contact/support transform. Existing corrosive paths are compatibility exports; existing ice/shock imports remain usable while their owners migrate. Corrosive shaders, masks, liquid motion and status tuning remain local. The shared review human fixture lives in `src/dev/effects/shared/reviewTargets.ts`; its old review import is also retained. Neutral `effectSurface` tags are preferred, with legacy `corrosiveSurface` tags accepted.
 
 No new cross-element deep imports after that extraction. An element imports its own internals, neutral shared mechanisms and plain common contracts. Composition code may import the element's public entry. Do not hide cross-element coupling through aliases such as importing a corrosion implementation as `genericSurface`.
 
@@ -89,7 +89,7 @@ No new cross-element deep imports after that extraction. An element imports its 
 
 - Prefer injected element definitions/factories and a typed handler map at one composition root. A new element registers its own response and recipes; existing element internals should not need edits.
 - Use small contracts for actual needs: equipment, projectile/trail/beam, contact/detonation/secondary recipient, authoritative status/field state, update/pause, release/clear/dispose, and bounded diagnostics. Optional capabilities are preferable to one enormous required implementation or inheritance hierarchy.
-- Contracts are a design target, not a reason to add a plugin framework, global service locator, network protocol or runtime package loader. Start with the existing `BallisticPresentation`, `GamePresentation.setElementalFactory`, status lifecycle and audio recipe injection. Evolve them once with compatibility coverage where real consumers require it.
+- The implemented `shared/composedPresentation.ts` supplies a small optional response contract and one typed element factory map, while `audio/composeElementRecipes.ts` routes recipes with an explicit fallback into the existing engine. Existing standalone renderers remain available. These contracts are not a reason to add a plugin framework, global service locator, network protocol or runtime package loader. Start with the existing `BallisticPresentation`, `GamePresentation.setElementalFactory`, status lifecycle and audio recipe injection. Evolve them once with compatibility coverage where real consumers require it.
 - Existing single-element subclasses/adapters may remain during development. Do not chain `GravityPresentation extends ShockPresentation extends IcePresentation` or let each adapter replace the whole audio profile, suppress unrelated channels or own competing status maps. Production composition must support several approved elements together.
 - Compose recipes by element/event with an explicit fallback into the existing audio engine. Preserve unrelated elements when selecting a new sound recipe; avoid a last-registered recipe overriding earlier ones.
 - Keep tuning in typed profiles/definitions. Do not scatter duplicate durations, radii, colors, voice limits or exposure formulas across simulation, shaders, sound and UI. Simulation publishes authoritative remaining lifetime and pulse events; audio and art consume them.
@@ -113,4 +113,4 @@ Coordinate changes to shared seams and files being edited by other element works
 5. Measure matched before/current/repeated-before sustained fire on multiple targets in the same scene and compiled build, with sound on and recording off. Report median/p95 and CPU/GPU costs with hardware/coverage limits.
 6. After visual approval, integrate in normal Enhanced gameplay; a review-lab-only feature is not complete. Preserve Legacy for comparison.
 
-This guide records policy and the next extraction plan. It does not perform a folder migration, shared helper refactor, effect registration implementation or gravity gameplay integration.
+The gravity implementation and ownership handoff are documented in [gravity-integration.md](quality/gravity-integration.md). It establishes plain gameplay modules, neutral shared helpers, a generic composition layer and an actual-Game review fixture. It does not perform the proposed workspace migration or claim normal-main gravity integration.

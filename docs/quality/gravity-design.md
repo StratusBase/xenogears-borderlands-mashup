@@ -1,6 +1,6 @@
 # Gravity well: canonical prototype design
 
-Recorded 30 October 2026. The user has specified the mechanic and asked to prepare implementation with organized, reusable effects. This is the tracked source of truth for that design. No gravity-well gameplay implementation or validation is claimed here. Apply [effects architecture and ownership](../effects-architecture.md).
+Recorded 30 October 2026. The user has specified the mechanic and asked to prepare implementation with organized, reusable effects. This is the tracked source of truth for that design. A controlled actual-Game prototype now implements this mechanic; normal-main integration remains with the combat lead. See [integration](gravity-integration.md) and [review evidence](gravity-prototype.md). Apply [effects architecture and ownership](../effects-architecture.md).
 
 ## User-defined behavior
 
@@ -28,12 +28,12 @@ Clearance derives from well/core size, required capture space and nearby geometr
 
 At the source inspection on 30 October, `game.ts` applies a gravity proc to nearby enemies within 6 m after a damageable-target hit, saves `gravityPoint`, and performs bounded ground-plane displacement. The status is three seconds at 65% movement speed with no gravity DPS multiplier. World-surface visual contact callbacks do not themselves create an authoritative field. Recheck current code before implementation because other workstreams are active.
 
-The requested persistent source, late entrants, 3D lift/capture, reliable hold, crush ticks and collision-aware release are new gameplay work. The old 6 m / 3 s values are references, not approved new balance numbers. This user-requested change supersedes preserving the old gravity behavior; other elements and unrelated weapon/collision behavior remain protected.
+The persistent source, late entrants, 3D lift/capture, hold, crush ticks and collision-aware release are implemented in the independent prototype module; adopting them in normal Game remains new integration work. The old 6 m / 3 s values are references, not approved new balance numbers. This user-requested change supersedes preserving the old gravity behavior; other elements and unrelated weapon/collision behavior remain protected.
 
 ## Module and integration boundaries
 
-- Proposed gameplay location: `src/core/effects/gravity/`. Use plain data, injected collision/damage ports and simulation time/RNG. Keep source/target/event identities stable and tuning centralized.
-- Proposed presentation location: `src/rendering/quality/gravity/`. Consume authoritative spawn/update/member/pulse/end events and snapshots. Do not decide eligibility, move combat targets or apply damage there.
+- Gameplay location: `src/core/effects/gravity/`. Use plain data, injected collision/damage ports and simulation time/RNG. Keep source/target/event identities stable and tuning centralized.
+- Presentation location: `src/rendering/quality/gravity/`. Consume authoritative spawn/update/member/pulse/end events and snapshots. Do not decide eligibility, move combat targets or apply damage there.
 - Sound recipes: `src/audio/gravityAudio.ts`, composed into the existing `ElementalAudio` engine and voice budget. Capture intake, quiet pressure bed, crush cues driven by real ticks and clear release; keep other gun reports readable.
 - Combat lead retains `src/game.ts`, `src/world.ts` and `src/ui.ts`. Provide an explicit handoff for authoritative impact events, body/collision integration, damage and release; do not bypass ownership with a renderer-owned simulation.
 - Share neutral contact/surface transforms, visible-surface bindings, pooling/lifecycle and review plumbing when semantics genuinely match. Leave gravity-specific placement/capture rules and pressure motion in gravity modules. Coordinate extraction of currently reused helpers out of the corrosive folder before introducing another deep sibling import.
@@ -58,3 +58,7 @@ Generated art/prompt history is local ignored evidence, not the only home of the
 - `artifacts/concepts/gravity-v1/` — initial A/B/C art-language studies.
 - `artifacts/concepts/gravity-well-v2/gravity-well.png` — pull/hold/crush and follow-up rifle fire, illustrated with a low floor well.
 - `artifacts/concepts/gravity-well-v2/surface-placement.md` — height/clearance clarification; this canonical document carries its essential requirements even if ignored artifacts are absent.
+
+## Playable visual revision
+
+Review rejected the first six evenly spaced curved ribbons because they resembled flower petals. The current prototype removes the radial rosette and leaf-shaped width envelope: eight unequal solid-angle paths carry narrow inward-moving streaks, with skewed broken pressure arcs and sparse grit. This is an implemented art revision for review, not a claim of final visual approval or true background refraction. Gameplay tuning is unchanged by this revision.

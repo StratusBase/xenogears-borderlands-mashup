@@ -16,6 +16,13 @@ export interface BallisticCallbacks {
   targets(): BallisticTarget[];
   occluders(): THREE.Object3D[];
   hit(event: BallisticHit): void;
+  worldImpact?(event:Readonly<BallisticWorldImpact>):void;
+}
+
+/** Authoritative contact/detonation notification, independent of the selected renderer. */
+export interface BallisticWorldImpact {
+ projectileId:number;phase:'contact'|'detonate';point:Readonly<{x:number;y:number;z:number}>;normal:Readonly<{x:number;y:number;z:number}>;
+ spec:Readonly<WeaponSpec>;energy:number;radius:number;targetId?:number;
 }
 
 /** Optional rendering adapter. Simulation, swept collision, and damage remain owned here. */
@@ -44,6 +51,7 @@ interface Target extends BallisticTarget { center: THREE.Vector3; bounds: THREE.
 interface Collision { intersection: THREE.Intersection; target?: Target; normal: THREE.Vector3 }
 interface VisualRecipe extends WeaponSpec { visualBrand?: BrandId }
 interface Projectile {
+  impactId:number;
   visual: THREE.Group;
   velocity: THREE.Vector3;
   damage: number;
@@ -154,8 +162,17 @@ export class PlayerBallistics {
   private epoch = 0;
   private shotSequence = 0;
   private presentation?: BallisticPresentation;
+  private worldImpactHandler?: (event:Readonly<BallisticWorldImpact>)=>void;
+  private worldImpactSequence=0;
 
   constructor(private readonly scene: THREE.Scene, private readonly callbacks: BallisticCallbacks) {}
+
+  /** Combat-owner seam. Visual toggles do not install, remove or invoke this hook. */
+  setWorldImpactHandler(handler?: (event:Readonly<BallisticWorldImpact>)=>void):void{this.worldImpactHandler=handler;}
+  private worldImpact(id:number,phase:'contact'|'detonate',point:THREE.Vector3,normal:THREE.Vector3,spec:Readonly<WeaponSpec>,energy:number,radius:number,targetId?:number):void{
+    const handler=this.worldImpactHandler??this.callbacks.worldImpact;if(!handler)return;
+    handler(Object.freeze({projectileId:id,phase,point:Object.freeze({x:point.x,y:point.y,z:point.z}),normal:Object.freeze({x:normal.x,y:normal.y,z:normal.z}),spec,energy,radius,targetId}));
+  }
 
   /** Changes new presentation only; never clears active shots or modifies their recipes. */
   setPresentation(presentation?: BallisticPresentation): void { this.presentation = presentation; }
@@ -195,7 +212,7 @@ export class PlayerBallistics {
     this.scene.add(visual);
     const speed = recipe.speed * (child ? .65 : 1);
     const splitDelay = !child ? recipe.split?.delay : undefined;
-    const projectile: Projectile = { visual, spec: recipe, velocity: aim.clone().multiplyScalar(speed), damage, age: 0, life: Math.min(10, distance / speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter, splitDelay, fuse: splitDelay !== undefined || recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
+    const projectile: Projectile = { impactId:++this.worldImpactSequence,visual, spec: recipe, velocity: aim.clone().multiplyScalar(speed), damage, age: 0, life: Math.min(10, distance / speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter, splitDelay, fuse: splitDelay !== undefined || recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
     this.projectiles.add(projectile);
     const payloadElements = getWeaponElements(recipe).filter(element => element !== 'kinetic');
     if (!presenter && payloadElements.length && ['orb', 'sticky', 'rocket', 'homing', 'cluster'].includes(recipe.projectile)) {
@@ -318,6 +335,7 @@ export class PlayerBallistics {
     const collision = this.trace(origin, end);
     const point = collision?.intersection.point ?? end;
     this.beam(origin, point, spec, spec.projectile === 'arc');
+    if(collision){const epoch=this.epoch;this.worldImpact(++this.worldImpactSequence,'contact',point,collision.normal,spec,damage,.3,collision.target?.id);if(this.epoch!==epoch)return;}
     if (collision) this.presentation?.impact({ point: point.clone(), normal: collision.normal.clone(), spec, radius: .3, target: collision.target?.root, phase: 'contact',energy:damage,hitSurface:collision.intersection.object });
     if (!collision?.target) { if (collision) this.flash(point, spec, 0.2); return; }
     const primary = collision.target;
@@ -399,6 +417,8 @@ export class PlayerBallistics {
       }
       const target = collision.target;
       projectile.visualContact = { normal: collision.normal.clone(), target: target?.root,hitSurface:collision.intersection.object };
+      this.worldImpact(projectile.impactId,'contact',point,collision.normal,projectile.spec,projectile.damage*(type==='sticky'?.20:1),.3,target?.id);
+      if(!this.projectiles.has(projectile))return;
       projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact',energy:projectile.damage*(type==='sticky'?.20:1),hitSurface:collision.intersection.object});
       if (!this.projectiles.has(projectile)) return;
       if (projectile.splitDelay !== undefined) {
@@ -472,6 +492,8 @@ export class PlayerBallistics {
 
   private explode(projectile: Projectile, point: THREE.Vector3, excludeId?: number, multiplier = 1): void {
     const radius = projectile.spec.blastRadius;
+    this.worldImpact(projectile.impactId,'detonate',point,projectile.visualContact?.normal??new THREE.Vector3(0,1,0),projectile.spec,projectile.damage*multiplier,Math.max(.35,radius),projectile.stuck?.targetId);
+    if(!this.projectiles.has(projectile))return;
     projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier,hitSurface:projectile.visualContact?.hitSurface});
     if (!this.projectiles.has(projectile)) return;
     this.flash(point, projectile.spec, Math.max(0.35, radius), projectile.presenter ?? null);

@@ -90,8 +90,9 @@ export class GamePresentation {
  async unlockAudio():Promise<void>{
   if(this.disposed||!this.sound||!this.enabled)return;
   this.audioWasUnlocked=true;
-  try{await Promise.all([this.quality!.audio.unlock(),this.elements!.audio.unlock()]);this.audioError=null;}
-  catch(error){this.audioError=error instanceof Error?error.message:String(error);}
+  const quality=this.quality,elements=this.elements;
+  try{await Promise.all([quality!.audio.unlock(),elements!.audio.unlock()]);if(this.quality===quality&&this.elements===elements)this.audioError=null;}
+  catch(error){if(this.quality===quality&&this.elements===elements)this.audioError=error instanceof Error?error.message:String(error);}
  }
  equipment(binding:PresentationEquipment):void{
   this.equipmentBinding=binding;

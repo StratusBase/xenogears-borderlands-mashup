@@ -208,7 +208,11 @@ export async function renderElementalAudioPreview(events:readonly ElementalAudio
 
 /** Bounded original elemental Foley; has no effect on combat state or browser audio before a gesture. */
 export class ElementalAudio{
-  constructor(private readonly recipe=elementalAudioRecipe){}
+  constructor(private recipe=elementalAudioRecipe){}
+  /** Compose element recipes in the existing bus; does not allocate another context or reset live voices. */
+  setRecipe(recipe:typeof elementalAudioRecipe):void{this.recipe=recipe;}
+  /** Explicit authoritative lifecycle cue, sharing the same attenuation and finite voice budget. */
+  cue(element:ElementType,event:ElementalAudioEvent,options:ElementalAudioOptions={}):void{this.play(element,event,options);}
   private context:AudioContext|null=null;private bus:Bus|null=null;
   private recordingTap:MediaStreamAudioDestinationNode|null=null;
   captureStream():MediaStream|undefined{if(!this.context||!this.bus)return;if(!this.recordingTap){this.recordingTap=this.context.createMediaStreamDestination();this.bus.limiter.connect(this.recordingTap);}return this.recordingTap.stream;}
