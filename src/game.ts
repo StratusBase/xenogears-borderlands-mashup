@@ -940,8 +940,12 @@ export class Game {
         .find(other => this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5)));
       if (next) {
         const end = next.mesh.position.clone().setY(next.heavy ? 2.6 : 1.5);
-        this.tracer(hit.point, end, Number.parseInt(elementColors.shock.slice(1), 16));
-        const chained = this.hurtTarget(next, shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6), 'shock');
+        const chainDamage = shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6);
+        const chained = this.hurtTarget(next, chainDamage, 'shock');
+        if (!this.presentation?.confirmedShockChain({
+          start: hit.point, end, target: next.mesh, spec: hit.spec,
+          energy: chainDamage, exposure: chainDamage / hit.damage,
+        })) this.tracer(hit.point, end, Number.parseInt(elementColors.shock.slice(1), 16));
         this.showEnemyDamage(next, chained.healthDamage + chained.shieldDamage, false, 'shock');
       }
     }

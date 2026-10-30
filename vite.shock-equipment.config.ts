@@ -1,0 +1,6 @@
+import {defineConfig} from 'vite';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const files=['src/game.ts','src/world.ts','src/ui.ts','src/main.ts','src/rendering/PlayerBallistics.ts','src/rendering/quality/GamePresentation.ts','src/rendering/quality/shared/composedPresentation.ts','src/rendering/quality/gameElements.ts','src/rendering/quality/shock/module.ts','src/rendering/quality/shock/equipment.ts','src/rendering/quality/shock/equipmentGeometry.ts','src/rendering/quality/shock/equipmentSurface.ts','src/rendering/quality/shock/lightning.ts'];
+export default defineConfig({define:{'import.meta.env.VITE_SHOCK_EQUIPMENT':JSON.stringify('1')},plugins:[{name:'shock-equipment-provenance',generateBundle(){this.emitFile({type:'asset',fileName:'provenance.json',source:JSON.stringify({checkpoint:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),sources:Object.fromEntries(files.map(path=>[path,createHash('sha256').update(readFileSync(path)).digest('hex')])),protocol:'One main-entry build; baseline switches only Shock equipment to legacy, retaining approved impacts, heavy C, sticky and all other modules. Same combat inputs and seed; sound on, recording off while timing.'},null,2)});}}],build:{outDir:'artifacts/shock-equipment/build'},preview:{host:'127.0.0.1'}});

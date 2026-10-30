@@ -1,0 +1,6 @@
+import {defineConfig} from 'vite';
+import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const files=['src/main.ts','src/game.ts','src/rendering/quality/gameElements.ts','src/rendering/quality/GamePresentation.ts','src/rendering/quality/shared/composedPresentation.ts','src/rendering/quality/shock/module.ts','src/rendering/quality/shock/response.ts','src/rendering/quality/shock/sticky.ts','src/rendering/PlayerBallistics.ts','src/core/arsenal.ts','src/core/statusEffects.ts','src/audio/shockAudio.ts'];
+export default defineConfig({plugins:[{name:'shock-main-provenance',generateBundle(){this.emitFile({type:'asset',fileName:'provenance.json',source:JSON.stringify({checkpoint:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),sources:Object.fromEntries(files.map(path=>[path,createHash('sha256').update(readFileSync(path)).digest('hex')])),protocol:'Normal index.html entry; current resets to default production registry; baseline omits Shock only. Same Game, build, fixtures, inputs and combat seed; sound on and recording off while timing.'},null,2)});}}],build:{outDir:'artifacts/shock-integration/build'},preview:{host:'127.0.0.1'}});

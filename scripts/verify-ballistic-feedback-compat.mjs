@@ -9,8 +9,9 @@ import {PlayerBallistics as After} from '../src/rendering/PlayerBallistics.ts';
 import {createWeaponSpec} from '../src/core/arsenal.ts';
 const baselineRef=process.env.BALLISTIC_BASELINE_REF??'ddb86b155e4e9979303894a0501b544458997f3d';
 const original=execFileSync('git',['show',`${baselineRef}:src/rendering/PlayerBallistics.ts`],{encoding:'utf8'}),hash=s=>createHash('sha256').update(s).digest('hex');
-const baselineHash=hash(original);assert.equal(baselineHash,'e4982efda69045d20aefe08b9d7e3d867374d7d76ed8302ec6d2940aafc69c33','Pinned pre-feedback engine must match the recorded starting source');
-const baselineFile=resolve('artifacts/corrosive-ab/baseline-PlayerBallistics.ts');
+const baselineHash=hash(original);assert.equal(baselineHash,process.env.BALLISTIC_BASELINE_SHA256??'e4982efda69045d20aefe08b9d7e3d867374d7d76ed8302ec6d2940aafc69c33','Pinned engine must match the recorded starting source');
+const outputDirectory=process.env.BALLISTIC_OUTPUT_DIR??'artifacts/corrosive-ab';
+const baselineFile=resolve(outputDirectory,'baseline-PlayerBallistics.ts');
 const imports=original.replace(/from '(\.[^']+)'/g,(_,specifier)=>`from '${resolve('src/rendering',specifier)}.ts'`);
 await writeFile(baselineFile,imports);
 const module=await import(pathToFileURL(baselineFile).href),Before=module.PlayerBallistics??module.default.PlayerBallistics;
@@ -25,4 +26,4 @@ function run(Engine,projectile){
  assert.equal(JSON.stringify(spec),recipe);ballistics.clear();return{hits,trajectory};
 }
 const results=[];for(const projectile of['bullet','slug','spike','ricochet','homing','sticky','orb','beam','scatter','rocket','disc','arc','cluster']){const a=run(Before,projectile),b=run(After,projectile);assert.deepEqual(b,a,projectile+' must preserve exact pre-change hits/flight');results.push({projectile,hits:a.hits.length,steps:a.trajectory.length,exact:true,traceSHA256:hash(JSON.stringify(a))});}
-const current=await readFile('src/rendering/PlayerBallistics.ts','utf8');const result={capturedAt:new Date().toISOString(),baselineRef,baselineSourceSHA256:baselineHash,currentSourceSHA256:hash(current),protocol:'Exact source-before vs source-after engine replay: three shots, moving neighboring target, critical target and occluding cover, 600 x 1/120 updates per delivery. Identical hit order/time/coordinates/direction/damage/critical/spec plus every active projectile transform/count. Only import specifiers in the archived baseline were rewritten for local resolution.',results};await writeFile('artifacts/corrosive-ab/ballistics-before-after.json',JSON.stringify(result,null,2)+'\n');console.log('PASS exact pre-change engine compatibility:',results.length,'deliveries');
+const current=await readFile('src/rendering/PlayerBallistics.ts','utf8');const result={capturedAt:new Date().toISOString(),baselineRef,baselineSourceSHA256:baselineHash,currentSourceSHA256:hash(current),protocol:'Exact source-before vs source-after engine replay: three shots, moving neighboring target, critical target and occluding cover, 600 x 1/120 updates per delivery. Identical hit order/time/coordinates/direction/damage/critical/spec plus every active projectile transform/count. Only import specifiers in the archived baseline were rewritten for local resolution.',results};await writeFile(resolve(outputDirectory,'ballistics-before-after.json'),JSON.stringify(result,null,2)+'\n');console.log('PASS exact pre-change engine compatibility:',results.length,'deliveries');

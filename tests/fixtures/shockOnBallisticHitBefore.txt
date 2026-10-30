@@ -1,0 +1,47 @@
+  private onBallisticHit(hit: BallisticHit): void {
+    const enemy = this.combatTargets.find(candidate => candidate.id === hit.targetId);
+    const movable = this.enemies.find(candidate => candidate === enemy);
+    if (!enemy || movable && movable.health <= 0) return;
+    const procs = new Set(getWeaponElements(hit.spec).filter(element => element !== 'kinetic' && this.combatRandom() < getHitStatusChance(hit.spec)
+      && applyStatus(enemy.statuses, element, this.time, getHitStatusPower(hit.damage, hit.spec))));
+    for (const element of procs) this.onEvaluationProc?.({ at: this.time, mode: this.mode, targetId: enemy.id, element,
+      projectile: hit.spec.projectile, chance: getHitStatusChance(hit.spec), power: getHitStatusPower(hit.damage, hit.spec) });
+    const modifiers = getStatusModifiers(enemy.statuses, this.time);
+    const exposed = !movable?.heavy || movable.brain.phase === 'recover' || movable.brain.phase === 'stagger';
+    const critical = hit.critical && exposed;
+    const front = movable?.heavy && hit.direction.x * Math.sin(movable.mesh.rotation.y) + hit.direction.z * Math.cos(movable.mesh.rotation.y) < -0.25;
+    const armor = movable?.heavy && front && movable.shield > 0 && !exposed ? 0.55 : movable?.heavy && exposed ? 1.15 : 1;
+    const damage = shieldAdjustedDamage(enemy.shield, hit.damage * (critical ? movable?.heavy ? 2.2 : 1.7 : 1) * armor * modifiers.incomingDamage, modifiers.shieldDamage);
+    const result = this.hurtTarget(enemy, damage, undefined, critical);
+    this.showEnemyDamage(enemy, result.healthDamage + result.shieldDamage, critical, undefined, hit.point);
+
+    if (movable && hit.spec.element === 'kinetic' && ['slug', 'spike', 'rocket'].includes(hit.spec.projectile)) {
+      const force = movable.heavy ? 0.25 : 0.75;
+      this.displaceEnemy(movable, hit.direction.x * force, hit.direction.z * force);
+    }
+    if (procs.has('gravity')) {
+      for (const other of this.enemies) {
+        const delta = hit.point.clone().sub(other.mesh.position); delta.y = 0;
+        const distance = delta.length();
+        if (distance > 6 || !this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5))) continue;
+        applyStatus(other.statuses, 'gravity', this.time, getHitStatusPower(hit.damage, hit.spec));
+        other.gravityPoint = hit.point.clone();
+        if (distance > 0.05) {
+          delta.multiplyScalar(Math.min(1.4, distance * 0.3) / distance);
+          this.displaceEnemy(other, delta.x, delta.z);
+        }
+      }
+      this.burst(hit.point, Number.parseInt(elementColors.gravity.slice(1), 16), 6);
+    }
+    if (procs.has('shock') && modifiers.chain) {
+      const next = this.combatTargets.filter(other => other !== enemy && other.mesh.position.distanceTo(enemy.mesh.position) < 6)
+        .sort((a, b) => a.mesh.position.distanceToSquared(enemy.mesh.position) - b.mesh.position.distanceToSquared(enemy.mesh.position))
+        .find(other => this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5)));
+      if (next) {
+        const end = next.mesh.position.clone().setY(next.heavy ? 2.6 : 1.5);
+        this.tracer(hit.point, end, Number.parseInt(elementColors.shock.slice(1), 16));
+        const chained = this.hurtTarget(next, shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6), 'shock');
+        this.showEnemyDamage(next, chained.healthDamage + chained.shieldDamage, false, 'shock');
+      }
+    }
+  }

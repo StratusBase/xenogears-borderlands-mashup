@@ -119,8 +119,8 @@ export class GamePresentation {
  }
  /** Optional confirmed-event handoff. Returning false keeps the combat owner's existing tracer usable. */
  confirmedShockChain(event:ShockChainEvent):boolean{
-  const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent)=>void})|null;
-  if(!layer?.confirmedChain)return false;layer.confirmedChain(event);return true;
+  const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent&{element:'shock'})=>boolean|void})|null;
+  if(!layer?.confirmedChain)return false;return layer.confirmedChain({...event,element:'shock'})!==false;
  }
  handlesPulse(element:ElementType):boolean{const layer=this.elements as (ElementalPresentation&{handlesPulse?:(element:ElementType)=>boolean})|null;return layer?.handlesPulse?.(element)??false;}
  confirmedPulse(event:ConfirmedElementPulse):boolean{const layer=this.elements as (ElementalPresentation&{confirmedPulse?:(event:ConfirmedElementPulse)=>boolean})|null;return layer?.confirmedPulse?.(event)??false;}
@@ -134,7 +134,7 @@ export class GamePresentation {
  }
  shot(event:PresentationShot):void{
   this.quality?.fire({mode:event.mode,rig:event.rig,muzzleIndex:event.muzzleIndex,element:event.spec.element});
-  this.elements?.shot(event.spec,event.mode,event.rig.group);
+  this.elements?.shot(event.spec,event.mode,event.rig.group,event.muzzleIndex);
  }
  reload(mode:Mode,stage:'out'|'in'|'bolt'):void{this.quality?.reload(mode,stage);}
  dry(mode:Mode):void{this.quality?.audio.play('dry',{mode});}

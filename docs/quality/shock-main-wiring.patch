@@ -1,0 +1,111 @@
+--- a/src/game.ts
++++ b/src/game.ts
+@@ -940,8 +940,12 @@
+         .find(other => this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5)));
+       if (next) {
+         const end = next.mesh.position.clone().setY(next.heavy ? 2.6 : 1.5);
+-        this.tracer(hit.point, end, Number.parseInt(elementColors.shock.slice(1), 16));
+-        const chained = this.hurtTarget(next, shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6), 'shock');
++        const chainDamage = shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6);
++        const chained = this.hurtTarget(next, chainDamage, 'shock');
++        if (!this.presentation?.confirmedShockChain({
++          start: hit.point, end, target: next.mesh, spec: hit.spec,
++          energy: chainDamage, exposure: chainDamage / hit.damage,
++        })) this.tracer(hit.point, end, Number.parseInt(elementColors.shock.slice(1), 16));
+         this.showEnemyDamage(next, chained.healthDamage + chained.shieldDamage, false, 'shock');
+       }
+     }
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -12,6 +12,8 @@
+ }
+
+ // Explicit review controls run the normal entry and production renderer on an isolated save.
+-if(new URLSearchParams(location.search).has('verifyRadiation')){
++if(new URLSearchParams(location.search).has('verifyShock')){
++  import('./dev/effects/shock/integrationVerification').then(({shockVerificationOptions,attachShockVerification})=>{const game=new Game(host,shockVerificationOptions);attachShockVerification(game);game.run();}).catch(fatal);
++}else if(new URLSearchParams(location.search).has('verifyRadiation')){
+   import('./dev/effects/radiation/integrationVerification').then(({radiationVerificationOptions,attachRadiationVerification})=>{const game=new Game(host,radiationVerificationOptions);attachRadiationVerification(game);game.run();}).catch(fatal);
+ }else{try{const game=new Game(host);game.run();}catch(error){fatal(error);}}
+--- a/src/rendering/quality/GamePresentation.ts
++++ b/src/rendering/quality/GamePresentation.ts
+@@ -119,8 +119,8 @@
+  }
+  /** Optional confirmed-event handoff. Returning false keeps the combat owner's existing tracer usable. */
+  confirmedShockChain(event:ShockChainEvent):boolean{
+-  const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent)=>void})|null;
+-  if(!layer?.confirmedChain)return false;layer.confirmedChain(event);return true;
++  const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent&{element:'shock'})=>boolean|void})|null;
++  if(!layer?.confirmedChain)return false;return layer.confirmedChain({...event,element:'shock'})!==false;
+  }
+  handlesPulse(element:ElementType):boolean{const layer=this.elements as (ElementalPresentation&{handlesPulse?:(element:ElementType)=>boolean})|null;return layer?.handlesPulse?.(element)??false;}
+  confirmedPulse(event:ConfirmedElementPulse):boolean{const layer=this.elements as (ElementalPresentation&{confirmedPulse?:(event:ConfirmedElementPulse)=>boolean})|null;return layer?.confirmedPulse?.(event)??false;}
+@@ -134,7 +134,7 @@
+  }
+  shot(event:PresentationShot):void{
+   this.quality?.fire({mode:event.mode,rig:event.rig,muzzleIndex:event.muzzleIndex,element:event.spec.element});
+-  this.elements?.shot(event.spec,event.mode,event.rig.group);
++  this.elements?.shot(event.spec,event.mode,event.rig.group,event.muzzleIndex);
+  }
+  reload(mode:Mode,stage:'out'|'in'|'bolt'):void{this.quality?.reload(mode,stage);}
+  dry(mode:Mode):void{this.quality?.audio.play('dry',{mode});}
+--- a/src/rendering/quality/shared/composedPresentation.ts
++++ b/src/rendering/quality/shared/composedPresentation.ts
+@@ -8,6 +8,7 @@
+ import {ElementalPresentation} from '../elementalPresentation';
+ import type {SurfaceStatusVisual} from './surfaces';
+ import type {ConfirmedElementPulse} from './confirmedPulse';
++import type {ConfirmedElementChain} from './confirmedChain';
+ import {ElementalAudio,type elementalAudioRecipe} from '../../../audio/elementalAudio';
+ import {corrosiveABAudioRecipe} from '../../../audio/corrosiveAudio';
+ import {composeElementRecipes} from '../../../audio/composeElementRecipes';
+@@ -17,13 +18,14 @@
+  splash?(event:BallisticPresentationSplash):void;
+  status?(root:THREE.Group):SurfaceStatusVisual;
+  update?(dt:number,time:number,spec?:WeaponSpec,mode?:Mode):void;
+- shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void;
++ shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void;
+  decorateProjectile?(root:THREE.Group,spec:WeaponSpec,brand:BrandId):void;
+  updateProjectile?(root:THREE.Group,dt:number,age:number):boolean|void;
+  trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group;
+  beam?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group;
+  equipment?(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation;
+  confirmedPulse?(event:ConfirmedElementPulse):void;
++ confirmedChain?(event:ConfirmedElementChain):void;
+  release?(root:THREE.Object3D):void;
+  clear():void;dispose():void;
+  readonly diagnostics?:Record<string,unknown>;
+@@ -80,10 +82,11 @@
+   const visuals=[fallback];for(const element of elements){const own=this.responses?.get(element)?.equipment?.(root,appearance);if(own)visuals.push(own);}
+   return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
+  }
+- override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void{super.shot(spec,mode,root);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root);}
++ override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void{super.shot(spec,mode,root,muzzleIndex);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root,muzzleIndex);}
+  override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{super.update(dt,time,paused,spec,mode);if(!paused)for(const response of this.responses.values())response.update?.(dt,time,spec,mode);}
+  handlesPulse(element:ElementType):boolean{return!!this.responses.get(element)?.confirmedPulse;}
+  confirmedPulse(event:ConfirmedElementPulse):boolean{const handler=this.responses.get(event.element)?.confirmedPulse;if(!handler)return false;handler.call(this.responses.get(event.element),event);return true;}
++ confirmedChain(event:ConfirmedElementChain):boolean{const response=this.responses.get(event.element),handler=response?.confirmedChain;if(!handler)return false;handler.call(response,event);return true;}
+  override release(root:THREE.Object3D):void{super.release(root);for(const response of this.responses.values())response.release?.(root);}
+  override clear():void{super.clear();for(const response of this.responses?.values()??[])response.clear();}
+  override dispose():void{super.dispose();for(const response of this.responses.values())response.dispose();this.responses.clear();}
+--- a/src/rendering/quality/gameElements.ts
++++ b/src/rendering/quality/gameElements.ts
+@@ -1,8 +1,15 @@
+ import type * as THREE from 'three';
+ import {ComposedElementalPresentation} from './shared/composedPresentation';
+ import {radiationModule} from './radiation/presentation';
++import {shockModule,createShockModule,type ShockPresentationOptions} from './shock/module';
++
++export interface GameElementOptions {shock?:ShockPresentationOptions}
+
+ /** One normal Enhanced registry. Add separately approved modules without replacing another element's factory. */
+-export function createGameElements(scene:THREE.Scene,camera:THREE.Camera){return new ComposedElementalPresentation(scene,camera,{radiation:radiationModule});}
+-/** Same-build Radiation baseline; preserve the shared renderer and all fallback channels. */
+-export function createGameElementsBeforeRadiation(scene:THREE.Scene,camera:THREE.Camera){return new ComposedElementalPresentation(scene,camera,{});}
++export function createGameElements(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return new ComposedElementalPresentation(scene,camera,{radiation:radiationModule,shock:options.shock?createShockModule('capacitor',options.shock):shockModule});}
++/** Same-build Radiation baseline retains approved Shock and every fallback channel. */
++export function createGameElementsBeforeRadiation(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return new ComposedElementalPresentation(scene,camera,{shock:options.shock?createShockModule('capacitor',options.shock):shockModule});}
++/** Same-build Shock baseline retains every other production registration. */
++export function createGameElementsBeforeShock(scene:THREE.Scene,camera:THREE.Camera){return new ComposedElementalPresentation(scene,camera,{radiation:radiationModule});}
++/** Equipment-only baseline retains approved Shock impacts, C, sticky and every other module. */
++export function createGameElementsBeforeShockEquipment(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,shock:{...options.shock,equipment:'legacy'}});}

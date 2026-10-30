@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const root=process.env.SHOCK_OUTPUT_DIR??'artifacts/shock-integration';mkdirSync(root,{recursive:true});
+const hash=b=>createHash('sha256').update(b).digest('hex'),baseline='32caa1e';
+const source=execFileSync('git',['show',`${baseline}:src/rendering/PlayerBallistics.ts`]);
+assert.equal(hash(readFileSync('src/rendering/PlayerBallistics.ts')),hash(source),'Shock integration must not modify the current MIRV ballistic engine');
+const assets=['response.ts','capacitor.ts','directions.ts','sizing.ts','surface.ts','sticky.ts'].map(name=>`src/rendering/quality/shock/${name}`).concat('src/audio/shockAudio.ts');
+const approved=Object.fromEntries(assets.map(path=>{const expected=hash(execFileSync('git',['show',`7941c45:${path}`])),current=hash(readFileSync(path));assert.equal(current,expected,`${path} must remain the approved runtime asset`);return[path,current];}));
+execFileSync(process.execPath,['--import','tsx','scripts/verify-ballistic-feedback-compat.mjs'],{stdio:'inherit',env:{...process.env,BALLISTIC_BASELINE_REF:baseline,BALLISTIC_BASELINE_SHA256:hash(source),BALLISTIC_OUTPUT_DIR:root}});
+writeFileSync(`${root}/source-contract.json`,JSON.stringify({ballisticBaseline:baseline,ballisticSHA256:hash(source),approvedAssetCheckpoint:'7941c45',approved,rationale:'The concurrent MIRV change deliberately changes Cluster relative to the historical pre-feedback baseline. Compare all thirteen deliveries against its pinned current checkpoint; retain that original default baseline and frozen receipts.'},null,2));

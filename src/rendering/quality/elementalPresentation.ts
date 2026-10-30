@@ -79,7 +79,7 @@ export class ElementalPresentation implements BallisticPresentation{
  protected createStatus(root:THREE.Group,element:ElementType):StatusPresentation{
   return element==='corrosive'&&this.corrosive?this.corrosive.status(root):new ElementalStatus(root,element as Exclude<ElementType,'kinetic'>);
  }
- shot(spec:WeaponSpec,mode:Mode,_weaponRoot?:THREE.Object3D):void{
+ shot(spec:WeaponSpec,mode:Mode,_weaponRoot?:THREE.Object3D,_muzzleIndex?:number):void{
   this.mode=mode;
   for(const element of getWeaponElements(spec)){this.audio.shot(element,{mode,delivery:spec.projectile});this.audio.flight(element,{mode,delivery:spec.projectile,strength:.45});}
  }

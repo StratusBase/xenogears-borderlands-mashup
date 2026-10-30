@@ -1,0 +1,42 @@
+--- a/src/rendering/quality/GamePresentation.ts
++++ b/src/rendering/quality/GamePresentation.ts
+@@ -134,7 +134,7 @@
+  }
+  shot(event:PresentationShot):void{
+   this.quality?.fire({mode:event.mode,rig:event.rig,muzzleIndex:event.muzzleIndex,element:event.spec.element});
+-  this.elements?.shot(event.spec,event.mode,event.rig.group);
++  this.elements?.shot(event.spec,event.mode,event.rig.group,event.muzzleIndex);
+  }
+  reload(mode:Mode,stage:'out'|'in'|'bolt'):void{this.quality?.reload(mode,stage);}
+  dry(mode:Mode):void{this.quality?.audio.play('dry',{mode});}
+--- a/src/rendering/quality/elementalPresentation.ts
++++ b/src/rendering/quality/elementalPresentation.ts
+@@ -79,7 +79,7 @@
+  protected createStatus(root:THREE.Group,element:ElementType):StatusPresentation{
+   return element==='corrosive'&&this.corrosive?this.corrosive.status(root):new ElementalStatus(root,element as Exclude<ElementType,'kinetic'>);
+  }
+- shot(spec:WeaponSpec,mode:Mode,_weaponRoot?:THREE.Object3D):void{
++ shot(spec:WeaponSpec,mode:Mode,_weaponRoot?:THREE.Object3D,_muzzleIndex?:number):void{
+   this.mode=mode;
+   for(const element of getWeaponElements(spec)){this.audio.shot(element,{mode,delivery:spec.projectile});this.audio.flight(element,{mode,delivery:spec.projectile,strength:.45});}
+  }
+--- a/src/rendering/quality/shared/composedPresentation.ts
++++ b/src/rendering/quality/shared/composedPresentation.ts
+@@ -18,7 +18,7 @@
+  splash?(event:BallisticPresentationSplash):void;
+  status?(root:THREE.Group):SurfaceStatusVisual;
+  update?(dt:number,time:number,spec?:WeaponSpec,mode?:Mode):void;
+- shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void;
++ shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void;
+  decorateProjectile?(root:THREE.Group,spec:WeaponSpec,brand:BrandId):void;
+  updateProjectile?(root:THREE.Group,dt:number,age:number):boolean|void;
+  trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group;
+@@ -82,7 +82,7 @@
+   const visuals=[fallback];for(const element of elements){const own=this.responses?.get(element)?.equipment?.(root,appearance);if(own)visuals.push(own);}
+   return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
+  }
+- override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void{super.shot(spec,mode,root);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root);}
++ override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void{super.shot(spec,mode,root,muzzleIndex);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root,muzzleIndex);}
+  override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{super.update(dt,time,paused,spec,mode);if(!paused)for(const response of this.responses.values())response.update?.(dt,time,spec,mode);}
+  handlesPulse(element:ElementType):boolean{return!!this.responses.get(element)?.confirmedPulse;}
+  confirmedPulse(event:ConfirmedElementPulse):boolean{const handler=this.responses.get(event.element)?.confirmedPulse;if(!handler)return false;handler.call(this.responses.get(event.element),event);return true;}

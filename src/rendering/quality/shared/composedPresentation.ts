@@ -8,6 +8,7 @@ import {createElementalProjectile,createElementalTrail,createElementalBeam} from
 import {ElementalPresentation} from '../elementalPresentation';
 import type {SurfaceStatusVisual} from './surfaces';
 import type {ConfirmedElementPulse} from './confirmedPulse';
+import type {ConfirmedElementChain} from './confirmedChain';
 import {ElementalAudio,type elementalAudioRecipe} from '../../../audio/elementalAudio';
 import {corrosiveABAudioRecipe} from '../../../audio/corrosiveAudio';
 import {composeElementRecipes} from '../../../audio/composeElementRecipes';
@@ -17,13 +18,14 @@ export interface ElementResponse {
  splash?(event:BallisticPresentationSplash):void;
  status?(root:THREE.Group):SurfaceStatusVisual;
  update?(dt:number,time:number,spec?:WeaponSpec,mode?:Mode):void;
- shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void;
+ shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void;
  decorateProjectile?(root:THREE.Group,spec:WeaponSpec,brand:BrandId):void;
  updateProjectile?(root:THREE.Group,dt:number,age:number):boolean|void;
  trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group;
  beam?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group;
  equipment?(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation;
  confirmedPulse?(event:ConfirmedElementPulse):void;
+ confirmedChain?(event:ConfirmedElementChain):void;
  release?(root:THREE.Object3D):void;
  clear():void;dispose():void;
  readonly diagnostics?:Record<string,unknown>;
@@ -80,10 +82,11 @@ export class ComposedElementalPresentation extends ElementalPresentation {
   const visuals=[fallback];for(const element of elements){const own=this.responses?.get(element)?.equipment?.(root,appearance);if(own)visuals.push(own);}
   return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
  }
- override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void{super.shot(spec,mode,root);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root);}
+ override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void{super.shot(spec,mode,root,muzzleIndex);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root,muzzleIndex);}
  override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{super.update(dt,time,paused,spec,mode);if(!paused)for(const response of this.responses.values())response.update?.(dt,time,spec,mode);}
  handlesPulse(element:ElementType):boolean{return!!this.responses.get(element)?.confirmedPulse;}
  confirmedPulse(event:ConfirmedElementPulse):boolean{const handler=this.responses.get(event.element)?.confirmedPulse;if(!handler)return false;handler.call(this.responses.get(event.element),event);return true;}
+ confirmedChain(event:ConfirmedElementChain):boolean{const response=this.responses.get(event.element),handler=response?.confirmedChain;if(!handler)return false;handler.call(response,event);return true;}
  override release(root:THREE.Object3D):void{super.release(root);for(const response of this.responses.values())response.release?.(root);}
  override clear():void{super.clear();for(const response of this.responses?.values()??[])response.clear();}
  override dispose():void{super.dispose();for(const response of this.responses.values())response.dispose();this.responses.clear();}

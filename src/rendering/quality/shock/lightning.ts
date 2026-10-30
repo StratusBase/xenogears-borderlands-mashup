@@ -36,7 +36,7 @@ export class LightningSegments{
    vertexShader:/* glsl */`attribute float strokeAlpha;varying vec2 vStroke;varying float vLength;varying float vAlpha;
     void main(){vec4 a=modelViewMatrix*instanceMatrix*vec4(0.,-.5,0.,1.);vec4 b=modelViewMatrix*instanceMatrix*vec4(0.,.5,0.,1.);
      vec2 d=b.xy-a.xy;float len=max(length(d),.00001);vec2 axis=d/len;vec2 side=vec2(-axis.y,axis.x);
-     float w=max(length(instanceMatrix[0].xyz),.00001);float along=(position.y+.5)*len+position.y*w*12.;float across=position.x*w*6.;
+     float w=max(length((modelViewMatrix*instanceMatrix)[0].xyz),.00001);float along=(position.y+.5)*len+position.y*w*12.;float across=position.x*w*6.;
      vec4 p=mix(a,b,position.y+.5);p.xy=a.xy+axis*along+side*across;
      vStroke=vec2(along/w,across/w);vLength=len/w;vAlpha=strokeAlpha;gl_Position=projectionMatrix*p;
     }`,
