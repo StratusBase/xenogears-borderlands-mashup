@@ -196,6 +196,61 @@ class FakeNode {
   setAttribute() {}
   getBoundingClientRect(): never { throw new Error('Feedback must never force layout'); }
 }
+test('visible numbers stay at their birth position through head motion, new hits and merged status ticks', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+    createElement: () => new FakeNode(), createDocumentFragment: () => new FakeNode(true),
+  } });
+  const layer = new FakeNode();
+  const presentation = new DamageNumberPresentation(layer as unknown as HTMLElement, new FakeNode() as unknown as HTMLElement);
+  const origin = { x: .55, y: .47 };
+  try {
+    presentation.push(event({ targetId: 'human', position: { ...origin }, head: { ...origin } }));
+    presentation.update(0, 1440, 900, false, [{ targetId: 'human', ...origin }]);
+    const record = presentation.model.records[0], node = layer.children.find(candidate => candidate.dataset.feedbackId === String(record.id))!;
+    const translation = () => node.style.transform.match(/translate3d\(([-\d.]+)px,([-\d.]+)px,0\)/)!.slice(1).map(Number);
+    const [birthX, birthY] = translation(), birthLane = record.lane;
+    for (let frame = 1; frame <= 45; frame++) {
+      const at = frame / 60, head = { x: origin.x + Math.sin(frame * .4) * .05, y: origin.y + Math.cos(frame * .3) * .04 };
+      if (frame % 12 === 0) presentation.push(event({ targetId: 'human', at, amount: 12, kind: 'direct', critical: true, head, position: head }));
+      if (frame === 18 || frame === 36) presentation.push(event({ targetId: 'human', at, amount: 4.75, head, position: head }));
+      presentation.update(at, 1440, 900, false, [{ targetId: 'human', ...head }]);
+      const [x, y] = translation();
+      assert.equal(x, birthX, `Frame ${frame}: an existing number must not follow the head or switch lanes`);
+      assert.ok(Math.abs(y - (birthY - DAMAGE_NUMBER_LIMITS.float * at / DAMAGE_NUMBER_LIMITS.statusLifetime)) <= .011,
+        `Frame ${frame}: only the existing upward float may move a number`);
+      assert.equal(record.lane, birthLane); assert.equal(node.hidden, false);
+    }
+    assert.equal(record.amount, 12.75); assert.equal(record.events, 3);
+  } finally {
+    presentation.dispose();
+    if (previous) Object.defineProperty(globalThis, 'document', previous); else Reflect.deleteProperty(globalThis, 'document');
+  }
+});
+
+test('new critical hits avoid the full reserved travel of already visible numbers', () => {
+  const model = new DamageNumberModel(), layout = new DamageNumberLayout();
+  model.push(event({ head: { x: .55, y: .47 }, position: { x: .55, y: .47 } }));
+  const original = { ...layout.place(model.records, 0, 1440, 900)[0] };
+  model.presented(original.record, 0);
+  model.push(event({ at: .1, critical: true, kind: 'direct', head: { x: .55, y: .47 }, position: { x: .55, y: .47 } }));
+  const next = layout.place(model.records, .1, 1440, 900);
+  const retained = next.find(placement => placement.record.id === original.record.id)!;
+  assert.equal(retained.x, original.x); assert.equal(retained.y, original.y);
+  assert.equal(next[0].record.critical, true, 'New critical hits still outrank the waiting status queue');
+  assert.equal(overlaps(rectangle(next[0]), rectangle(retained)), false);
+});
+
+test('feedback owns its spawn coordinates and merged visible rows keep the original anchor', () => {
+  const model = new DamageNumberModel(), point = { x: .55, y: .47 };
+  model.push(event({ position: point, head: point }));
+  const record = model.records[0]; model.presented(record, 0);
+  point.x = .8; point.y = .2;
+  model.push(event({ at: .3, amount: 2, position: point, head: point }));
+  assert.deepEqual(record.position, { x: .55, y: .47 }); assert.deepEqual(record.head, { x: .55, y: .47 });
+  assert.equal(record.amount, 5.25); assert.equal(record.events, 2);
+});
+
 test('DOM nodes are pooled once; crowd feedback schedules no timers and freezes with the simulation clock', () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'document'), originalTimer = globalThis.setTimeout;
   let created = 0, timers = 0;

@@ -112,13 +112,15 @@ export class DamageNumberModel {
         part.amount += event.amount; part.events++;
         if (Object.keys(record.breakdown).length > 1) record.effect = undefined;
       }
-      if (!record.overflow) { record.position = event.position; record.head = event.head; }
+      if (!record.overflow && record.visibleAt === undefined) {
+        record.position = { ...event.position }; record.head = event.head ? { ...event.head } : undefined;
+      }
       return;
     }
     if (!overflow) this.ordinaryRecords++;
     this.records.push({ ...event, effect, kind, id: ++this.sequence, events: 1,
-      targetId: overflow ? 'overflow' : event.targetId, position: overflow ? { x: .88, y: .22 } : event.position,
-      head: overflow ? undefined : event.head, mergeUntil: event.at + DAMAGE_NUMBER_LIMITS.statusWindow,
+      targetId: overflow ? 'overflow' : event.targetId, position: overflow ? { x: .88, y: .22 } : { ...event.position },
+      head: overflow || !event.head ? undefined : { ...event.head }, mergeUntil: event.at + DAMAGE_NUMBER_LIMITS.statusWindow,
       paintedAmount: 0, paintedEvents: 0, lane: -1, overflow,
       breakdown: kind === 'status' && effect ? { [effect]: { amount: event.amount, events: 1 } } : {} });
   }
@@ -186,6 +188,8 @@ export class DamageNumberLayout {
   private height = 0;
   private order: DamageNumberRecord[] = [];
   private placements: DamagePlacement[] = [];
+  private readonly pinned = new Map<number, Omit<DamagePlacement, 'record'>>();
+  private readonly presentedIds = new Set<number>();
   private occupy(x: number, y: number, width: number, height: number, test = false): boolean {
     const left = Math.max(0, Math.floor(x / CELL_X)), top = Math.max(0, Math.floor(y / CELL_Y));
     const right = Math.min(this.columns - 1, Math.floor((x + width) / CELL_X)), bottom = Math.min(this.rows - 1, Math.floor((y + height) / CELL_Y));
@@ -223,7 +227,12 @@ export class DamageNumberLayout {
   }
   place(records: readonly DamageNumberRecord[], now: number, width: number, height: number,
     heads: readonly DamagePoint[] = [], hud?: DamageHudState): readonly DamagePlacement[] {
-    this.width = Math.max(240, width); this.height = Math.max(180, height);
+    const nextWidth = Math.max(240, width), nextHeight = Math.max(180, height);
+    if (nextWidth !== this.width || nextHeight !== this.height) this.pinned.clear();
+    this.width = nextWidth; this.height = nextHeight;
+    this.presentedIds.clear();
+    for (const record of records) if (record.visibleAt !== undefined) this.presentedIds.add(record.id);
+    for (const id of this.pinned.keys()) if (!this.presentedIds.has(id)) this.pinned.delete(id);
     const columns = Math.ceil(this.width / CELL_X), rows = Math.ceil(this.height / CELL_Y);
     if (columns !== this.columns || rows !== this.rows) { this.columns = columns; this.rows = rows; this.cells = new Uint8Array(columns * rows); }
     this.cells.fill(0); this.order.length = 0;
@@ -240,6 +249,9 @@ export class DamageNumberLayout {
     if (hud?.toasts) this.occupy(this.width - 420 * hudScale, 166 * hudScale, 420 * hudScale,
       (Math.min(4, hud.toasts) * 72 + 12) * hudScale);
     this.occupy(this.width / 2 - 48, this.height / 2 - 48, 96, 96);
+    // Reserve already visible numbers before placing any new hit, regardless
+    // of its priority. Target animation must not move an established label.
+    for (const placement of this.pinned.values()) this.spot(placement.x, placement.y, placement.width, placement.height, true);
     for (const head of heads) this.occupy(head.x * this.width - 28, head.y * this.height - 14, 56, 62);
     for (const record of records) {
       this.order.push(record);
@@ -252,6 +264,12 @@ export class DamageNumberLayout {
     let placed = 0;
     for (const record of this.order) {
       if (placed === DAMAGE_NUMBER_LIMITS.nodes) break;
+      const pinned = this.pinned.get(record.id);
+      if (pinned) {
+        const placement = this.placements[placed] ?? (this.placements[placed] = {} as DamagePlacement);
+        Object.assign(placement, pinned, { record });
+        placed++; continue;
+      }
       const cue = recordCue(record);
       let labelWidth = Math.min(260, Math.max(72, formatDamageAmount(record.amount, record.kind).length * (record.critical ? 13 : record.kind === 'direct' ? 10 : 8)
         + cue.length * 5 + (record.events > 1 ? 26 : 0) + 16));
@@ -276,6 +294,7 @@ export class DamageNumberLayout {
         const placement = this.placements[placed] ?? (this.placements[placed] = {} as DamagePlacement);
         placement.record = record; placement.x = x; placement.y = y; placement.width = labelWidth; placement.height = labelHeight;
         placement.edge = false; placement.direction = '';
+        this.pinned.set(record.id, { x, y, width: labelWidth, height: labelHeight, edge: false, direction: '' });
         placed++; found = true; break;
       }
       if (!found) {
@@ -289,7 +308,9 @@ export class DamageNumberLayout {
         placement.record = record; placement.x = edge.x; placement.y = edge.y; placement.width = labelWidth; placement.height = labelHeight;
         const dx = anchor.x * this.width - edge.x, dy = anchor.y * this.height - edge.y;
         placement.direction = Math.hypot(dx, dy) < 12 ? 'EDGE' : EDGE_DIRECTIONS[(Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) + 8) % 8];
-        placement.edge = true; placed++;
+        placement.edge = true;
+        this.pinned.set(record.id, { x: edge.x, y: edge.y, width: labelWidth, height: labelHeight, edge: true, direction: placement.direction });
+        placed++;
       }
     }
     this.placements.length = placed;
@@ -337,6 +358,7 @@ export class DamageNumberPresentation {
     this.lastTime = now; this.lastWidth = width; this.lastHeight = height; this.lastVersion = this.model.version;
     this.model.advance(now);
     for (const record of this.model.records) {
+      if (record.visibleAt !== undefined) continue;
       const head = heads.find(candidate => candidate.targetId === record.targetId && candidate.primary !== false);
       if (head) {
         // Game reuses its head projection buffer; retain this target's own point.
