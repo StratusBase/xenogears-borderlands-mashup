@@ -1,10 +1,10 @@
 """Package native canvas/final-bus captures; no retiming, gain or replacement audio."""
 from pathlib import Path
 from array import array
-import json, math, subprocess
-root=Path('artifacts/shock-equipment')
+import json, math, subprocess, sys
+root=Path(sys.argv[1] if len(sys.argv)>1 else 'artifacts/shock-equipment')
 report={}
-for name in ['rifle','heavy','mech','beam']:
+for name in (sys.argv[2:] or ['rifle','heavy','mech','beam']):
     source=root/f'{name}.webm'; target=root/f'{name}.mp4'
     encoded=subprocess.run(['ffmpeg','-nostdin','-y','-i',str(source),'-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p','-fps_mode','passthrough','-c:a','aac','-b:a','192k','-movflags','+faststart',str(target)],capture_output=True,check=True)
     (root/f'{name}-encode.log').write_bytes(encoded.stderr)

@@ -241,6 +241,7 @@ export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:
  if(type==='cluster'&&role==='bomblet'){
   root.userData.clusterRole='bomblet';const near=end.clone().addScaledVector(direction,-Math.min(.14,distance));
   for(const[channel,element]of getWeaponElements(spec).entries()){
+   if(options.omitPayloads?.has(element))continue;
    const p=new Parts(element,brand,.3*(channel?.7:1));p.tube('core','bomblet-fuse-wisp',near,end,.0035,.0015);p.finish(root,`quality-bomblet-wisp-${channel}-${element}`);
   }
   root.userData.maxVisualParts=2;return root;

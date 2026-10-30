@@ -29,26 +29,50 @@ export class LightningSegments{
  readonly group=new THREE.Group();readonly meshes:THREE.InstancedMesh[];
  private geometry=new THREE.PlaneGeometry(2,1);private materials:THREE.ShaderMaterial[]=[];
  private alpha:THREE.InstancedBufferAttribute;private count=0;private dummy=new THREE.Object3D();private delta=new THREE.Vector3();
- constructor(readonly capacity=1600){
+ constructor(readonly capacity=1600,options:{fadeWithMaterial?:boolean;continuous?:boolean;minPixels?:number;referenceWidth?:number;maxWidthScale?:number}={}){
   this.group.name='shock-pooled-lightning';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;
   this.alpha=new THREE.InstancedBufferAttribute(new Float32Array(capacity),1);this.geometry.setAttribute('strokeAlpha',this.alpha);
-  this.meshes=[];for(let layer=0;layer<2;layer++){const material=new THREE.ShaderMaterial({uniforms:{layer:{value:layer}},name:'shock-filament-core-corona',transparent:true,depthWrite:false,depthTest:true,toneMapped:false,side:THREE.DoubleSide,blending:layer===0?THREE.NormalBlending:THREE.AdditiveBlending,
-   vertexShader:/* glsl */`attribute float strokeAlpha;varying vec2 vStroke;varying float vLength;varying float vAlpha;
+  const viewport=new THREE.Vector2();
+  this.meshes=[];for(let layer=0;layer<2;layer++){const material=new THREE.ShaderMaterial({uniforms:{layer:{value:layer},opacity:{value:1},joinWeight:{value:options.continuous?1:0},nearPlane:{value:.1},minPixels:{value:options.minPixels??0},viewportHeight:{value:1},referenceWidth:{value:options.referenceWidth??1},maxWidthScale:{value:options.maxWidthScale??0}},name:'shock-filament-core-corona',transparent:true,depthWrite:false,depthTest:true,toneMapped:false,side:THREE.DoubleSide,blending:layer===0?THREE.NormalBlending:THREE.AdditiveBlending,
+   vertexShader:/* glsl */`attribute float strokeAlpha;uniform float joinWeight,nearPlane,minPixels,viewportHeight,referenceWidth,maxWidthScale;varying vec2 vStroke;varying float vLength;varying float vAlpha;
     void main(){vec4 a=modelViewMatrix*instanceMatrix*vec4(0.,-.5,0.,1.);vec4 b=modelViewMatrix*instanceMatrix*vec4(0.,.5,0.,1.);
      vec2 d=b.xy-a.xy;float len=max(length(d),.00001);vec2 axis=d/len;vec2 side=vec2(-axis.y,axis.x);
-     float w=max(length((modelViewMatrix*instanceMatrix)[0].xyz),.00001);float along=(position.y+.5)*len+position.y*w*12.;float across=position.x*w*6.;
+     float baseWidth=max(length((modelViewMatrix*instanceMatrix)[0].xyz),.00001),w=baseWidth;
+     float relativeWidth=clamp(length(instanceMatrix[0].xyz)/max(referenceWidth,.00001),.15,1.);
+     if(minPixels>0.){float pixelWorld=2.*abs((a.z+b.z)*.5)/max(abs(projectionMatrix[1][1])*viewportHeight,1.);w=max(w,minPixels*relativeWidth*pixelWorld/1.1);if(maxWidthScale>0.)w=min(w,baseWidth*maxWidthScale);}
+     // Project the centerline first. Extending a view-plane quad without its
+     // depth foreshortens each segment differently and opens gaps near a muzzle.
+     // A returning segment can straddle the eye. Keep it in homogeneous clip
+     // space until hardware near-plane clipping, avoiding division by zero or
+     // a mirrored screen-space quad. Ordinary forward paths keep their joins.
+     if(joinWeight>0. && a.z < -nearPlane && b.z < -nearPlane){
+      vec4 ca=projectionMatrix*a,cb=projectionMatrix*b;
+      vec2 pixels=vec2(viewportHeight*abs(projectionMatrix[1][1]/projectionMatrix[0][0]),viewportHeight)*.5;
+      vec2 pa=ca.xy/ca.w*pixels,pb=cb.xy/cb.w*pixels,delta=pb-pa;
+      float plen=max(length(delta),.0001),pw=w*abs(projectionMatrix[1][1])*viewportHeight/max(abs(a.z+b.z),.0001);
+      vec2 tangent=delta/plen,normal=vec2(-tangent.y,tangent.x);
+      float along=(position.y+.5)*plen+position.y*pw*12.,across=position.x*pw*6.;
+      vec2 xy=(pa+tangent*along+normal*across)/pixels;
+      float depth=mix(ca.z/ca.w,cb.z/cb.w,along/plen);
+      vStroke=vec2(along/pw,across/pw);vLength=plen/pw;vAlpha=strokeAlpha;gl_Position=vec4(xy,depth,1.);return;
+     }
+     float along=(position.y+.5)*len+position.y*w*12.;float across=position.x*w*6.;
      vec4 p=mix(a,b,position.y+.5);p.xy=a.xy+axis*along+side*across;
      vStroke=vec2(along/w,across/w);vLength=len/w;vAlpha=strokeAlpha;gl_Position=projectionMatrix*p;
     }`,
-   fragmentShader:/* glsl */`uniform float layer;varying vec2 vStroke;varying float vLength;varying float vAlpha;
+   fragmentShader:/* glsl */`uniform float layer,opacity,joinWeight;varying vec2 vStroke;varying float vLength;varying float vAlpha;
     void main(){float end=max(max(-vStroke.x,vStroke.x-vLength),0.);float d=length(vec2(end,vStroke.y));
      float aa=max(fwidth(d)*.55,.12);float core=1.-smoothstep(.26-aa,.55+aa,d);float ion=exp(-d*d*1.25);float corona=exp(-d*d*.14);
      float a;vec3 color;
      if(layer<.5){a=(core*.88+ion*.65+corona*.38)*vAlpha;color=mix(vec3(.008,.028,.15),vec3(.025,.20,.88),clamp(ion+core,0.,1.));}
      else{a=(core*.98+ion*.20)*vAlpha;color=mix(vec3(.18,.63,1.),vec3(.90,.99,1.),core);}
-     if(a<.004)discard;gl_FragColor=vec4(color,a);
+     // Adjacent flight segments each contribute half at a joint, avoiding beads.
+     a*=opacity*mix(1.,min(smoothstep(-1.5,1.5,vStroke.x),smoothstep(-1.5,1.5,vLength-vStroke.x)),joinWeight);if(a<.004)discard;gl_FragColor=vec4(color,a);
     }`});
-  const mesh=new THREE.InstancedMesh(this.geometry,material,capacity);mesh.count=0;mesh.frustumCulled=false;mesh.raycast=()=>{};mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.name='shock-lightning-filaments';mesh.renderOrder=6+layer;if(layer>0)mesh.instanceMatrix=this.meshes[0].instanceMatrix;this.meshes.push(mesh);this.materials.push(material);this.group.add(mesh);}
+  const mesh=new THREE.InstancedMesh(this.geometry,material,capacity);mesh.count=0;mesh.frustumCulled=false;mesh.raycast=()=>{};mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.name='shock-lightning-filaments';mesh.renderOrder=6+layer;if(layer>0)mesh.instanceMatrix=this.meshes[0].instanceMatrix;
+  // Ballistics owns trail/beam fade. Read its material opacity without advancing any clock.
+  if(options.fadeWithMaterial||options.minPixels||options.continuous)mesh.onBeforeRender=(renderer,_scene,camera)=>{if(options.continuous){const near=(camera as THREE.PerspectiveCamera|undefined)?.near;if(near!==undefined&&material.uniforms.nearPlane.value!==near){material.uniforms.nearPlane.value=near;material.uniformsNeedUpdate=true;}}if((options.minPixels||options.continuous)&&renderer?.getSize){const height=renderer.getSize(viewport).y;if(material.uniforms.viewportHeight.value!==height){material.uniforms.viewportHeight.value=height;material.uniformsNeedUpdate=true;}}if(options.fadeWithMaterial&&material.uniforms.opacity.value!==material.opacity){material.uniforms.opacity.value=material.opacity;material.uniformsNeedUpdate=true;}};
+  this.meshes.push(mesh);this.materials.push(material);this.group.add(mesh);}
  }
  begin():void{this.count=0;}
  add(a:THREE.Vector3,b:THREE.Vector3,width:number,alpha:number):void{

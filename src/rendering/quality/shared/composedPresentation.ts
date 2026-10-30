@@ -21,7 +21,7 @@ export interface ElementResponse {
  shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D,muzzleIndex?:number):void;
  decorateProjectile?(root:THREE.Group,spec:WeaponSpec,brand:BrandId):void;
  updateProjectile?(root:THREE.Group,dt:number,age:number):boolean|void;
- trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group;
+ trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group;
  beam?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group;
  equipment?(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation;
  confirmedPulse?(event:ConfirmedElementPulse):void;
@@ -40,6 +40,8 @@ export interface ElementModule {
  /** Boolean retains full replacement semantics; a map replaces only selected flight hooks. */
  replaceFlight?:boolean|Partial<Record<ElementFlightHook,ElementFlightReplacement>>;
  replaceEquipment?:boolean;
+ /** Explicit opt-in; tiny MIRV wisps otherwise retain their existing renderer. */
+ bombletTrails?:boolean;
  /** Optional resource-independent flight hooks remain valid for already-fired shots after world presentation is disposed. */
  flight?:Pick<ElementResponse,'decorateProjectile'|'updateProjectile'|'trail'|'beam'>;
 }
@@ -73,10 +75,9 @@ export class ComposedElementalPresentation extends ElementalPresentation {
  }
  override updateProjectile(root:THREE.Group,dt:number,age:number):void{let handled=false;const flight=this.responses.size?this.responses.values():Object.values(this.modules).flatMap(m=>m?.flight?[m.flight]:[]);for(const r of flight)if(r.updateProjectile?.(root,dt,age))handled=true;if(!handled)super.updateProjectile(root,dt,age);}
  override trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
-  if(spec.projectile==='cluster'&&role==='bomblet')return super.trail(start,end,spec,brand,role);
-  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'trail',spec)));if(!omitPayloads.size)return super.trail(start,end,spec,brand,role);
+  const bomblet=spec.projectile==='cluster'&&role==='bomblet',elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'trail',spec)&&(!bomblet||this.modules[e]?.bombletTrails)));if(!omitPayloads.size)return super.trail(start,end,spec,brand,role);
   const root=createElementalTrail(start,end,spec,brand,{omitPayloads,role});
-  for(const element of elements){const response=this.flightFor(element),own=response?.trail;if(own)root.add(own.call(response,start,end,spec,brand));}return root;
+  for(const element of elements){if(bomblet&&!omitPayloads.has(element))continue;const response=this.flightFor(element),own=response?.trail;if(own)root.add(own.call(response,start,end,spec,brand,role));}return root;
  }
  override beam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group{
   const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'beam',spec)));if(!omitPayloads.size)return super.beam(start,end,spec,jagged,brand);

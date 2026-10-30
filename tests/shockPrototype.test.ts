@@ -238,7 +238,7 @@ test('fixed Shock sticky charge stays inside its carrier envelope, never rotates
  layer.dispose();
 });
 test('fixed sticky decoration does not change other Shock deliveries or non-Shock sticky visuals',()=>{
- const layer=new ShockPresentation(new THREE.Scene(),new THREE.PerspectiveCamera());
+ const layer=new ShockPresentation(new THREE.Scene(),new THREE.PerspectiveCamera(),'capacitor',{flight:'legacy'});
  const signature=(root:THREE.Group)=>{const values:unknown[]=[];root.traverse(c=>{if(c instanceof THREE.Mesh)values.push({name:c.name,positions:Array.from(c.geometry.attributes.position.array),material:c.material.name});});return values;};
  for(const spec of [createWeaponSpec('rocket','shock'),createWeaponSpec('bullet','shock'),createWeaponSpec('sticky','fire')])assert.deepEqual(signature(layer.projectile(spec,'ironvale')),signature(createElementalProjectile(spec,'ironvale')));
  layer.dispose();

@@ -3,14 +3,14 @@ import {ComposedElementalPresentation,type ElementModule} from './shared/compose
 import type {ElementType} from '../../core/arsenal';
 import {radiationModule} from './radiation/presentation';
 import {fireModule,createFireModule,type FireOptions} from './fire/presentation';
-import {shockModule,createShockModule,type ShockPresentationOptions} from './shock/module';
+import {createShockModule,type ShockPresentationOptions} from './shock/module';
 import {createAdhesiveModule,type AdhesiveOptions} from './adhesive/module';
 import {gravityModule,type GravityVisualOptions} from './gravity/response';
 
 export interface GameElementOptions {shock?:ShockPresentationOptions;fire?:FireOptions;adhesive?:AdhesiveOptions;gravity?:GravityVisualOptions}
 
 function productionModules(options:GameElementOptions):Partial<Record<ElementType,ElementModule>>{
- return{fire:options.fire?createFireModule({full:true,hybrid:true,...options.fire}):fireModule,radiation:radiationModule,shock:options.shock?createShockModule('capacitor',options.shock):shockModule,adhesive:createAdhesiveModule(options.adhesive),gravity:gravityModule(undefined,options.gravity)};
+ return{fire:options.fire?createFireModule({full:true,hybrid:true,...options.fire}):fireModule,radiation:radiationModule,shock:createShockModule('capacitor',options.shock),adhesive:createAdhesiveModule(options.adhesive),gravity:gravityModule(undefined,options.gravity)};
 }
 function beforeElement(scene:THREE.Scene,camera:THREE.Camera,element:ElementType,options:GameElementOptions){
  const modules=productionModules(options);delete modules[element];return new ComposedElementalPresentation(scene,camera,modules);
@@ -32,6 +32,9 @@ export function createGameElementsBeforeShock(scene:THREE.Scene,camera:THREE.Cam
 
 /** Equipment-only baseline: retain approved Shock impacts, C, sticky and every other element. */
 export function createGameElementsBeforeShockEquipment(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,shock:{...options.shock,equipment:'legacy'}});}
+
+/** Flight-only baseline retains approved equipment, impacts, status and every sibling element. */
+export function createGameElementsBeforeShockFlight(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,shock:{...options.shock,flight:'legacy'}});}
 
 /** Same-build Adhesive baseline: omit only Adhesive, keeping all sibling options and registrations. */
 export function createGameElementsBeforeAdhesive(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return beforeElement(scene,camera,'adhesive',options);}
