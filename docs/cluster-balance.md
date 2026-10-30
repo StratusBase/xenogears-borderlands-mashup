@@ -1,5 +1,7 @@
 # Cluster balance and manufacturer loot
 
+> **Historical version:** this report measures the 29 October 2026 forward-cone Cluster. The [classic MIRV revision](cluster-mirv.md) supersedes that delivery behavior. All 72 scripted runs, numbers, source fingerprints and raw evidence below are retained unchanged; they do not validate the new MIRV lifecycle, balance or performance.
+
 2026-10-29. Retain the tuned candidate. Ordinary-roll Cluster completes all three matched encounter seeds, with **8.1% lower mean completion time** and **8.1% less mech ammunition** than the initial implementation. Cluster remains a higher-ammunition alternative to Rocket, with a more reliable airburst and less excessive control. This is a scripted actual-game pass; human/controller testing is not claimed.
 
 ## Changes

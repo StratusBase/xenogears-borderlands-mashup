@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { elementColors, getWeaponElements, normalizeWeaponSpec, type BrandId, type WeaponSpec } from '../core/arsenal';
+import { elementColors, getWeaponElements, getDamagePacketCount, getClusterBombletFuseRange, normalizeWeaponSpec, type BrandId, type WeaponSpec } from '../core/arsenal';
+import { CLUSTER_MIRV, clusterBombletPlan } from '../core/cluster';
 import { createProjectileVisual, createProjectileTrail, createBeamVisual } from './weaponVisuals';
 import { ElementEffects } from './ElementEffects';
 
@@ -22,7 +23,7 @@ export interface BallisticCallbacks {
 /** Authoritative contact/detonation notification, independent of the selected renderer. */
 export interface BallisticWorldImpact {
  projectileId:number;phase:'contact'|'detonate';point:Readonly<{x:number;y:number;z:number}>;normal:Readonly<{x:number;y:number;z:number}>;
- spec:Readonly<WeaponSpec>;energy:number;radius:number;targetId?:number;
+ spec:Readonly<WeaponSpec>;energy:number;radius:number;targetId?:number;stage?:'cluster-burst'|'bomblet';
 }
 
 /** Optional rendering adapter. Simulation, swept collision, and damage remain owned here. */
@@ -31,6 +32,7 @@ export interface BallisticPresentationImpact {
   target?: THREE.Group; phase: 'contact' | 'detonate';
   /** Presentation-only actual shot energy and propagated contact fraction. */
   energy?: number; exposure?: number;
+  stage?: 'cluster-burst' | 'bomblet';
   /** Visual support for settling effects; never participates in authoritative collision. */
   hitSurface?: THREE.Object3D;
 }
@@ -38,8 +40,8 @@ export interface BallisticPresentationSplash extends BallisticPresentationImpact
   target:THREE.Group;origin:THREE.Vector3;energy:number;exposure:number;primary:boolean;
 }
 export interface BallisticPresentation {
-  projectile(spec: WeaponSpec, brand: BrandId): THREE.Group;
-  trail(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, brand: BrandId): THREE.Group;
+  projectile(spec: WeaponSpec, brand: BrandId, role?: 'carrier' | 'bomblet'): THREE.Group;
+  trail(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, brand: BrandId, role?: 'carrier' | 'bomblet'): THREE.Group;
   beam(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, jagged: boolean, brand: BrandId): THREE.Group;
   impact(event: BallisticPresentationImpact): void;
   /** One notification for each actual, unoccluded blast recipient; no damage is applied here. */
@@ -48,7 +50,7 @@ export interface BallisticPresentation {
 }
 
 interface Target extends BallisticTarget { center: THREE.Vector3; bounds: THREE.Box3; meshes: THREE.Mesh[] }
-interface Collision { intersection: THREE.Intersection; target?: Target; normal: THREE.Vector3 }
+interface Collision { intersection: THREE.Intersection; target?: Target; normal: THREE.Vector3; exiting: boolean }
 interface VisualRecipe extends WeaponSpec { visualBrand?: BrandId }
 interface Projectile {
   impactId:number;
@@ -66,6 +68,10 @@ interface Projectile {
   fuse?: number;
   /** Present only on a carrier; its children never acquire another split timer. */
   splitDelay?: number;
+  clusterRole?: 'carrier' | 'bomblet';
+  clusterSurface?: THREE.Object3D;
+  clusterNormal?: THREE.Vector3;
+  clusterTargetId?: number;
   presenter?: BallisticPresentation;
   visualContact?: { normal: THREE.Vector3; target?: THREE.Group; hitSurface?:THREE.Object3D };
 }
@@ -154,6 +160,8 @@ export class PlayerBallistics {
   private readonly elementBursts = new Set<ElementBurst>();
   private readonly elementPayloads = new Map<Projectile, ElementEffects[]>();
   private readonly ray = new THREE.Raycaster();
+  private readonly containmentRay = new THREE.Raycaster();
+  private readonly closedCover = new WeakMap<THREE.BufferGeometry, boolean>();
   private readonly collisionMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
   private targets: Target[] = [];
   private covers: THREE.Mesh[] = [];
@@ -169,9 +177,9 @@ export class PlayerBallistics {
 
   /** Combat-owner seam. Visual toggles do not install, remove or invoke this hook. */
   setWorldImpactHandler(handler?: (event:Readonly<BallisticWorldImpact>)=>void):void{this.worldImpactHandler=handler;}
-  private worldImpact(id:number,phase:'contact'|'detonate',point:THREE.Vector3,normal:THREE.Vector3,spec:Readonly<WeaponSpec>,energy:number,radius:number,targetId?:number):void{
+  private worldImpact(id:number,phase:'contact'|'detonate',point:THREE.Vector3,normal:THREE.Vector3,spec:Readonly<WeaponSpec>,energy:number,radius:number,targetId?:number,stage?:'cluster-burst'|'bomblet'):void{
     const handler=this.worldImpactHandler??this.callbacks.worldImpact;if(!handler)return;
-    handler(Object.freeze({projectileId:id,phase,point:Object.freeze({x:point.x,y:point.y,z:point.z}),normal:Object.freeze({x:normal.x,y:normal.y,z:normal.z}),spec,energy,radius,targetId}));
+    handler(Object.freeze({projectileId:id,phase,point:Object.freeze({x:point.x,y:point.y,z:point.z}),normal:Object.freeze({x:normal.x,y:normal.y,z:normal.z}),spec,energy,radius,targetId,...(stage?{stage}:{})}));
   }
 
   /** Changes new presentation only; never clears active shots or modifies their recipes. */
@@ -204,18 +212,20 @@ export class PlayerBallistics {
     while (this.projectiles.size >= MAX_PROJECTILES) this.remove(this.projectiles.values().next().value!);
     const brand = recipe.visualBrand ?? 'ironvale';
     const epoch = this.epoch;
-    const visual = presenter?.projectile(recipe, brand) ?? createProjectileVisual(recipe, brand);
+    const clusterRole = recipe.projectile === 'cluster' ? child ? 'bomblet' : 'carrier' : undefined;
+    const visual = presenter?.projectile(recipe, brand, clusterRole) ?? createProjectileVisual(recipe, brand, clusterRole);
     if (this.epoch !== epoch) { disposeVisual(visual); return; }
     visual.position.copy(origin);
     visual.quaternion.setFromUnitVectors(forward, aim);
-    if (child) visual.scale.multiplyScalar(.42);
+    if (child && !clusterRole) visual.scale.multiplyScalar(.42);
+    if (clusterRole) visual.userData.clusterRole = clusterRole;
     this.scene.add(visual);
     const speed = recipe.speed * (child ? .65 : 1);
-    const splitDelay = !child ? recipe.split?.delay : undefined;
-    const projectile: Projectile = { impactId:++this.worldImpactSequence,visual, spec: recipe, velocity: aim.clone().multiplyScalar(speed), damage, age: 0, life: Math.min(10, distance / speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter, splitDelay, fuse: splitDelay !== undefined || recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
+    const splitDelay = !child && !clusterRole ? recipe.split?.delay : undefined;
+    const projectile: Projectile = { impactId:++this.worldImpactSequence,visual, spec: recipe, velocity: aim.clone().multiplyScalar(speed), damage, age: 0, life: Math.min(10, distance / speed + 1), range: distance, traveled: 0, bounces: recipe.bounces, hits: new Set(), presenter, splitDelay, clusterRole, fuse: clusterRole || splitDelay !== undefined || recipe.projectile === 'sticky' ? undefined : recipe.fuse > 0 ? recipe.fuse : undefined };
     this.projectiles.add(projectile);
     const payloadElements = getWeaponElements(recipe).filter(element => element !== 'kinetic');
-    if (!presenter && payloadElements.length && ['orb', 'sticky', 'rocket', 'homing', 'cluster'].includes(recipe.projectile)) {
+    if (!presenter && clusterRole !== 'bomblet' && payloadElements.length && ['orb', 'sticky', 'rocket', 'homing', 'cluster'].includes(recipe.projectile)) {
       while (this.elementPayloads.size >= MAX_ELEMENT_PAYLOADS) {
         const oldest = this.elementPayloads.entries().next().value!;
         oldest[1].forEach(effect => effect.dispose()); this.elementPayloads.delete(oldest[0]);
@@ -298,7 +308,7 @@ export class PlayerBallistics {
     this.allMeshes = [...new Set([...this.covers, ...this.targets.flatMap(target => target.meshes)])];
   }
 
-  private trace(start: THREE.Vector3, end: THREE.Vector3, onlyCover = false): Collision | undefined {
+  private trace(start: THREE.Vector3, end: THREE.Vector3, onlyCover = false, departingSurface?: THREE.Object3D, departingNormal?: THREE.Vector3): Collision | undefined {
     const delta = end.clone().sub(start), length = delta.length();
     if (length < 1e-8) return undefined;
     this.ray.set(start, delta.divideScalar(length));
@@ -311,14 +321,25 @@ export class PlayerBallistics {
       // Collision is double-sided even when a muzzle starts within thin cover.
       // Render materials are restored before any hit callback or scene render.
       meshes.forEach(mesh => { original.set(mesh, mesh.material); mesh.material = this.collisionMaterial; });
-      intersection = this.ray.intersectObjects(meshes, false)[0];
+      const intersections = this.ray.intersectObjects(meshes, false);
+      intersection = !departingSurface ? intersections[0] : intersections.find(hit => {
+        if (hit.object !== departingSurface || hit.distance > 1e-7 || !hit.face) return true;
+        if (!departingNormal || this.ray.ray.direction.dot(departingNormal) <= 1e-8) return true;
+        const probe = start.clone().addScaledVector(this.ray.ray.direction, 1e-5);
+        if (this.insideCover(probe, departingSurface)) return true;
+        const face = hit.face.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld)).normalize();
+        // Plane back faces are valid double-sided contacts. Skip only the
+        // zero-distance coplanar support being left, regardless of winding.
+        return Math.abs(face.dot(departingNormal)) < .999999;
+      });
     } finally { original.forEach((material, mesh) => { mesh.material = material; }); }
     if (!intersection) return undefined;
     const normal = intersection.face
       ? intersection.face.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(intersection.object.matrixWorld)).normalize()
       : this.ray.ray.direction.clone().negate();
-    if (normal.dot(this.ray.ray.direction) > 0) normal.negate();
-    return { intersection, normal, target: this.bindings.get(intersection.object) };
+    const exiting = normal.dot(this.ray.ray.direction) > 0;
+    if (exiting) normal.negate();
+    return { intersection, normal, exiting, target: this.bindings.get(intersection.object) };
   }
 
   private emit(target: Target, point: THREE.Vector3, direction: THREE.Vector3, damage: number, spec: WeaponSpec, critical = false): boolean {
@@ -360,6 +381,7 @@ export class PlayerBallistics {
   }
 
   private advance(projectile: Projectile, dt: number): void {
+    if (projectile.clusterRole === 'bomblet') { this.advanceBomblet(projectile, dt); return; }
     const stepTime = dt;
     // Move the carrier up to its release time, even when a frame straddles it.
     if (projectile.splitDelay !== undefined) {
@@ -379,6 +401,7 @@ export class PlayerBallistics {
       if (projectile.fuse <= 0) { this.explode(projectile, projectile.visual.position, undefined, projectile.spec.projectile === 'sticky' ? 0.80 : 1); this.remove(projectile); return; }
     }
     if (projectile.age >= 16 || projectile.life <= 0) {
+      if (projectile.clusterRole === 'carrier') { this.deployCluster(projectile, projectile.visual.position); return; }
       if (projectile.splitDelay === undefined && projectile.spec.blastRadius > 0) this.explode(projectile, projectile.visual.position);
       this.remove(projectile); return;
     }
@@ -399,7 +422,10 @@ export class PlayerBallistics {
       const prior = projectile.visual.position.clone();
       const speed = projectile.velocity.length();
       const travel = Math.min(speed * remaining, projectile.range - projectile.traveled);
-      if (travel <= 1e-7) { this.remove(projectile); return; }
+      if (travel <= 1e-7) {
+        if (projectile.clusterRole === 'carrier') this.deployCluster(projectile, prior); else this.remove(projectile);
+        return;
+      }
       const direction = projectile.velocity.clone().normalize();
       const end = prior.clone().addScaledVector(direction, travel);
       const collision = this.trace(prior, end);
@@ -411,12 +437,24 @@ export class PlayerBallistics {
       else if (type === 'orb') projectile.visual.rotateZ(projectile.age * (1 + (projectile.spec.visualVariant ?? 0) * .3));
       this.trail(prior, point, projectile.spec, projectile.presenter ?? null);
       if (!collision) {
-        if (projectile.traveled >= projectile.range - 1e-7) { if (projectile.splitDelay === undefined && projectile.spec.blastRadius > 0) this.explode(projectile, point); this.remove(projectile); }
+        if (projectile.traveled >= projectile.range - 1e-7) {
+          if (projectile.clusterRole === 'carrier') this.deployCluster(projectile, point);
+          else { if (projectile.splitDelay === undefined && projectile.spec.blastRadius > 0) this.explode(projectile, point); this.remove(projectile); }
+        }
         else if (projectile.splitDelay === 0) this.splitProjectile(projectile, point, stepTime - dt);
         return;
       }
       const target = collision.target;
       projectile.visualContact = { normal: collision.normal.clone(), target: target?.root,hitSurface:collision.intersection.object };
+      if (projectile.clusterRole === 'carrier') {
+        // A muzzle already inside solid cover cannot release a payload from
+        // its far face. This invalid shot loses its budget instead of leaking.
+        if (!target && collision.exiting && this.insideCover(prior, collision.intersection.object)) { this.remove(projectile); return; }
+        projectile.clusterTargetId = target?.id;
+        const contactTime = dt - remaining + prior.distanceTo(point) / Math.max(speed, 0.0001);
+        this.deployCluster(projectile, this.clusterClearance(point, collision.normal, collision.intersection.object, EPSILON), Math.max(0, stepTime - contactTime));
+        return;
+      }
       this.worldImpact(projectile.impactId,'contact',point,collision.normal,projectile.spec,projectile.damage*(type==='sticky'?.20:1),.3,target?.id);
       if(!this.projectiles.has(projectile))return;
       projectile.presenter?.impact({point:point.clone(),normal:collision.normal.clone(),spec:projectile.spec,radius:.3,target:target?.root,phase:'contact',energy:projectile.damage*(type==='sticky'?.20:1),hitSurface:collision.intersection.object});
@@ -465,6 +503,150 @@ export class PlayerBallistics {
     }
   }
 
+  /** An exiting triangle alone does not imply containment: roofs and planes
+   * are double-sided. Check closed topology and ray parity only when needed. */
+  private insideCover(point: THREE.Vector3, object: THREE.Object3D): boolean {
+    if (!(object instanceof THREE.Mesh)) return false;
+    const geometry = object.geometry;
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (!box) return false;
+    const local = object.worldToLocal(point.clone()), epsilon = 1e-7;
+    if (!(local.x > box.min.x + epsilon && local.x < box.max.x - epsilon
+      && local.y > box.min.y + epsilon && local.y < box.max.y - epsilon
+      && local.z > box.min.z + epsilon && local.z < box.max.z - epsilon)) return false;
+    let closed = this.closedCover.get(geometry);
+    if (closed === undefined) {
+      const positions = geometry.getAttribute('position'), indices = geometry.index;
+      const edges = new Map<string, number>();
+      const vertex = (index: number) => [positions.getX(index), positions.getY(index), positions.getZ(index)].map(value => Math.round(value * 1e6)).join(',');
+      const count = indices?.count ?? positions.count;
+      for (let index = 0; index + 2 < count; index += 3) {
+        const triangle = [0, 1, 2].map(offset => vertex(indices ? indices.getX(index + offset) : index + offset));
+        if (new Set(triangle).size < 3) continue;
+        for (let side = 0; side < 3; side++) {
+          const edge = [triangle[side], triangle[(side + 1) % 3]].sort().join('|');
+          edges.set(edge, (edges.get(edge) ?? 0) + 1);
+        }
+      }
+      closed = edges.size > 0 && [...edges.values()].every(count => count === 2);
+      this.closedCover.set(geometry, closed);
+    }
+    if (!closed) return false;
+    this.containmentRay.set(point, new THREE.Vector3(1, .312123, .197137).normalize());
+    this.containmentRay.near = epsilon; this.containmentRay.far = Infinity;
+    const material = object.material;
+    try {
+      object.material = this.collisionMaterial;
+      const intersections = this.containmentRay.intersectObject(object, false);
+      let count = 0, previous = -Infinity;
+      for (const hit of intersections) if (hit.distance > epsilon && hit.distance - previous > epsilon) { count++; previous = hit.distance; }
+      return count % 2 === 1;
+    } finally { object.material = material; }
+  }
+
+  /** Clearance is swept as well as flight: a small spacing offset must not
+   * teleport bomblets through an overhang or the other wall of a narrow gap. */
+  private clusterClearance(point: THREE.Vector3, normal: THREE.Vector3, surface?: THREE.Object3D, distance: number = CLUSTER_MIRV.clearance): THREE.Vector3 {
+    const end = point.clone().addScaledVector(normal, distance);
+    const obstruction = this.trace(point, end, true, surface, normal);
+    return obstruction ? point.clone().addScaledVector(normal, Math.max(0, point.distanceTo(obstruction.intersection.point) - EPSILON)) : end;
+  }
+
+  /** MIRV is a delivery lifecycle, independent of either elemental channel. */
+  private deployCluster(projectile: Projectile, point: THREE.Vector3, remainingTime = 0): void {
+    const split = projectile.spec.split;
+    if (!this.projectiles.has(projectile)) return;
+    const count = getDamagePacketCount(projectile.spec) - 1;
+    if (!split || count < 2) { this.explode(projectile, point); this.remove(projectile); return; }
+    const epoch = this.epoch, range = CLUSTER_MIRV.travelLimit;
+    const packetDamage = projectile.damage / getDamagePacketCount(projectile.spec);
+    const normal = projectile.visualContact?.normal.clone() ?? new THREE.Vector3(0, 1, 0);
+    const incoming = projectile.velocity.clone();
+    const seed = projectile.impactId;
+    // The burst is a real, single splash packet. Never combine a direct hit with
+    // another blast against the contacted target, and never grant blast crits.
+    projectile.visual.position.copy(point); projectile.damage = packetDamage;
+    this.explode(projectile, point);
+    if (this.epoch !== epoch || !this.projectiles.has(projectile)) return;
+    this.remove(projectile);
+    const tangent = new THREE.Vector3().crossVectors(normal, Math.abs(normal.y) > .95 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize();
+    const bitangent = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+    const drift = incoming.addScaledVector(normal, -incoming.dot(normal)).multiplyScalar(.05);
+    const origin = this.clusterClearance(point, normal, projectile.visualContact?.hitSurface);
+    const children: Projectile[] = [];
+    const fuses = getClusterBombletFuseRange(projectile.spec);
+    for (const plan of clusterBombletPlan(count, projectile.spec.blastRadius, seed, fuses)) {
+      if (this.epoch !== epoch) break;
+      const velocity = tangent.clone().multiplyScalar(Math.cos(plan.angle) * plan.radialSpeed)
+        .addScaledVector(bitangent, Math.sin(plan.angle) * plan.radialSpeed).add(drift);
+      velocity.y += plan.lift;
+      velocity.addScaledVector(normal, Math.max(0, 1.2 - velocity.dot(normal)));
+      const child = this.spawnProjectile(origin, velocity.clone().normalize(), projectile.spec, packetDamage, range, projectile.presenter, true);
+      if (!child) continue;
+      child.velocity.copy(velocity); child.fuse = plan.fuse; child.life = Math.min(plan.fuse + .1, Math.max(.05, 16 - projectile.age));
+      child.bounces = CLUSTER_MIRV.bounces; child.clusterSurface = projectile.visualContact?.hitSurface; child.clusterNormal = normal.clone();
+      child.visual.userData.clusterInitialFuse = plan.fuse;
+      child.visual.userData.clusterFuse = plan.fuse;
+      children.push(child);
+    }
+    for (const child of children) if (remainingTime > 1e-7 && this.projectiles.has(child)) {
+      this.advance(child, remainingTime);
+      if (this.projectiles.has(child)) child.presenter?.updateProjectile?.(child.visual, remainingTime, child.age);
+    }
+  }
+
+  private advanceBomblet(projectile: Projectile, dt: number): void {
+    const elapsed = Math.min(dt, Math.max(0, projectile.fuse ?? 0));
+    projectile.age += elapsed; projectile.life -= elapsed;
+    let remaining = elapsed, rangeExpired = false;
+    // Exact constant-acceleration endpoints; swept real meshes own contacts.
+    // There is deliberately no invented y=0 floor or explosion on a bounce.
+    for (let impact = 0; impact < 6 && remaining > 1e-8 && !projectile.stuck && this.projectiles.has(projectile); impact++) {
+      const prior = projectile.visual.position.clone(), velocity = projectile.velocity.clone();
+      const end = prior.clone().addScaledVector(velocity, remaining);
+      end.y -= .5 * CLUSTER_MIRV.gravity * remaining * remaining;
+      const distance = prior.distanceTo(end), available = Math.max(0, projectile.range - projectile.traveled);
+      if (available < 1e-7) { rangeExpired = true; break; }
+      const travelFraction = distance > available ? available / distance : 1;
+      end.lerpVectors(prior, end, travelFraction);
+      const collision = this.trace(prior, end, false, projectile.clusterSurface, projectile.clusterNormal);
+      if (collision && !collision.target && collision.exiting && this.insideCover(prior, collision.intersection.object)) { this.remove(projectile); return; }
+      const point = collision?.intersection.point ?? end;
+      const fraction = prior.distanceTo(end) > 1e-8 ? Math.min(1, prior.distanceTo(point) / prior.distanceTo(end)) : 1;
+      const consumed = remaining * travelFraction * fraction;
+      projectile.traveled += prior.distanceTo(point);
+      projectile.visual.position.copy(point);
+      projectile.velocity.copy(velocity); projectile.velocity.y -= CLUSTER_MIRV.gravity * consumed;
+      this.trail(prior, point, projectile.spec, projectile.presenter ?? null, 'bomblet');
+      if (!this.projectiles.has(projectile)) return;
+      if (!collision) {
+        if (travelFraction < 1) rangeExpired = true;
+        break;
+      }
+      remaining = Math.max(0, remaining - consumed);
+      const normal = collision.normal;
+      const outward = Math.min(0, projectile.velocity.dot(normal));
+      const normalVelocity = normal.clone().multiplyScalar(outward);
+      projectile.velocity.sub(normalVelocity).multiplyScalar(CLUSTER_MIRV.friction)
+        .addScaledVector(normalVelocity, -CLUSTER_MIRV.restitution);
+      projectile.visual.position.copy(this.clusterClearance(point, normal, collision.intersection.object));
+      projectile.clusterSurface = collision.intersection.object; projectile.clusterNormal = normal.clone();
+      projectile.bounces--;
+      if (!collision.target && normal.y >= .7 && (projectile.velocity.length() <= CLUSTER_MIRV.restSpeed || projectile.bounces <= 0)) {
+        projectile.stuck = {}; projectile.velocity.set(0, 0, 0);
+        projectile.visualContact = { normal: normal.clone(), hitSurface: collision.intersection.object };
+      }
+    }
+    if (!this.projectiles.has(projectile)) return;
+    projectile.fuse = Math.max(0, (projectile.fuse ?? 0) - elapsed);
+    projectile.visual.userData.clusterFuse = projectile.fuse;
+    projectile.visual.userData.clusterSettled = !!projectile.stuck;
+    if (rangeExpired || projectile.fuse <= 1e-8 || projectile.life <= 0 || projectile.age >= 16) {
+      this.explode(projectile, projectile.visual.position); this.remove(projectile);
+    }
+  }
+
   private splitProjectile(projectile: Projectile, point: THREE.Vector3, remainingTime = 0): void {
     const split = projectile.spec.split;
     if (!split || !this.projectiles.has(projectile)) return;
@@ -491,10 +673,12 @@ export class PlayerBallistics {
   }
 
   private explode(projectile: Projectile, point: THREE.Vector3, excludeId?: number, multiplier = 1): void {
+    if (!this.projectiles.has(projectile)) return;
     const radius = projectile.spec.blastRadius;
-    this.worldImpact(projectile.impactId,'detonate',point,projectile.visualContact?.normal??new THREE.Vector3(0,1,0),projectile.spec,projectile.damage*multiplier,Math.max(.35,radius),projectile.stuck?.targetId);
+    const stage = projectile.clusterRole === 'carrier' ? 'cluster-burst' : projectile.clusterRole === 'bomblet' ? 'bomblet' : undefined;
+    this.worldImpact(projectile.impactId,'detonate',point,projectile.visualContact?.normal??new THREE.Vector3(0,1,0),projectile.spec,projectile.damage*multiplier,Math.max(.35,radius),projectile.stuck?.targetId ?? projectile.clusterTargetId,stage);
     if(!this.projectiles.has(projectile))return;
-    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier,hitSurface:projectile.visualContact?.hitSurface});
+    projectile.presenter?.impact({point:point.clone(),normal:projectile.visualContact?.normal.clone()??new THREE.Vector3(0,1,0),spec:projectile.spec,radius:Math.max(.35,radius),target:projectile.visualContact?.target,phase:'detonate',energy:projectile.damage*multiplier,hitSurface:projectile.visualContact?.hitSurface,...(stage?{stage}:{})});
     if (!this.projectiles.has(projectile)) return;
     this.flash(point, projectile.spec, Math.max(0.35, radius), projectile.presenter ?? null);
     if (radius <= 0) return;
@@ -537,9 +721,11 @@ export class PlayerBallistics {
     this.effects.add({ visual, duration, life: duration, growth, opacities });
   }
 
-  private trail(start: THREE.Vector3, end: THREE.Vector3, spec: VisualRecipe, presenter: BallisticPresentation | null | undefined = this.presentation): void {
+  private trail(start: THREE.Vector3, end: THREE.Vector3, spec: VisualRecipe, presenter: BallisticPresentation | null | undefined = this.presentation, role?: 'carrier' | 'bomblet'): void {
     if (start.distanceToSquared(end) < 0.00001) return;
-    const visual = presenter?.trail(start,end,spec,spec.visualBrand??'ironvale') ?? createProjectileTrail(start, end, spec, spec.visualBrand);
+    const epoch = this.epoch;
+    const visual = presenter?.trail(start,end,spec,spec.visualBrand??'ironvale',role) ?? createProjectileTrail(start, end, spec, spec.visualBrand,role);
+    if (this.epoch !== epoch) { disposeVisual(visual); return; }
     const duration = spec.trail === 'clean' ? .045 : spec.trail === 'comet' ? .18 : spec.trail === 'helix' || spec.trail === 'ribbon' ? .14 : .09;
     this.effect(visual, duration);
   }

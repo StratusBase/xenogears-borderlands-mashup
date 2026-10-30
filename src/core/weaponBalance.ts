@@ -9,6 +9,8 @@ export interface WeaponBalanceRules {
 
 export const DEFAULT_WEAPON_BALANCE: Readonly<WeaponBalanceRules> = Object.freeze({ secondaryElementCost: true, mechHeat: true });
 export const BASELINE_WEAPON_BALANCE: Readonly<WeaponBalanceRules> = Object.freeze({ secondaryElementCost: false, mechHeat: false });
+/** MIRV area delivery trades away concentration; tune its shot budget, not saved rolls. */
+export const CLUSTER_DAMAGE_MULTIPLIER = 1.35;
 export const SECONDARY_ELEMENT_DAMAGE_MULTIPLIER = 0.85;
 export const MECH_HEAT_BUDGET_PER_SECOND = 120;
 
@@ -26,7 +28,9 @@ export function hasSecondaryElementCost(spec: WeaponSpec, rules: WeaponBalanceRu
  */
 export function effectiveProjectileDamage(rawDamage: number, spec: WeaponSpec, rules: WeaponBalanceRules = DEFAULT_WEAPON_BALANCE): number {
   if (!Number.isFinite(rawDamage) || rawDamage < 0) return 0;
-  return rawDamage * (hasSecondaryElementCost(spec, rules) ? SECONDARY_ELEMENT_DAMAGE_MULTIPLIER : 1);
+  const payloadDamage = rawDamage * (spec.projectile === 'cluster' ? CLUSTER_DAMAGE_MULTIPLIER : 1);
+  const effectiveDamage = payloadDamage * (hasSecondaryElementCost(spec, rules) ? SECONDARY_ELEMENT_DAMAGE_MULTIPLIER : 1);
+  return Number.isFinite(effectiveDamage) ? effectiveDamage : 0;
 }
 
 /** One charge per successful trigger, regardless of pellets or subsequent targets.

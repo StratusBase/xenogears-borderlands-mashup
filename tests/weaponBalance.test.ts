@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { createWeaponSpec, type ElementType, type ProjectileType } from '../src/core/arsenal.ts';
+import { createWeaponSpec, projectileLabels, type ElementType, type ProjectileType } from '../src/core/arsenal.ts';
 import { createProgression, deserializeProgression, serializeProgression } from '../src/core/index.ts';
 import { createWorkbenchWeapon, normalizeWorkbenchConfig } from '../src/core/workbench.ts';
 import { advanceStatuses, applyStatus, createStatusState } from '../src/core/statusEffects.ts';
 import { PlayerBallistics, type BallisticHit } from '../src/rendering/PlayerBallistics.ts';
-import { BASELINE_WEAPON_BALANCE, DEFAULT_WEAPON_BALANCE, effectiveProjectileDamage, hasSecondaryElementCost, heatPerShot, heatRecoveryFraction, type WeaponBalanceRules } from '../src/core/weaponBalance.ts';
+import { BASELINE_WEAPON_BALANCE, DEFAULT_WEAPON_BALANCE, CLUSTER_DAMAGE_MULTIPLIER, effectiveProjectileDamage, hasSecondaryElementCost, heatPerShot, heatRecoveryFraction, type WeaponBalanceRules } from '../src/core/weaponBalance.ts';
 
 function close(actual: number, expected: number) { assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} != ${expected}`); }
 
@@ -21,6 +21,54 @@ test('a valid secondary channel costs 15% effective damage, including kinetic pl
     assert.deepEqual(spec, before);
   }
   assert.ok(Object.isFrozen(DEFAULT_WEAPON_BALANCE) && Object.isFrozen(BASELINE_WEAPON_BALANCE));
+});
+
+test('Cluster receives one runtime payload boost before the independent secondary cost, including baseline rules', () => {
+  assert.equal(CLUSTER_DAMAGE_MULTIPLIER, 1.35);
+  for (const mode of ['pilot', 'mech'] as const) for (const element of ['kinetic', 'fire', 'ice'] as const) {
+    const single = createWeaponSpec('cluster', element, mode);
+    const dual = { ...single, secondaryElement: 'shock' as const };
+    const before = structuredClone(dual); Object.freeze(dual.split); Object.freeze(dual);
+    close(effectiveProjectileDamage(100, single), 135);
+    close(effectiveProjectileDamage(100, single, BASELINE_WEAPON_BALANCE), 135);
+    close(effectiveProjectileDamage(100, dual), 114.75);
+    close(effectiveProjectileDamage(100, dual, BASELINE_WEAPON_BALANCE), 135);
+    assert.deepEqual(dual, before, 'Runtime tuning must not rewrite raw rolls, channels or packet metadata');
+  }
+  const spec = createWeaponSpec('cluster', 'fire');
+  for (const secondaryElement of [undefined, 'fire', 'kinetic', '__proto__', 'invalid', 17]) {
+    close(effectiveProjectileDamage(100, { ...spec, secondaryElement: secondaryElement as ElementType }), 135);
+  }
+  for (const damage of [NaN, Infinity, -Infinity, -1, Number.MAX_VALUE]) assert.equal(effectiveProjectileDamage(damage, spec), 0);
+});
+
+test('Cluster payload tuning leaves every other delivery and physical split override unchanged', () => {
+  for (const projectile of Object.keys(projectileLabels) as ProjectileType[]) {
+    if (projectile === 'cluster') continue;
+    const base = createWeaponSpec(projectile, 'fire');
+    for (const single of [base, { ...base, split: { count: 6, delay: 0.45, spread: 0.12 } }]) {
+      const dual = { ...single, secondaryElement: 'shock' as const };
+      close(effectiveProjectileDamage(100, single), 100);
+      close(effectiveProjectileDamage(100, dual), 85);
+      close(effectiveProjectileDamage(100, dual, BASELINE_WEAPON_BALANCE), 100);
+    }
+  }
+});
+
+test('Cluster payload tuning is derived after repeated save/load without compounding numeric item stats', () => {
+  const state = createProgression();
+  const item = createWorkbenchWeapon(normalizeWorkbenchConfig({ projectile: 'cluster', element: 'fire', secondaryElement: 'corrosive' }));
+  state.inventory.push(item); state.loadouts.pilot.weapon = item.id;
+  const before = structuredClone(item), saved = serializeProgression(state);
+  let loaded = state;
+  for (let cycle = 0; cycle < 3; cycle++) {
+    loaded = deserializeProgression(serializeProgression(loaded))!;
+    const restored = loaded.inventory.find(entry => entry.id === item.id)!;
+    close(effectiveProjectileDamage(restored.stats.damage!, restored.weapon!), before.stats.damage! * 1.35 * 0.85);
+    close(effectiveProjectileDamage(restored.stats.damage!, restored.weapon!), before.stats.damage! * 1.35 * 0.85);
+    assert.deepEqual(restored, before);
+  }
+  assert.equal(serializeProgression(state), saved);
 });
 
 test('single, duplicate, kinetic and invalid secondary metadata never invent a cost', () => {

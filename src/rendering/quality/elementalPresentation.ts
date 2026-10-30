@@ -43,16 +43,17 @@ export class ElementalPresentation implements BallisticPresentation{
    return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
   });
  }
- projectile(spec:WeaponSpec,brand:BrandId):THREE.Group{return createElementalProjectile(spec,brand);}
- trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group{return createElementalTrail(start,end,spec,brand);}
+ projectile(spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{return createElementalProjectile(spec,brand,role);}
+ trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{return createElementalTrail(start,end,spec,brand,role);}
  beam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group{return createElementalBeam(start,end,spec,jagged,brand);}
  updateProjectile(root:THREE.Group,dt:number,age:number):void{updateElementalProjectile(root,dt,age);}
  impact(event:BallisticPresentationImpact):void{
+  this.impacts.delivery(event);
   const elements=getWeaponElements(event.spec),special=this.corrosive&&elements.includes('corrosive');
   const surface=special?this.corrosive!.impact(event):undefined;
   if(!special)this.impacts.impact(event);
   else for(const element of elements.filter(e=>e!=='corrosive'))this.impacts.impact({...event,spec:{...event.spec,element,secondaryElement:undefined}});
-  for(const element of elements)this.audio.impact(element,{mode:this.mode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.camera.getWorldPosition(new THREE.Vector3())),strength:event.phase==='detonate'?1:.72});
+  for(const element of elements)this.audio.impact(element,{mode:this.mode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.camera.getWorldPosition(new THREE.Vector3())),strength:event.stage==='bomblet'?.55:event.phase==='detonate'?1:.72});
  }
  protected splashImpact(event:BallisticPresentationSplash):void{
   if(!this.corrosive||event.primary||!getWeaponElements(event.spec).includes('corrosive'))return;

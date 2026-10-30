@@ -31,14 +31,20 @@ function trimUnused(root: THREE.Group, materials: THREE.Material[]): void {
 }
 
 /** Delivery supplies the silhouette. Element cartridges tint only the tip/core and payload. */
-export function createProjectileVisual(spec: WeaponSpec, brand: BrandId = 'ironvale'): THREE.Group {
+export function createProjectileVisual(spec: WeaponSpec, brand: BrandId = 'ironvale', role?: 'carrier' | 'bomblet'): THREE.Group {
   const root = new THREE.Group(); root.name = `player-projectile-${spec.projectile}`; metadata(root, spec, brand);
   const c = colors(spec, brand), metal = shotMaterial(c.metal), bright = shotMaterial(c.primary), core = shotMaterial(c.secondary);
   const type = spec.projectile, variant = spec.visualVariant ?? 0;
   const familyScale = ({ pistol: .8, smg: .7, rifle: 1, shotgun: .82, sniper: 1.3, launcher: 1.45 } as const)[spec.weaponType ?? 'rifle'];
   root.scale.setScalar(familyScale);
   const add = (geometry: THREE.BufferGeometry, material: THREE.Material = bright, name = 'projectile-payload') => mesh(root, geometry, material, name);
-  if (type === 'cluster') {
+  if (type === 'cluster' && role === 'bomblet') {
+    root.userData.clusterRole = 'bomblet';
+    const casing = add(new THREE.IcosahedronGeometry(.11, 1), metal, 'cluster-bomblet-casing'); casing.scale.set(1, .92, 1.2);
+    for (const z of [-.035, .035]) { const band = add(new THREE.TorusGeometry(.105, .013, 4, 12), metal, 'cluster-bomblet-band'); band.position.z = z; }
+    for (const side of [-1, 1]) { const cap = add(new THREE.IcosahedronGeometry(.033, 0), side < 0 ? bright : core, 'cluster-bomblet-payload-cap'); cap.position.set(side * .045, .012, .105); }
+    const light = add(new THREE.IcosahedronGeometry(.019, 0), bright, 'cluster-bomblet-fuse-light'); light.position.set(0, .075, .075);
+  } else if (type === 'cluster') {
     const pods = Math.max(2, Math.min(12, Math.floor(Number.isFinite(spec.split?.count) ? spec.split!.count : 6)));
     add(new THREE.CylinderGeometry(.042, .042, .38, 6), metal, 'cluster-carrier-spine').rotation.x = Math.PI / 2;
     for (let i = 0; i < pods; i++) {
@@ -94,9 +100,17 @@ export function createProjectileVisual(spec: WeaponSpec, brand: BrandId = 'ironv
 }
 
 /** Geometry and motion style are independent of the payload's damage color. */
-export function createProjectileTrail(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, brand: BrandId = 'ironvale'): THREE.Group {
+export function createProjectileTrail(start: THREE.Vector3, end: THREE.Vector3, spec: WeaponSpec, brand: BrandId = 'ironvale', role?: 'carrier' | 'bomblet'): THREE.Group {
   const root = new THREE.Group(); root.name = 'player-projectile-trail'; metadata(root, spec, brand);
   const delta = end.clone().sub(start), distance = delta.length(), direction = delta.clone().normalize();
+  if (spec.projectile === 'cluster' && role === 'bomblet') {
+    root.userData.clusterRole = 'bomblet';
+    if (!Number.isFinite(distance) || distance < 1e-6) return root;
+    const c = colors(spec, brand), channels = getWeaponElements(spec);
+    const near = end.clone().addScaledVector(direction, -Math.min(.14, distance));
+    for (let index = 0; index < channels.length; index++) tube(root, near, end, .004, shotMaterial(index ? c.secondary : c.primary, .3), 'bomblet-fuse-wisp');
+    return root;
+  }
   const c = colors(spec, brand), primary = shotMaterial(c.primary, .74), secondary = shotMaterial(c.secondary, .85);
   const type = spec.projectile, style = spec.trail ?? 'tracer', variant = spec.visualVariant ?? 0;
   const energy = type === 'orb' || type === 'sticky' || type === 'rocket' || type === 'cluster';

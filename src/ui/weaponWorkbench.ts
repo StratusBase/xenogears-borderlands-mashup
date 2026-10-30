@@ -1,7 +1,7 @@
 import './weaponWorkbench.css';
 import { rarityColors, type Item, type Mode, type Progression, type Rarity } from '../core/index';
 import {
-  brandList, brands, elementLabels, projectileLabels, projectileTrailLabels, weaponTypeLabels,
+  brandList, brands, elementLabels, projectileLabels, projectileTrailLabels, weaponTypeLabels, getClusterBombletFuseRange,
 } from '../core/arsenal';
 import { buildItemCard, type CardMetric, type CardStatus } from '../core/itemCard';
 import { DEFAULT_WEAPON_BALANCE, type WeaponBalanceRules } from '../core/weaponBalance';
@@ -228,7 +228,7 @@ export class WeaponWorkbench {
     this.detail.append(meta, brand, name);
     if (card.weapon) {
       const dps = node('div', 'workbench-dps');
-      dps.append(node('span', 'workbench-eyebrow', 'DIRECT DPS'), node('strong', '', metricDisplay(card.weapon.burstDps)));
+      dps.append(node('span', 'workbench-eyebrow', card.weapon.burstDps.label.toUpperCase()), node('strong', '', metricDisplay(card.weapon.burstDps)));
       dps.title = card.weapon.burstDps.description;
       this.detail.append(dps);
     }
@@ -248,10 +248,18 @@ export class WeaponWorkbench {
       node('span', '', `${item.weapon?.speed ?? 0} m/s`));
     if ((item.weapon?.pellets ?? 1) > 1) tags.append(node('span', '', `×${item.weapon!.pellets} pellets`));
     if (item.weapon?.split) {
-      tags.append(node('span', '', `${item.weapon.split.count} bomblets`),
-        node('span', '', `Split: ${item.weapon.split.delay} s or impact`),
-        node('span', '', `Bomblet fuse: ${item.weapon.fuse} s`),
-        node('span', '', `Blast: ${item.weapon.blastRadius} m`));
+      if (item.weapon.projectile === 'cluster') {
+        const fuse = getClusterBombletFuseRange(item.weapon);
+        tags.append(node('span', '', `1 parent burst + ${item.weapon.split.count} bouncing bomblets`),
+          node('span', '', `Stagger: ${item.weapon.split.delay} s`),
+          node('span', '', `Bomblet fuses: ${Number(fuse.min.toFixed(2))}–${Number(fuse.max.toFixed(2))} s`),
+          node('span', '', `Blast: ${item.weapon.blastRadius} m`));
+      } else {
+        tags.append(node('span', '', `${item.weapon.split.count} bomblets`),
+          node('span', '', `Split: ${item.weapon.split.delay} s or impact`),
+          node('span', '', `Bomblet fuse: ${item.weapon.fuse} s`),
+          node('span', '', `Blast: ${item.weapon.blastRadius} m`));
+      }
     }
     this.detail.append(tags);
     const note = node('p', 'workbench-test-note', 'Free sandbox build. Equip & test replaces the previous workbench weapon.');

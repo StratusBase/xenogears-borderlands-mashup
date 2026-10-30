@@ -88,6 +88,7 @@ class Parts {
 
 interface MotionPart { object: THREE.Object3D; home: THREE.Euler; rate: readonly [number, number, number]; pulse?: number }
 const motions = new WeakMap<THREE.Group, MotionPart[]>();
+const bombletLights = new WeakMap<THREE.Group, THREE.MeshBasicMaterial>();
 function moving(root: THREE.Group, object: THREE.Object3D, rate: readonly [number, number, number], pulse = 0): void {
   const parts = motions.get(root) ?? []; parts.push({object,home:object.rotation.clone(),rate,pulse}); motions.set(root,parts);
 }
@@ -145,12 +146,20 @@ function payload(parent: THREE.Group, element: ElementType, brand: BrandId, radi
 }
 
 /** Presentation only: original simulation owns every velocity, collision and fuse. */
-export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ironvale'): THREE.Group {
+export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ironvale', role?: 'carrier' | 'bomblet'): THREE.Group {
   const root=rootGroup(`quality-projectile-${spec.projectile}`,spec,brand),carrier=new THREE.Group();carrier.name='quality-physical-carrier';root.add(carrier);
   const variant=variantOf(spec),type=spec.projectile, p=new Parts('kinetic',brand), scale=familyScale(spec);
   root.scale.setScalar(scale);
   let radius=.052,z=.16;
-  if(type==='cluster'){
+  if(type==='cluster'&&role==='bomblet'){
+    root.userData.clusterRole='bomblet';radius=.044;z=.105;
+    p.sphere('dark','cluster-bomblet-casing',.11,[0,0,0],[1,.92,1.2]);
+    for(const at of[-.035,.035])p.ring('metal','cluster-bomblet-band',.105,.013,[0,0,at]);
+    for(const side of[-1,1])p.box('metal','cluster-bomblet-rib',[.018,.022,.13],[side*.104,0,0]);
+    const light=new THREE.Mesh(new THREE.IcosahedronGeometry(.018,0),new THREE.MeshBasicMaterial({color:ELEMENTAL_FLIGHT_STYLES[spec.element].core,transparent:true,depthTest:true,depthWrite:false,toneMapped:false}));
+    light.name='cluster-bomblet-fuse-light';light.userData.comicOverlay=true;light.userData.presentationOnly=true;light.raycast=noRaycast;light.position.set(0,.075,.075);carrier.add(light);bombletLights.set(root,light.material);
+    moving(root,carrier,[3.2,2.3,1.1]);
+  }else if(type==='cluster'){
     const pods=Math.max(2,Math.min(12,Math.floor(Number.isFinite(spec.split?.count)?spec.split!.count:6)));
     radius=.061;z=.24;
     p.tube('dark','cluster-carrier-spine',new THREE.Vector3(0,0,-.21),new THREE.Vector3(0,0,.18),.043,.043,6);
@@ -200,8 +209,9 @@ export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ir
   }
   p.finish(carrier,'quality-carrier');
   const elements=getWeaponElements(spec);
-  payload(root,elements[0],brand,radius,z,variant,root,false);
-  if(elements[1])payload(root,elements[1],brand,radius*.60,z-radius*.30,variant,root,true);
+  const payloadRoot=type==='cluster'&&role==='bomblet'?carrier:root;
+  payload(payloadRoot,elements[0],brand,radius,z,variant,root,false);
+  if(elements[1])payload(payloadRoot,elements[1],brand,radius*.60,z-radius*.30,variant,root,true);
   root.userData.flightRadius=radius;root.userData.maxVisualParts=16;
   return root;
 }
@@ -217,9 +227,16 @@ function pathPoint(start:THREE.Vector3,delta:THREE.Vector3,side:THREE.Vector3,up
 }
 
 /** Exact world endpoints with small element-specific disturbances between them. */
-export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId='ironvale'):THREE.Group{
+export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId='ironvale',role?:'carrier'|'bomblet'):THREE.Group{
  const root=rootGroup('quality-elemental-trail',spec,brand),basis=axes(start,end);root.userData.start=start.toArray();root.userData.end=end.toArray();if(!basis)return root;
  const {delta,distance,direction,side,up}=basis,type=spec.projectile,style=spec.trail??'tracer',variant=variantOf(spec);
+ if(type==='cluster'&&role==='bomblet'){
+  root.userData.clusterRole='bomblet';const near=end.clone().addScaledVector(direction,-Math.min(.14,distance));
+  for(const[channel,element]of getWeaponElements(spec).entries()){
+   const p=new Parts(element,brand,.3*(channel?.7:1));p.tube('core','bomblet-fuse-wisp',near,end,.0035,.0015);p.finish(root,`quality-bomblet-wisp-${channel}-${element}`);
+  }
+  root.userData.maxVisualParts=2;return root;
+ }
  const energy=['orb','rocket','homing','sticky','cluster'].includes(type),scale=familyScale(spec);
  const width=(type==='scatter'?.0034:energy?.013:.0055)*scale;
  const elements=getWeaponElements(spec);
@@ -311,7 +328,12 @@ export function createElementalBeam(start:THREE.Vector3,end:THREE.Vector3,spec:W
 /** Absolute simulation age avoids shimmer/drift. Root transforms always remain simulation-owned. */
 export function updateElementalProjectile(root:THREE.Group,dt:number,age:number):void{
  if(!Number.isFinite(dt)||dt<=0||!Number.isFinite(age)||age<0)return;
+ const light=bombletLights.get(root),remaining=Number(root.userData.clusterFuse),initial=Number(root.userData.clusterInitialFuse);
+ if(light&&Number.isFinite(remaining)&&Number.isFinite(initial)&&initial>0){
+  const progress=THREE.MathUtils.clamp(1-remaining/initial,0,1);light.opacity=.28+.72*(Math.sin(age*(10+progress*30))>0?1:0);
+ }
  for(const part of motions.get(root)??[]){
+  if(root.userData.clusterRole==='bomblet'&&root.userData.clusterSettled&&part.object.name==='quality-physical-carrier')continue;
   part.object.rotation.set(part.home.x+age*part.rate[0],part.home.y+age*part.rate[1],part.home.z+age*part.rate[2]);
   if(part.pulse)part.object.scale.setScalar(1+Math.sin(age*8.5)*part.pulse);
  }

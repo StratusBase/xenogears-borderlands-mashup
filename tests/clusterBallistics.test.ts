@@ -19,16 +19,18 @@ function fixture() {
   return { scene, ballistics, hits, callbacks, rounds, box };
 }
 
-function cluster(overrides: Partial<WeaponSpec> = {}): WeaponSpec {
-  return { ...createWeaponSpec('cluster', 'kinetic'), spread: 0, ...overrides };
+function splitCarrier(overrides: Partial<WeaponSpec> = {}): WeaponSpec {
+  return { ...createWeaponSpec('cluster', 'kinetic'), projectile: 'rocket', spread: 0, ...overrides };
 }
 
-test('cluster flies as one carrier, pauses, then releases a finite deterministic child cone without recursive splitting', () => {
+// The reusable forward-split engine remains compatible for other deliveries.
+// Cluster-specific MIRV physics is covered in clusterMirv.test.ts.
+test('generic split carrier flies as one carrier, pauses, then releases a finite deterministic child cone without recursive splitting', () => {
   function run() {
     const f = fixture();
-    const recipe = cluster({ speed: 20, split: { count: 6, delay: 0.2, spread: 0.32 }, fuse: 0.6 });
+    const recipe = splitCarrier({ speed: 20, split: { count: 6, delay: 0.2, spread: 0.32 }, fuse: 0.6 });
     f.ballistics.fire(new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, 0, -1), recipe, 60);
-    assert.equal(f.ballistics.activeCount, 1, 'Cluster must not behave as muzzle scatter');
+    assert.equal(f.ballistics.activeCount, 1, 'A split carrier must not behave as muzzle scatter');
     const carrierScale = f.rounds()[0].scale.x;
     f.ballistics.update(0.1);
     assert.ok(Math.abs(f.rounds()[0].position.z + 2) < 1e-8);
@@ -55,7 +57,7 @@ test('cluster flies as one carrier, pauses, then releases a finite deterministic
 test('impact releases children before the delay and preserves exactly one direct damage budget for pilot and mech', () => {
   for (const mode of ['pilot', 'mech'] as const) {
     const f = fixture(); f.box([0, 2, -4], [6, 6, 1], 1);
-    const recipe = { ...createWeaponSpec('cluster', 'kinetic', mode), spread: 0 };
+    const recipe = { ...createWeaponSpec('cluster', 'kinetic', mode), projectile: 'rocket' as const, spread: 0 };
     f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), recipe, 120);
     f.ballistics.update(0.08);
     assert.ok(f.hits.length > 0, 'Contact release must not wait for the airburst timer');
@@ -69,7 +71,7 @@ test('impact releases children before the delay and preserves exactly one direct
 
 test('split children inherit a deep frozen shot snapshot even if the source recipe changes in flight', () => {
   const f = fixture(); f.box([0, 2, -8], [8, 6, 1], 1);
-  const recipe = cluster({ element: 'fire', secondaryElement: 'shock', statusChance: 1, split: { count: 6, delay: 0.2, spread: 0 } });
+  const recipe = splitCarrier({ element: 'fire', secondaryElement: 'shock', statusChance: 1, split: { count: 6, delay: 0.2, spread: 0 } });
   f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), recipe, 60);
   recipe.split!.count = 12; recipe.split!.delay = 5; recipe.element = 'ice'; recipe.secondaryElement = 'corrosive';
   f.ballistics.update(2);
@@ -84,7 +86,7 @@ test('impact splits and child splash stay in front of thin cover, including a ca
   for (const originZ of [0, -3]) {
     const f = fixture(); f.box([0, 2, -3], [2, 6, .04]);
     f.box([1.5, 2, -2.4], [.8, .8, .8], 1); f.box([0, 2, -4], [.8, .8, .8], 2);
-    f.ballistics.fire(new THREE.Vector3(0, 2, originZ), new THREE.Vector3(0, 0, -1), cluster({ blastRadius: 4 }), 60);
+    f.ballistics.fire(new THREE.Vector3(0, 2, originZ), new THREE.Vector3(0, 0, -1), splitCarrier({ blastRadius: 4 }), 60);
     f.ballistics.update(1);
     if (originZ === 0) assert.ok(f.hits.some(hit => hit.targetId === 1), 'Exposed targets must receive actual child splash');
     assert.ok(f.hits.every(hit => hit.targetId !== 2), 'Neither carrier nor children may bypass the wall');
@@ -94,11 +96,11 @@ test('impact splits and child splash stay in front of thin cover, including a ca
 
 test('range exhaustion retires a pending carrier without phantom damage or children and limits child travel', () => {
   const f = fixture(); f.box([0, 2, -6], [1, 1, 1], 1);
-  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), cluster({ blastRadius: 10 }), 60, 2);
+  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), splitCarrier({ blastRadius: 10 }), 60, 2);
   f.ballistics.update(1);
   assert.equal(f.hits.length, 0, 'An unreleased carrier must never explode for the full shot damage');
   assert.equal(f.ballistics.activeCount, 0);
-  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), cluster({ speed: 20, blastRadius: 0, split: { count: 6, delay: .05, spread: 0 } }), 60, 2);
+  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), splitCarrier({ speed: 20, blastRadius: 0, split: { count: 6, delay: .05, spread: 0 } }), 60, 2);
   f.ballistics.update(.5);
   assert.equal(f.hits.length, 0, 'Children must share the remaining shot range rather than gaining a new full range');
   assert.equal(f.ballistics.activeCount, 0); f.ballistics.clear();
@@ -107,7 +109,7 @@ test('range exhaustion retires a pending carrier without phantom damage or child
 test('clear during the first child hit cancels all other children and pending damage', () => {
   const f = fixture(); f.box([0, 2, -4], [6, 6, 1], 1);
   f.callbacks.hit = hit => { f.hits.push(hit); f.ballistics.clear(); };
-  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), cluster(), 60);
+  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), splitCarrier(), 60);
   f.ballistics.update(2);
   assert.equal(f.hits.length, 1); assert.equal(f.hits[0].damage, 10);
   assert.equal(f.ballistics.activeCount, 0); assert.equal(f.ballistics.effectCount, 0);
@@ -116,7 +118,7 @@ test('clear during the first child hit cancels all other children and pending da
 
 test('many splitting carriers respect projectile/effect caps and clear disposes every shot resource', () => {
   const f = fixture();
-  const recipe = cluster({ split: { count: 12, delay: .05, spread: .4 }, element: 'fire', secondaryElement: 'shock' });
+  const recipe = splitCarrier({ split: { count: 12, delay: .05, spread: .4 }, element: 'fire', secondaryElement: 'shock' });
   for (let index = 0; index < 80; index++) f.ballistics.fire(new THREE.Vector3(0, 5, 0), new THREE.Vector3(0, 0, -1), recipe, 60);
   f.ballistics.update(.1);
   assert.ok(f.ballistics.activeCount > 0 && f.ballistics.activeCount <= 192);
@@ -125,11 +127,11 @@ test('many splitting carriers respect projectile/effect caps and clear disposes 
   f.ballistics.update(2); assert.equal(f.ballistics.activeCount, 0);
 });
 
-test('default timed split cannot stall at floating point residuals and preserves child flight across update schedules', () => {
+test('generic timed split cannot stall at floating point residuals and preserves child flight across update schedules', () => {
   const observations: number[][][] = [];
   for (const dt of [1 / 60, 1 / 120, .05]) {
     const f = fixture();
-    f.ballistics.fire(new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, 0, -1), cluster(), 60);
+    f.ballistics.fire(new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, 0, -1), splitCarrier(), 60);
     for (let frame = 0; frame < Math.round(.6 / dt); frame++) f.ballistics.update(dt);
     assert.equal(f.ballistics.activeCount, 6, `${dt}: the default .45s delay must release children`);
     observations.push(f.rounds().map(root => root.position.toArray()));
@@ -154,7 +156,7 @@ test('clear inside a child presentation factory cannot revive disposed shots or 
     trail: () => new THREE.Group(), beam: () => new THREE.Group(), impact() {},
   };
   f.ballistics.setPresentation(adapter);
-  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), cluster(), 60);
+  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), splitCarrier(), 60);
   f.ballistics.update(1);
   assert.equal(factories, 2); assert.equal(disposals, 2);
   assert.equal(f.ballistics.activeCount, 0); assert.equal(f.ballistics.effectCount, 0);
@@ -162,14 +164,14 @@ test('clear inside a child presentation factory cannot revive disposed shots or 
   f.ballistics.update(1); assert.equal(f.hits.length, 0);
 });
 
-test('clear from a bomblet detonation presentation cancels its splash and every sibling', () => {
+test('clear from a generic child detonation presentation cancels its splash and every sibling', () => {
   const f = fixture(); f.box([0, 2, -1], [.2, .2, .2], 1);
   let detonations = 0;
   f.ballistics.setPresentation({
     projectile: () => new THREE.Group(), trail: () => new THREE.Group(), beam: () => new THREE.Group(),
     impact(event) { if (event.phase === 'detonate') { detonations++; f.ballistics.clear(); } },
   });
-  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), cluster({ speed: 4, fuse: .05, split: { count: 2, delay: .05, spread: 0 } }), 60);
+  f.ballistics.fire(new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1), splitCarrier({ speed: 4, fuse: .05, split: { count: 2, delay: .05, spread: 0 } }), 60);
   f.ballistics.update(1);
   assert.equal(detonations, 1); assert.equal(f.hits.length, 0);
   assert.equal(f.ballistics.activeCount, 0); assert.equal(f.ballistics.effectCount, 0);

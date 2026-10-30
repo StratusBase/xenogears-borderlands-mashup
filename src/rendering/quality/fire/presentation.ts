@@ -16,6 +16,7 @@ export class FirePresentation extends ElementalPresentation {
  protected override splashImpact(event:BallisticPresentationSplash){super.splashImpact(event);if(event.primary||!getWeaponElements(event.spec).includes('fire'))return;const surface=this.fire.splash(event);this.audio.impact('fire',{mode:this.fireMode,delivery:event.spec.projectile,splash:true,surface,distance:event.point.distanceTo(this.fireCamera.getWorldPosition(new THREE.Vector3())),strength:Math.min(.28,.07+event.exposure*.22)});}
  override impact(event:BallisticPresentationImpact){
   const elements=getWeaponElements(event.spec);if(!elements.includes('fire')){super.impact(event);return;}
+  if(elements.length===1)this.impacts.delivery(event);
   const surface=this.fire.impact(event);
   for(const element of elements.filter(e=>e!=='fire'))super.impact({...event,spec:{...event.spec,element,secondaryElement:undefined}});
   this.audio.impact('fire',{mode:this.fireMode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.fireCamera.getWorldPosition(new THREE.Vector3())),strength:event.phase==='detonate'?1:.72});

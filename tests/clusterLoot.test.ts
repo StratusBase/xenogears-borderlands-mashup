@@ -155,7 +155,7 @@ test('legacy saved Cluster geometry and raw combat rolls survive new defaults an
       assert.deepEqual(spec.split, { count, delay: 0.45, spread: 0.32 });
       assert.equal(spec.statusChance, 0.31); assert.equal(spec.statusPower, 0.37);
       assert.ok(getHitStatusChance(spec) < spec.statusChance, 'Existing saved Cluster uses the new runtime chance rule without rewriting its raw roll');
-      assert.ok(Math.abs(getHitStatusPower(120 / count, spec) - 120 * 0.37) < 1e-10);
+      assert.ok(Math.abs(getHitStatusPower(120 / (count + 1), spec) - 120 * 0.37) < 1e-10);
     }
     assert.deepEqual(state, before, 'Reading effective runtime status values must also leave the saved item unchanged');
   }

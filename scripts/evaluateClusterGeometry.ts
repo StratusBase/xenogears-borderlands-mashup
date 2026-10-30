@@ -12,7 +12,7 @@ import { createEncounterEnemy, type EncounterEnemyVisual } from '../src/renderin
 import { PlayerBallistics, type BallisticHit, type BallisticPresentation, type BallisticTarget } from '../src/rendering/PlayerBallistics.ts';
 import { createProjectileVisual, createProjectileTrail, createBeamVisual } from '../src/rendering/weaponVisuals.ts';
 
-export const CLUSTER_GEOMETRY_PROTOCOL = 'cluster-geometry-v1';
+export const CLUSTER_GEOMETRY_PROTOCOL = 'cluster-geometry-ground-v3';
 export const GEOMETRY_DELIVERIES = ['cluster', 'rocket', 'scatter'] as const;
 export const GEOMETRY_RANGES = [19, 30, 40] as const;
 export const GEOMETRY_LAYOUTS = ['compact', 'spread', 'covered'] as const;
@@ -61,6 +61,8 @@ export function runGeometryCell(options: GeometryOptions) {
     const visual = enemy(index + 1); visual.group.position.set(x, 0, -options.distance); scene.add(visual.group);
     visuals.push(visual); targets.push({ id: index + 1, root: visual.group, radius: .8 });
   }
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshBasicMaterial());
+  floor.rotation.x = -Math.PI / 2; scene.add(floor); covers.push(floor);
   if (options.layout === 'covered') for (const x of [-.75, .75]) {
     // Continuous side partitions avoid a projectile going around a wall end.
     // Center remains visible; both side peers are physically behind thin cover.
@@ -71,9 +73,9 @@ export function runGeometryCell(options: GeometryOptions) {
   const aimPoint = visuals[0].aimPoint.clone().add(visuals[0].group.position);
   const direction = aimPoint.clone().sub(origin).normalize();
   const presenter: BallisticPresentation = {
-    projectile(recipe, brand) {
+    projectile(recipe, brand, role) {
       if (!recipeTriggers.has(recipe)) recipeTriggers.set(recipe, currentTrigger);
-      return createProjectileVisual(recipe, brand);
+      return createProjectileVisual(recipe, brand, role);
     },
     trail: createProjectileTrail, beam: createBeamVisual, impact() {},
   };
@@ -124,7 +126,8 @@ export function runGeometryCell(options: GeometryOptions) {
     if (options.layout === 'covered') assert.equal(totalPeerDamage, 0, 'No direct or splash damage may cross actual thin cover');
     return { ...options, config, code: workbenchCode(config), item, spec: structuredClone(spec), targetGeometry: 'ordinary static flanker authored armor; center and peers identical across weapon forms',
       positions: targets.map(({ id, root }) => ({ id, position: root.position.toArray() })),
-      cover: covers.map(wall => ({ position: wall.position.toArray(), dimensions: [.04, 30, 260] })),
+      cover: covers.map(mesh => ({ shape: mesh === floor ? 'ground-plane' : 'side-partition', position: mesh.position.toArray(),
+        rotation: mesh.rotation.toArray().slice(0, 3), dimensions: mesh === floor ? [300, 0, 300] : [.04, 30, 260] })),
       origin: origin.toArray(), aimPoint: aimPoint.toArray(), triggerCount: TRIGGERS, triggerBudget, totalTriggerBudget: TRIGGERS * triggerBudget,
       totalCenterDamage, totalPeerDamage, totalDamage, damageBudgetRatio: totalDamage / (TRIGGERS * triggerBudget),
       centerHitCount: hits.filter(hit => hit.targetId === 1).length, peerHitCount: [2, 3].map(id => hits.filter(hit => hit.targetId === id).length),
@@ -167,7 +170,7 @@ export async function evaluateClusterGeometry(args = process.argv.slice(2)) {
       target: 'three stationary ordinary flanker meshes; same meshes in pilot and mech samples',
       cadence: 'normal rolled fire rate; ammunition/reload/heat gates excluded; idle intervals without projectiles skipped',
       damage: 'raw BallisticHit contact plus splash damage before crit/armor/shields; damageBudgetRatio includes collateral across all three targets',
-      coveredPeers: 'two continuous 0.04m side walls isolate side peers; center lane stays open' },
+      coveredPeers: 'two continuous 0.04m side walls isolate side peers; center lane stays open', ground: 'actual y=0 mesh participates in sweeps and blast occlusion for every delivery' },
     limitations: [
       'Geometry evidence measures spatial delivery and raw contact/splash only, not live encounter completion, survival, status procs, freeze, AI, human aim, or hardware performance.',
       'Targets cannot die or move; overkill, shield/armor/critical multipliers and control utility require separate actual Game evidence.',

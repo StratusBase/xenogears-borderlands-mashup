@@ -23,7 +23,8 @@ export interface WeaponSpec {
   tracking: number;
   blastRadius: number;
   fuse: number;
-  /** One carrier releases children after this delay or on contact; damage is shared among them. */
+  /** Physical child count. Cluster delay is the bomblet fuse stagger window;
+   * other moving deliveries use delay/spread for their timed forward split. */
   split?: { count: number; delay: number; spread: number };
   statusChance: number;
   /** Multiplies weapon damage to produce absolute status tick strength. */
@@ -181,29 +182,40 @@ export function getWeaponElements(spec: WeaponSpec): ElementType[] {
   return isElementType(spec.secondaryElement) && spec.secondaryElement !== 'kinetic' && spec.secondaryElement !== primary ? [primary, spec.secondaryElement] : [primary];
 }
 
-function physicalSplitCount(spec: WeaponSpec): number {
+/** Independent damage packets per carrier: a MIRV parent blast plus its
+ * bomblets, or just the children of another physical split delivery. */
+export function getDamagePacketCount(spec: WeaponSpec): number {
   const count = spec.split?.count;
-  return spec.projectile !== 'beam' && spec.projectile !== 'arc' && count !== undefined
-    && Number.isInteger(count) && count >= 2 && count <= 12 ? count : 1;
+  if (spec.projectile === 'beam' || spec.projectile === 'arc' || count === undefined
+    || !Number.isInteger(count) || count < 2 || count > 12) return 1;
+  return count + (spec.projectile === 'cluster' ? 1 : 0);
 }
 
-/** A successful child proc uses the carrier's status strength. The shared
+/** Shared runtime/UI fuse range; saved metadata is never rewritten. */
+export function getClusterBombletFuseRange(spec: WeaponSpec): { min: number; max: number } {
+  const min = Number.isFinite(spec.fuse) ? Math.min(5, Math.max(0.35, spec.fuse)) : 0.35;
+  const stagger = Number.isFinite(spec.split?.delay) ? Math.min(5, Math.max(0, spec.split!.delay)) : 0;
+  return { min, max: min + stagger };
+}
+
+/** A successful damage-packet proc uses the carrier's status strength. The shared
  * probability prevents multiplying control reliability; restoring strength
  * avoids weakening nonstacking periodic effects a second time. Splash falloff
  * and the upstream secondary-element cost remain included in hit damage. */
 export function getHitStatusPower(damage: number, spec: WeaponSpec): number {
   if (!Number.isFinite(damage) || damage <= 0 || !Number.isFinite(spec.statusPower) || spec.statusPower <= 0) return 0;
-  const power = damage * spec.statusPower * physicalSplitCount(spec);
+  const power = damage * spec.statusPower * getDamagePacketCount(spec);
   return Number.isFinite(power) ? power : 0;
 }
 
-/** Children share the saved carrier chance. All children connecting to one
- * target in one impact stage retain that chance of at least one proc, independently per element.
+/** Damage packets share the saved carrier chance, independently per element.
+ * All Cluster explosions (parent plus bomblets), or all generic split children,
+ * connecting to one target retain that chance of at least one proc.
  * Instant rays never spawn children even if optional split metadata is present. */
 export function getHitStatusChance(spec: WeaponSpec): number {
   const chance = Number.isFinite(spec.statusChance) ? Math.max(0, Math.min(1, spec.statusChance)) : 0;
   if (chance === 0 || chance === 1 || spec.projectile === 'beam' || spec.projectile === 'arc') return chance;
-  const count = physicalSplitCount(spec);
+  const count = getDamagePacketCount(spec);
   return count === 1 ? chance : -Math.expm1(Math.log1p(-chance) / count);
 }
 

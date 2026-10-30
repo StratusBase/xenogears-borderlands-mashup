@@ -17,14 +17,15 @@ export class ShockPresentation extends ElementalPresentation{
  private shockMode:Mode='pilot';
  private flightVariation:EffectVariationSequence;
  constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:ShockVisualProfile='capacitor',private options:ShockPresentationOptions={}){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile,options);this.flightVariation=new EffectVariationSequence(options.cosmeticSeed);}
- override projectile(spec:WeaponSpec,brand:BrandId):THREE.Group{
-  const root=super.projectile(spec,brand);
+ override projectile(spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
+  const root=super.projectile(spec,brand,role);
   if(spec.projectile==='sticky'&&getWeaponElements(spec).includes('shock')&&this.options.stickyCharge!=='legacy')installShockStickyCharge(root,this.flightVariation.next(4,'sticky-charge'));
   return root;
  }
  override updateProjectile(root:THREE.Group,dt:number,age:number):void{super.updateProjectile(root,dt,age);animateShockStickyCharge(root,dt,age);}
  override impact(event:BallisticPresentationImpact):void{
   const elements=getWeaponElements(event.spec);if(!elements.includes('shock')){super.impact(event);return;}
+  this.impacts.delivery(event);
   const surface=this.shock.impact(event),corrosive=elements.includes('corrosive')&&this.corrosive;
   if(corrosive)corrosive.impact(event);
   this.impacts.impact(event,new Set<ElementType>(corrosive?['shock','corrosive']:['shock']));

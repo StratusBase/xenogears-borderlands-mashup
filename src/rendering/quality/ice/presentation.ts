@@ -19,6 +19,7 @@ export class IcePresentation extends ElementalPresentation {
  prepare(renderer:THREE.WebGLRenderer,scene:THREE.Scene,drawScene:()=>void){return prepareIceRendering(renderer,scene,this.iceCamera,this.ice,drawScene);}
  override impact(event:BallisticPresentationImpact){
   const elements=getWeaponElements(event.spec);if(!elements.includes('ice')){super.impact(event);return;}
+  if(elements.length===1)this.impacts.delivery(event);
   const surface=this.ice.impact(event);this.audio.impact('ice',{mode:this.iceMode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.iceCamera.getWorldPosition(new THREE.Vector3())),strength:event.phase==='detonate'?1:.72});
   const other=elements.find(e=>e!=='ice');if(other)super.impact({...event,spec:{...event.spec,element:other,secondaryElement:undefined}});
  }

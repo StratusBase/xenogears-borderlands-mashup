@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { getWeaponElements, type ElementType } from '../../core/arsenal';
 import type { BallisticPresentationImpact } from '../PlayerBallistics';
+import { EffectVariationSequence } from './shared/variation';
 
 type Kind='patch'|'shard'|'drop'|'spark'|'ring'|'strand'|'flame';
 const palette:Record<ElementType,number>={kinetic:0xc7b89b,fire:0xff8c26,ice:0xa8eeff,corrosive:0x9cda37,shock:0x8fcaff,radiation:0xe4e473,gravity:0xbc91e6,adhesive:0xe9bb68};
@@ -25,7 +26,7 @@ function shader(patch:boolean):THREE.ShaderMaterial{
 }
 /** Surface-oriented contact, splats, shatter and residue. Fixed pools never participate in collision. */
 export class ElementalImpacts{
- readonly group=new THREE.Group();private pools=new Map<Kind,Pool>();private randomState=0x41aef;private dummy=new THREE.Object3D();private disposed=false;
+ readonly group=new THREE.Group();private pools=new Map<Kind,Pool>();private randomState=0x41aef;private dummy=new THREE.Object3D();private disposed=false;private deliveryVariation=new EffectVariationSequence();
  constructor(scene:THREE.Scene){
   this.group.name='elemental-quality-impacts';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;scene.add(this.group);
   const geometry:Record<Kind,THREE.BufferGeometry>={patch:new THREE.PlaneGeometry(2,2),shard:new THREE.IcosahedronGeometry(1,0),drop:new THREE.IcosahedronGeometry(1,1),spark:new THREE.BoxGeometry(1,1,1),ring:new THREE.TorusGeometry(1,.025,4,24),strand:new THREE.CylinderGeometry(1,1,1,5),flame:new THREE.ConeGeometry(1,1,5)};
@@ -36,8 +37,25 @@ export class ElementalImpacts{
  }
  get activeCount():number{return[...this.pools.values()].reduce((n,p)=>n+p.items.filter(x=>x.active).length,0);}
  private random():number{this.randomState=(Math.imul(this.randomState,1664525)+1013904223)>>>0;return this.randomState/4294967296;}
- private emit(kind:Kind,point:THREE.Vector3,element:ElementType,life:number,size:readonly[number,number,number]):Particle{
-  const pool=this.pools.get(kind)!,p=pool.items[pool.next];pool.next=(pool.next+1)%pool.items.length;p.active=true;p.age=0;p.life=life;p.position.copy(point);p.size.set(...size);p.rotation.identity();p.velocity.set(0,0,0);p.color.setHex(palette[element]);p.element=element;p.target=undefined;p.local=undefined;p.normal=undefined;p.localRotation=undefined;p.seed=this.random();return p;
+ private emit(kind:Kind,point:THREE.Vector3,element:ElementType,life:number,size:readonly[number,number,number],cosmeticSeed?:number):Particle{
+  const pool=this.pools.get(kind)!,p=pool.items[pool.next];pool.next=(pool.next+1)%pool.items.length;p.active=true;p.age=0;p.life=life;p.position.copy(point);p.size.set(...size);p.rotation.identity();p.velocity.set(0,0,0);p.color.setHex(palette[element]);p.element=element;p.target=undefined;p.local=undefined;p.normal=undefined;p.localRotation=undefined;p.seed=cosmeticSeed??this.random();return p;
+ }
+ /** One delivery-owned physical cue per MIRV detonation, before elemental routing. */
+ delivery(event:BallisticPresentationImpact):void{
+  if(this.disposed||event.spec.projectile!=='cluster'||event.phase!=='detonate'||!['cluster-burst','bomblet'].includes(event.stage??'')||!Number.isFinite(event.point.lengthSq()))return;
+  const normal=event.normal.clone().normalize();if(!Number.isFinite(normal.lengthSq())||normal.lengthSq()<.5)normal.set(0,1,0);
+  const variation=this.deliveryVariation.next(3,'mirv-physical'),parent=event.stage==='cluster-burst',scale=parent?1:.65;
+  const radius=Number.isFinite(event.radius)?Math.max(0,event.radius):0,extent=Math.min(.55,.38+radius*.03)*scale;
+  const point=event.point.clone().addScaledVector(normal,.035),basis=new THREE.Quaternion().setFromUnitVectors(zAxis,normal);
+  const flash=this.emit('shard',point,'kinetic',parent?.11:.085,[extent*variation.range(0,.85,1.1),extent*variation.range(1,.8,1.15),extent*variation.range(2,.8,1.1)],variation.seed);
+  flash.color.setHex(parent?0xffe9b1:0xffd07c);flash.rotation.setFromEuler(new THREE.Euler(variation.range(3,0,Math.PI),variation.range(4,0,Math.PI),variation.range(5,0,Math.PI)));
+  const count=(parent?5:3)+variation.variant%2;
+  for(let i=0;i<count;i++){
+   const angle=i*2.3999632297+variation.range(6+i*3,0,Math.PI*2),direction=new THREE.Vector3(Math.cos(angle),Math.sin(angle),variation.range(7+i*3,.35,1.1)).normalize().applyQuaternion(basis);
+   const fragment=this.emit('shard',point,'kinetic',variation.range(8+i*3,.22,.36),[.026*scale,.045*scale,.11*scale],variation.seed+i+1);
+   fragment.color.setHex(i%2?0x806046:0xe7bc72);fragment.velocity.copy(direction).multiplyScalar(variation.range(40+i,2.7,4.3)*scale);fragment.rotation.setFromUnitVectors(zAxis,direction);
+  }
+  this.upload(0);
  }
  impact(event:BallisticPresentationImpact,excluded?:ReadonlySet<ElementType>):void{
   if(this.disposed||!Number.isFinite(event.point.lengthSq()))return;

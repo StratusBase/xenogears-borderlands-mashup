@@ -30,34 +30,62 @@ test('scatter compares damage per trigger and calculates direct DPS using its ac
   assert.equal(card.status?.dps, 2.5, 'A proc uses one pellet hit, without multiplying pellets, fire rate or chance');
 });
 
-test('cluster cards show shared direct damage, per-child chance and carrier-strength status procs', () => {
+test('MIRV cards show the parent plus bomblet blast budget and per-explosion carrier-strength procs', () => {
   const selected = weapon({ weapon: { ...createWeaponSpec('cluster', 'fire'), speed: 58, fuse: 0.65, blastRadius: 2.2, split: { count: 6, delay: 0.45, spread: 0.32 }, secondaryElement: 'corrosive', statusPower: 0.4, statusChance: 0.5 }, stats: { damage: 120, fireRate: 2, magazine: 4, reload: 2 } });
   const card = buildItemCard(selected, weapon({ stats: { damage: 120, fireRate: 2, magazine: 4, reload: 2 } }));
-  assert.equal(card.weapon!.damagePerTrigger, 102, 'Secondary cost applies once to the shared carrier budget');
-  assert.equal(card.weapon!.damagePerPellet, 17);
-  assert.equal(card.weapon!.pellets, 6);
-  assert.equal(metric(card, 'damage').display, '17×6');
-  assert.equal(metric(card, 'damage').delta!.amount, -18);
-  assert.equal(card.weapon!.burstDps.value, 204);
-  assert.equal(card.weapon!.sustainedDps.value, 102);
-  assert.match(metric(card, 'damage').description, /Carrier deals no damage.*shared across 6 children/);
+  assert.equal(card.weapon!.damagePerTrigger, 137.7, 'Cluster payload boost and secondary cost apply once to the shared carrier budget');
+  assert.equal(card.weapon!.damagePerPellet, 137.7 / 7);
+  assert.equal(card.weapon!.pellets, 7);
+  assert.equal(metric(card, 'damage').display, '19.67×7');
+  assert.equal(metric(card, 'damage').label, 'Blast budget');
+  assert.equal(Number(metric(card, 'damage').delta!.amount.toFixed(9)), 17.7);
+  assert.equal(card.weapon!.burstDps.value, 275.4);
+  assert.equal(card.weapon!.sustainedDps.value, 137.7);
+  assert.equal(card.weapon!.burstDps.label, 'Blast budget/s');
+  assert.match(metric(card, 'damage').description, /One parent burst and 6 bouncing bomblets.*7 equal explosions/);
+  assert.match(metric(card, 'damage').description, /No direct-hit damage or critical hits/);
+  assert.match(card.weapon!.burstDps.description, /blast falloff/);
   assert.deepEqual(card.secondary.map(spec => [spec.key, spec.label, spec.value, spec.unit]), [
-    ['speed', 'Velocity', 58, 'm/s'], ['splitCount', 'Children', 6, ''], ['splitDelay', 'Split delay', 0.45, 's'],
-    ['fuse', 'Child fuse', 0.65, 's'], ['blastRadius', 'Child blast radius', 2.2, 'm'],
+    ['speed', 'Velocity', 58, 'm/s'], ['splitCount', 'Bomblets', 6, ''], ['splitDelay', 'Stagger window', 0.45, 's'],
+    ['fuse', 'Bomblet fuses', 0.65, 's'], ['blastRadius', 'Blast radius', 2.2, 'm'],
   ]);
-  assert.deepEqual(card.statuses.map(status => [status.element, Number(status.dps!.toFixed(9))]), [['fire', 40.8], ['corrosive', 24.48]]);
+  assert.equal(card.secondary.find(spec => spec.key === 'fuse')!.display, '0.65–1.1 s');
+  assert.deepEqual(card.statuses.map(status => [status.element, Number(status.dps!.toFixed(9))]), [['fire', 55.08], ['corrosive', 33.048]]);
   for (const status of card.statuses) {
-    assert.ok(Math.abs(status.chancePercent - (1 - 0.5 ** (1 / 6)) * 100) < 1e-10);
-    assert.equal(status.chanceDisplay, '10.9%');
-    assert.match(status.description, /per.child/i);
+    assert.ok(Math.abs(status.chancePercent - (1 - 0.5 ** (1 / 7)) * 100) < 1e-10);
+    assert.equal(status.chanceDisplay, '9.4%');
+    assert.match(status.description, /per.explosion/i);
     assert.match(status.description, /carrier.*chance|chance.*carrier/i);
   }
   assert.ok(card.statuses.every(status => /carrier.*strength|strength.*carrier/i.test(status.description)));
   const kinetic = buildItemCard(weapon({ weapon: { ...createWeaponSpec('cluster', 'kinetic'), secondaryElement: 'shock', statusPower: 0.4, statusChance: 0.25 }, stats: { damage: 120 } }));
   assert.equal(kinetic.statuses[0].dps, null);
   assert.equal(kinetic.statuses[0].chancePercent, 0);
-  assert.equal(Number(kinetic.statuses[1].dps!.toFixed(9)), 32.64);
-  assert.ok(Math.abs(kinetic.statuses[1].chancePercent - (1 - 0.75 ** (1 / 6)) * 100) < 1e-10);
+  assert.equal(Number(kinetic.statuses[1].dps!.toFixed(9)), 44.064);
+  assert.ok(Math.abs(kinetic.statuses[1].chancePercent - (1 - 0.75 ** (1 / 7)) * 100) < 1e-10);
+});
+
+test('generic forward-split cards retain their existing child-only direct damage semantics', () => {
+  const selected = weapon({ weapon: { ...createWeaponSpec('rocket', 'fire'), fuse: 0.65, split: { count: 6, delay: 0.45, spread: 0.12 }, secondaryElement: 'corrosive', statusPower: 0.4, statusChance: 0.5 }, stats: { damage: 120, fireRate: 2, magazine: 4, reload: 2 } });
+  const card = buildItemCard(selected);
+  assert.equal(card.weapon!.damagePerPellet, 17);
+  assert.equal(card.weapon!.pellets, 6);
+  assert.equal(metric(card, 'damage').display, '17×6');
+  assert.equal(metric(card, 'damage').label, 'Damage');
+  assert.equal(card.weapon!.burstDps.label, 'Direct DPS');
+  assert.match(metric(card, 'damage').description, /Carrier deals no damage.*shared across 6 children/);
+  assert.deepEqual(card.secondary.filter(row => ['splitCount', 'splitDelay', 'fuse'].includes(row.key)).map(row => [row.label, row.display]), [
+    ['Children', '6'], ['Split delay', '0.45 s'], ['Child fuse', '0.65 s'],
+  ]);
+  assert.ok(Math.abs(card.status!.chancePercent - (1 - 0.5 ** (1 / 6)) * 100) < 1e-10);
+  assert.equal(Number(card.status!.dps!.toFixed(9)), 40.8);
+});
+
+test('MIRV cards show the runtime minimum fuse and describe kinetic blasts without direct impact', () => {
+  const card = buildItemCard(weapon({ weapon: { ...createWeaponSpec('cluster', 'kinetic'), fuse: 0 } }));
+  assert.equal(card.secondary.find(row => row.key === 'fuse')!.display, '0.35–0.8 s');
+  assert.equal(card.status!.effect, 'Blast damage');
+  assert.match(card.status!.description, /no direct-hit damage or critical hits/);
 });
 
 test('reload-cycle DPS uses a complete magazine and explicitly remains separate from burst DPS', () => {

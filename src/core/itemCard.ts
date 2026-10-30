@@ -1,5 +1,5 @@
 import type { Item, Stats } from './index';
-import { elementColors, elementLabels, getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, type ElementType, type WeaponSpec } from './arsenal';
+import { elementColors, elementLabels, getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, getDamagePacketCount, getClusterBombletFuseRange, type ElementType, type WeaponSpec } from './arsenal';
 import { ELEMENT_STATUS, elementEffectDescriptions, getStatusDps, getStatusDuration } from './statusEffects';
 import { DEFAULT_WEAPON_BALANCE, effectiveProjectileDamage, hasSecondaryElementCost, type WeaponBalanceRules } from './weaponBalance';
 
@@ -115,9 +115,10 @@ function metric(key: CardMetric['key'], label: string, value: number, equipped: 
 
 function weaponNumbers(item: Item, spec: WeaponSpec, rules: WeaponBalanceRules) {
   const triggerDamage = effectiveProjectileDamage(stat(item, 'damage'), spec, rules);
-  const splitCount = spec.projectile !== 'beam' && spec.projectile !== 'arc' ? spec.split?.count ?? 1 : 1;
-  const damage = triggerDamage / splitCount;
-  const projectiles = spec.pellets * splitCount;
+  const packetCount = getDamagePacketCount(spec);
+  const splitCount = packetCount > 1 ? spec.split!.count : 1;
+  const damage = triggerDamage / packetCount;
+  const projectiles = spec.pellets * packetCount;
   const rate = stat(item, 'fireRate');
   const magazine = stat(item, 'magazine');
   const reload = stat(item, 'reload');
@@ -125,7 +126,7 @@ function weaponNumbers(item: Item, spec: WeaponSpec, rules: WeaponBalanceRules) 
   const burst = damagePerTrigger * rate;
   const cycle = rate > 0 && magazine > 0 ? magazine / rate + reload : 0;
   const sustained = cycle > 0 ? damagePerTrigger * magazine / cycle : 0;
-  return { damage, projectiles, splitCount, rate, magazine, reload, damagePerTrigger, burst, sustained, spread: spec.spread * 180 / Math.PI };
+  return { damage, projectiles, splitCount, packetCount, rate, magazine, reload, damagePerTrigger, burst, sustained, spread: spec.spread * 180 / Math.PI };
 }
 
 function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): CardStatus {
@@ -139,7 +140,7 @@ function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): Ca
   const seconds = `${number(duration)} s`;
   let effect: string;
   switch (spec.element) {
-    case 'kinetic': effect = ['slug', 'spike', 'rocket'].includes(spec.projectile) ? 'Impact stagger' : 'Direct impact'; break;
+    case 'kinetic': effect = spec.projectile === 'cluster' ? 'Blast damage' : ['slug', 'spike', 'rocket'].includes(spec.projectile) ? 'Impact stagger' : 'Direct impact'; break;
     case 'fire': effect = `Burn · ${seconds}`; break;
     case 'radiation': effect = `Death pulse · ${seconds}`; break;
     case 'corrosive': effect = `+${number((info.incomingDamage - 1) * 100)}% incoming · ${seconds}`; break;
@@ -157,7 +158,7 @@ function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): Ca
     dps, dpsDisplay: dps === null ? '' : withUnit(number(dps, 2), '/s'),
     dpsDelta: dps === null ? null : delta(dps, equipped ? equipped.dps ?? 0 : undefined, false, '/s', 2),
     dpsLabel: 'DMG/s', effect,
-    description: `${elementEffectDescriptions[spec.element]}${dps === null ? '' : ' Base DoT per proc excludes vulnerability, critical hits, shields, splash and other effects. Reprocs refresh; they do not add separate damage stacks.'}`,
+    description: `${spec.element === 'kinetic' && spec.projectile === 'cluster' ? 'Blast damage from the parent burst and bomblets; no direct-hit damage or critical hits.' : elementEffectDescriptions[spec.element]}${dps === null ? '' : ' Base DoT per proc excludes vulnerability, critical hits, shields, splash and other effects. Reprocs refresh; they do not add separate damage stacks.'}`,
   };
 }
 
@@ -169,12 +170,17 @@ function secondarySpecs(spec: WeaponSpec): CardSpec[] {
   if ((spec.projectile === 'ricochet' || spec.projectile === 'disc') && spec.bounces > 0) add('bounces', 'Bounces', spec.bounces, '');
   if ((spec.projectile === 'homing' || spec.projectile === 'orb') && spec.tracking > 0) add('tracking', 'Tracking', spec.tracking, 'rad/s');
   const split = !instant ? spec.split : undefined;
+  const mirv = spec.projectile === 'cluster' && split !== undefined;
   if (split) {
-    add('splitCount', 'Children', split.count, '');
-    add('splitDelay', 'Split delay', split.delay, 's');
+    add('splitCount', mirv ? 'Bomblets' : 'Children', split.count, '');
+    add('splitDelay', mirv ? 'Stagger window' : 'Split delay', split.delay, 's');
   }
-  if ((spec.projectile === 'sticky' || split) && spec.fuse > 0) add('fuse', split ? 'Child fuse' : 'Fuse', spec.fuse, 's');
-  if (!instant && spec.blastRadius > 0) add('blastRadius', split ? 'Child blast radius' : 'Blast radius', spec.blastRadius, 'm');
+  if (mirv) {
+    const fuse = getClusterBombletFuseRange(spec);
+    add('fuse', 'Bomblet fuses', fuse.min, 's');
+    result[result.length - 1].display = `${number(fuse.min, 2)}–${number(fuse.max, 2)} s`;
+  } else if ((spec.projectile === 'sticky' || split) && spec.fuse > 0) add('fuse', split ? 'Child fuse' : 'Fuse', spec.fuse, 's');
+  if (!instant && spec.blastRadius > 0) add('blastRadius', mirv ? 'Blast radius' : split ? 'Child blast radius' : 'Blast radius', spec.blastRadius, 'm');
   return result;
 }
 
@@ -198,9 +204,14 @@ export function buildItemCard(item: Item, equipped?: Item, rules: WeaponBalanceR
   const values = weaponNumbers(item, spec, rules);
   const previous = baseline ? weaponNumbers(baseline, getWeaponSpec(baseline), rules) : undefined;
   const costNotice = hasSecondaryElementCost(spec, rules) ? ' Includes the 15% secondary-element damage cost.' : '';
-  const splitNotice = values.splitCount > 1 ? ` Carrier deals no damage; its damage budget is shared across ${values.splitCount} children released after the split delay or on contact.` : '';
-  const damage = metric('damage', 'Damage', values.damagePerTrigger, previous?.damagePerTrigger, '', false, 2,
-    `Damage per ${values.splitCount > 1 ? 'child' : 'pellet'} × ${values.splitCount > 1 ? 'child' : 'pellet'} count. Comparison uses total direct damage per trigger, with every ${values.splitCount > 1 ? 'child' : 'pellet'} hitting.${splitNotice}${costNotice}`);
+  const mirv = spec.projectile === 'cluster' && values.packetCount > 1;
+  const splitNotice = mirv
+    ? ` One parent burst and ${values.splitCount} bouncing bomblets share the carrier budget across ${values.packetCount} equal explosions. The carrier bursts on impact or when travel ends; bomblets explode after staggered fuses.`
+    : values.splitCount > 1 ? ` Carrier deals no damage; its damage budget is shared across ${values.splitCount} children released after the split delay or on contact.` : '';
+  const damage = metric('damage', mirv ? 'Blast budget' : 'Damage', values.damagePerTrigger, previous?.damagePerTrigger, '', false, 2,
+    mirv
+      ? `Blast budget per explosion × total explosion count. No direct-hit damage or critical hits. Actual damage depends on blast falloff, cover and target positions.${splitNotice}${costNotice}`
+      : `Damage per ${values.splitCount > 1 ? 'child' : 'pellet'} × ${values.splitCount > 1 ? 'child' : 'pellet'} count. Comparison uses total direct damage per trigger, with every ${values.splitCount > 1 ? 'child' : 'pellet'} hitting.${splitNotice}${costNotice}`);
   damage.display = values.projectiles > 1 ? `${number(values.damage, 2)}×${values.projectiles}` : number(values.damage, 2);
   const stats = [
     damage,
@@ -211,17 +222,23 @@ export function buildItemCard(item: Item, equipped?: Item, rules: WeaponBalanceR
   ];
   const weapon: WeaponCardModel = {
     damagePerPellet: values.damage, pellets: values.projectiles, damagePerTrigger: values.damagePerTrigger,
-    burstDps: metric('burstDps', 'Direct DPS', values.burst, previous?.burst, '/s', false, 1,
-      `Damage per trigger × fire rate, with every ${values.splitCount > 1 ? 'child' : 'pellet'} hitting. Excludes reload, heat, misses, critical hits, shields, splash, chains and status damage.${splitNotice}${costNotice}`),
-    sustainedDps: metric('sustainedDps', 'With reload', values.sustained, previous?.sustained, '/s', false, 1,
-      `Damage per trigger × magazine ÷ (magazine ÷ fire rate + reload). Excludes heat, misses, critical hits, shields, splash, chains and status damage.${splitNotice}${costNotice}`),
+    burstDps: metric('burstDps', mirv ? 'Blast budget/s' : 'Direct DPS', values.burst, previous?.burst, '/s', false, 1,
+      mirv
+        ? `Total blast budget per trigger × fire rate, assuming every explosion reaches a target at full strength. Excludes reload, heat, travel/fuse delay, misses, cover, blast falloff, shields, chains and status damage.${splitNotice}${costNotice}`
+        : `Damage per trigger × fire rate, with every ${values.splitCount > 1 ? 'child' : 'pellet'} hitting. Excludes reload, heat, misses, critical hits, shields, splash, chains and status damage.${splitNotice}${costNotice}`),
+    sustainedDps: metric('sustainedDps', mirv ? 'Blast with reload' : 'With reload', values.sustained, previous?.sustained, '/s', false, 1,
+      mirv
+        ? `Total blast budget × magazine ÷ (magazine ÷ fire rate + reload), assuming every explosion reaches a target at full strength. Excludes heat, travel/fuse delay, misses, cover, blast falloff, shields, chains and status damage.${splitNotice}${costNotice}`
+        : `Damage per trigger × magazine ÷ (magazine ÷ fire rate + reload). Excludes heat, misses, critical hits, shields, splash, chains and status damage.${splitNotice}${costNotice}`),
   };
   const previousSpec = baseline ? getWeaponSpec(baseline) : undefined;
   const previousStatuses = previousSpec && previous ? getWeaponElements(previousSpec).map(element => statusCard({ ...previousSpec, element }, previous.damage)) : [];
   const statuses = getWeaponElements(spec).map((element, index) => statusCard({ ...spec, element }, values.damage,
     previousStatuses.find(status => status.element === element) ?? (index === 0 ? previousStatuses[0]
       : previousSpec ? statusCard({ ...previousSpec, element: 'kinetic' }, 0) : undefined)));
-  if (values.splitCount > 1) for (const status of statuses) status.description += " Each successful child proc uses the carrier's status strength, with splash falloff preserved. The per-child chance shares the saved carrier chance; all children connecting in one impact stage retain that chance of at least one proc.";
+  if (values.packetCount > 1) for (const status of statuses) status.description += mirv
+    ? ` Each successful explosion proc uses the carrier's status strength, with blast falloff preserved. The per-explosion chance is shared across the parent burst and ${values.splitCount} bomblets; all ${values.packetCount} explosions reaching one target retain the saved carrier chance of at least one proc, independently per element.`
+    : " Each successful child proc uses the carrier's status strength, with splash falloff preserved. The per-child chance shares the saved carrier chance; all children connecting in one impact stage retain that chance of at least one proc.";
   if (costNotice) for (const status of statuses) status.description += costNotice;
   return { comparison, weapon, stats, secondary: secondarySpecs(spec), status: statuses[0] ?? null, statuses };
 }

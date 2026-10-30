@@ -32,7 +32,7 @@ export type DummySimulationEvent =
 export interface DummySimulationResult {
   scenario: 'dummy';
   provenance: 'simulated';
-  protocol: 'fixed-dummy-v1';
+  protocol: 'fixed-dummy-ground-v2';
   seed: number;
   mode: Mode;
   distance: number;
@@ -106,6 +106,10 @@ export function simulateDummy(options: DummySimulationOptions): DummySimulationR
   const projectileDamage = effectiveProjectileDamage(stats.damage, spec, rules);
   const scene = new THREE.Scene(), dummy = physicalDummy();
   dummy.group.position.set(0, 0, -distance); scene.add(dummy.group);
+  // The permanent dummy stands on real terrain in Game. Physical bomblets
+  // need the same support here; a world without a floor is a different test.
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(450, 360), new THREE.MeshBasicMaterial());
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
   const origin = new THREE.Vector3(0, options.mode === 'pilot' ? 1.8 : 4.4, 0);
   const target = options.criticalAim
     ? new THREE.Vector3(0, options.mode === 'pilot' ? 2.3 : 4.35, -distance + 0.335)
@@ -120,7 +124,7 @@ export function simulateDummy(options: DummySimulationOptions): DummySimulationR
     targets: () => [{ id: -1, root: dummy.group, radius: dummy.radius }],
     // The actual stand/nameplate block shots but cannot report damage.
     occluders: () => {
-      const meshes: THREE.Object3D[] = [];
+      const meshes: THREE.Object3D[] = [floor];
       dummy.group.traverse(object => { if (object instanceof THREE.Mesh && object.userData.enemyId !== -1) meshes.push(object); });
       return meshes;
     },
@@ -173,7 +177,7 @@ export function simulateDummy(options: DummySimulationOptions): DummySimulationR
     const result = meter.snapshot(now);
     events.push({ type: 'finish', at: end, outcome: 'complete' });
     return {
-      scenario: 'dummy', provenance: 'simulated', protocol: 'fixed-dummy-v1', seed: options.seed,
+      scenario: 'dummy', provenance: 'simulated', protocol: 'fixed-dummy-ground-v2', seed: options.seed,
       mode: options.mode, distance, criticalAim: options.criticalAim ?? false,
       durationSeconds: end, firingSeconds: duration, drainSeconds,
       directDamage: result.directTotal, statusDamage: result.statusTotal, totalDamage: result.total,
@@ -188,5 +192,5 @@ export function simulateDummy(options: DummySimulationOptions): DummySimulationR
         'Pending projectiles and active statuses at the configured stop are reported; unobserved future damage is excluded.',
       ],
     };
-  } finally { ballistics.clear(); dummy.dispose(); }
+  } finally { ballistics.clear(); dummy.dispose(); floor.geometry.dispose(); floor.material.dispose(); }
 }

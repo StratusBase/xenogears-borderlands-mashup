@@ -50,11 +50,13 @@ function directCase(quality:boolean,element:ElementType,projectile:ProjectileTyp
  const result={hits:f.hits,trace,impacts,animationCalls:f.animationCalls};
  if(quality){
   assert.ok(impacts.length>0,'physical contact must provide authoritative presentation evidence');
-  const contact=f.impacts.find(event=>event.phase==='contact')!;assert.ok(contact);assert.ok(Math.abs(contact.normal.length()-1)<1e-7);
+  const contact=f.impacts.find(event=>event.phase===(projectile==='cluster'?'detonate':'contact'))!;assert.ok(contact);assert.ok(Math.abs(contact.normal.length()-1)<1e-7);
   assert.ok(contact.normal.z>.999,'front-face contact must face back toward the shooter');
   assert.equal(contact.target,cover?undefined:target.root);
-  assert.ok(Math.abs(contact.point.z-(cover?-2.9:-7.6))<1e-6);
-  assert.equal(f.impacts.filter(event=>event.phase==='detonate').length,recipe.blastRadius>0?recipe.split?.count??1:0);
+  const surfaceZ=cover?-2.9:-7.6;
+  if(projectile==='cluster')assert.ok(contact.point.z>=surfaceZ&&contact.point.z<surfaceZ+.1,'the parent burst stays on the near side of contact');
+  else assert.ok(Math.abs(contact.point.z-surfaceZ)<1e-6);
+  assert.equal(f.impacts.filter(event=>event.phase==='detonate').length,recipe.blastRadius>0?(projectile==='cluster'?recipe.split!.count+1:recipe.split?.count??1):0);
  }
  f.cleanup();return result;
 }
@@ -64,11 +66,12 @@ for(const element of elements)for(const projectile of deliveries){
   for(const critical of[false,true]){
    const legacy=directCase(false,element,projectile,critical),quality=directCase(true,element,projectile,critical);
    assert.ok(legacy.hits.length>0,'fixture must be struck by the real simulation');
-   assert.equal(legacy.hits[0].critical,critical);
+   assert.equal(legacy.hits[0].critical,projectile==='cluster'?false:critical);
    if(projectile==='cluster'){
-    const count=createWeaponSpec('cluster',element).split!.count;
-    assert.equal(legacy.hits.length,count,'only bomblets deliver damage; the carrier does not add a hit');
-    assert.ok(legacy.hits.every(hit=>Math.abs(hit.damage-37/count)<1e-9),'children share the complete shot damage budget');
+    const packets=createWeaponSpec('cluster',element).split!.count+1;
+    assert.ok(legacy.hits.length>=1&&legacy.hits.length<=packets,'the parent plus each bomblet can hit a target at most once');
+    assert.ok(legacy.hits.every(hit=>hit.damage<=37/packets+1e-9&&!hit.critical),'all Cluster packets use their bounded blast share without contact/headshot damage');
+    assert.ok(legacy.hits.reduce((sum,hit)=>sum+hit.damage,0)<=37+1e-9,'splash falloff can reduce but never multiply the shot budget');
     assert.ok(legacy.hits.every(hit=>hit.spec.element===element&&hit.spec.secondaryElement===(element==='shock'?'ice':'shock')),'both independent channels survive the split');
    }
    assert.deepEqual(quality.hits,legacy.hits,'IDs, exact points/directions, critical flags, damage and complete recipes must match');
@@ -157,7 +160,7 @@ test('switching presentation never clears active shots or changes their eventual
  assert.equal(baseline.hits.length,2);assert.deepEqual(mixed.hits,baseline.hits);assert.equal(mixed.ballistics.activeCount,0);baseline.cleanup();mixed.cleanup();
 });
 
-test('cluster children retain the carrier presentation across live toggles before and after a timed split',()=>{
+test('cluster bomblets retain the carrier presentation across live toggles before and after contact deployment',()=>{
  for(const qualityAtFire of[false,true]){
   const baseline=fixture(qualityAtFire),mixed=fixture(qualityAtFire);
   const recipe=spec('cluster','corrosive',{secondaryElement:'fire',split:{...createWeaponSpec('cluster','corrosive').split!,delay:.2}});
@@ -165,15 +168,15 @@ test('cluster children retain the carrier presentation across live toggles befor
    f.target(1,[0,1,-16],[4,4,1]);
    f.ballistics.fire(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,-1),recipe,60,50,'tackwork');
    f.ballistics.update(.1);
-   assert.equal(f.ballistics.activeCount,1,'the carrier is still pending its split');
+   assert.equal(f.ballistics.activeCount,1,'the carrier must keep flying until physical contact');
   }
   mixed.ballistics.setPresentation(qualityAtFire?undefined:mixed.adapter);
-  for(const f of[baseline,mixed])f.ballistics.update(.12);
+  for(const f of[baseline,mixed])f.ballistics.update(.2);
   assert.equal(mixed.ballistics.activeCount,recipe.split!.count);
   assert.equal(mixed.scene.children.filter(root=>root.name===`${qualityAtFire?'quality':'player'}-projectile-cluster`).length,recipe.split!.count,'child factories stay bound to the carrier presenter');
   mixed.ballistics.setPresentation(qualityAtFire?mixed.adapter:undefined);
   for(let frame=0;frame<90;frame++)for(const f of[baseline,mixed])f.ballistics.update(1/60);
-  assert.ok(baseline.hits.length>0,'the timed release must reach the physical target');
+  assert.ok(baseline.hits.length>0,'the parent burst must actually hit the physical target');
   assert.deepEqual(mixed.hits,baseline.hits,'render switches preserve child collision, damage and dual-element recipes');
   assert.deepEqual(mixed.impacts.map(event=>({point:event.point.toArray(),phase:event.phase})),baseline.impacts.map(event=>({point:event.point.toArray(),phase:event.phase})));
   assert.equal(mixed.ballistics.activeCount,0);
