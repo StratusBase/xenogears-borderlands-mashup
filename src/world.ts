@@ -12,6 +12,7 @@ import { createWeaponWorkbenchStation } from './rendering/weaponWorkbenchStation
 import { createEncounterObjective, type EncounterObjectiveVisual } from './rendering/encounterObjectives';
 import { ENCOUNTER } from './encounter/encounter';
 import type { TraversalCollider } from './core/ledgeClimb';
+import type {EffectBounds} from './core/effects/contracts';
 
 export interface Bounds {
   minX: number;
@@ -64,6 +65,20 @@ export function isWalkable(x: number, z: number, radius: number, colliders: Boun
   return !colliders.some((b) => x + radius > b.minX && x - radius < b.maxX && z + radius > b.minZ && z - radius < b.maxZ);
 }
 
+/** Existing measured traversal solids, including overheads. Unknown heights stay blocking walls. */
+export function effectWorldSolids(colliders:readonly TraversalCollider[]):EffectBounds[]{
+  return [...colliders.map(b=>({...b,minY:b.minY??-Infinity,maxY:b.maxY??Infinity})),
+    {minX:-Infinity,maxX:-90,minY:-Infinity,maxY:Infinity,minZ:-Infinity,maxZ:Infinity},
+    {minX:90,maxX:Infinity,minY:-Infinity,maxY:Infinity,minZ:-Infinity,maxZ:Infinity},
+    {minZ:-Infinity,maxZ:-55,minY:-Infinity,maxY:Infinity,minX:-Infinity,maxX:Infinity},
+    {minZ:55,maxZ:Infinity,minY:-Infinity,maxY:Infinity,minX:-Infinity,maxX:Infinity}];
+}
+
+/** Lifted actors can stand/walk on measured tops; unmeasured footprints remain walls. */
+export function navigationAtHeight(colliders:readonly TraversalCollider[],feet:number,height:number):Bounds[]{
+  return colliders.filter(b=>(b.maxY??Infinity)>feet+.001&&(b.minY??-Infinity)<feet+height-.001);
+}
+
 const INK = 0x221c23;
 const SAND = 0xd99a44;
 const TEAL = 0x167f89;
@@ -110,6 +125,7 @@ export function createMech(color?: number): THREE.Group {
 export function createWorld(scene: THREE.Scene): {
   colliders: Bounds[];
   traversalColliders: TraversalCollider[];
+  effectColliders: EffectBounds[];
   parkedMech: THREE.Group;
   occluders: THREE.Object3D[];
   checkpointStations: Map<CheckpointId, CheckpointStationVisual>;
@@ -403,6 +419,7 @@ export function createWorld(scene: THREE.Scene): {
   return {
     colliders,
     traversalColliders,
+    effectColliders:effectWorldSolids(traversalColliders),
     parkedMech,
     occluders,
     checkpointStations,

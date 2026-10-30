@@ -11,6 +11,8 @@ import type {ConfirmedElementPulse} from './shared/confirmedPulse';
 import { ElementalPresentation } from './elementalPresentation';
 import { applyQualityInk } from './target';
 import type { ShockChainEvent } from './shock/response';
+import type {GravityEvent} from '../../core/effects/gravity/field';
+import {presentGravity,type GravitySnapshot} from './gravity/binding';
 
 export type PresentationMode='quality'|'legacy';
 export interface PresentationStatus {
@@ -47,6 +49,7 @@ export class GamePresentation {
  private disposed=false;
  private audioWasUnlocked=false;
  private frameTime=0;
+ private gravityState:GravitySnapshot={wells:[],members:[]};
  private audioError:string|null=null;
  private elementalFactory:(scene:THREE.Scene,camera:THREE.Camera)=>ElementalPresentation=createGameElements;
  constructor(private readonly context:GamePresentationContext){}
@@ -84,6 +87,7 @@ export class GamePresentation {
   this.setSoundEnabled(this.sound);
   if(this.equipmentBinding)this.bindEquipment(this.equipmentBinding);
   for(const enemy of this.enemies.values())this.bindEnemy(enemy);
+  presentGravity(this.elements,this.gravityState);
   // A previous user gesture authorized audio for this Game instance.
   if(this.audioWasUnlocked&&this.sound)void this.unlockAudio();
  }
@@ -124,6 +128,8 @@ export class GamePresentation {
  }
  handlesPulse(element:ElementType):boolean{const layer=this.elements as (ElementalPresentation&{handlesPulse?:(element:ElementType)=>boolean})|null;return layer?.handlesPulse?.(element)??false;}
  confirmedPulse(event:ConfirmedElementPulse):boolean{const layer=this.elements as (ElementalPresentation&{confirmedPulse?:(event:ConfirmedElementPulse)=>boolean})|null;return layer?.confirmedPulse?.(event)??false;}
+ /** One authoritative handoff per tick. Renderer switches rehydrate state without replaying crush cues. */
+ gravity(snapshot:GravitySnapshot,events:readonly GravityEvent[]):void{if(this.disposed)return;this.gravityState=snapshot;presentGravity(this.elements,snapshot,events);}
  release(root:THREE.Object3D):void{
   this.elements?.release(root);this.quality?.release(root);this.enemies.delete(root as THREE.Group);
   const binding=this.equipmentBinding;
@@ -153,6 +159,6 @@ export class GamePresentation {
   this.elements?.update(frame.dt,frame.time,frame.paused,frame.spec,frame.mode);
  }
  dispose():void{
-  if(this.disposed)return;this.setEnabled(false);this.disposed=true;this.equipmentBinding=null;this.enemies.clear();
+  if(this.disposed)return;this.setEnabled(false);this.disposed=true;this.equipmentBinding=null;this.enemies.clear();this.gravityState={wells:[],members:[]};
  }
 }

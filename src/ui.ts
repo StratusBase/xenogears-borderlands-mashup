@@ -29,7 +29,7 @@ export interface VendingViewData {
   serviceEnabled?: { pilotAmmo: boolean; mechAmmo: boolean; medical: boolean; mechRepair: boolean };
 }
 /** Current effects on the aimed enemy. DPS is supplied by the combat simulation. */
-export interface TargetStatusView { element: ElementType; dps: number; remaining: number }
+export interface TargetStatusView { element: ElementType; dps: number; remaining: number; label?:string }
 type ItemCardContext = { kind: 'inventory' } | { kind: 'vending'; offer: VendingOffer } | { kind: 'loot'; usingGamepad: boolean };
 
 export interface UIActions {
@@ -945,11 +945,12 @@ export class GameUI {
         this.targetStatusNodes.set(status.element, nodes);
       }
       const dps = Number.isFinite(status.dps) ? Math.max(0, status.dps) : 0;
+      const label=status.label??elementLabels[status.element];
       const value = dps > 0 ? `${compactCardNumber(dps)} DMG/s` : elementLabels[status.element].toUpperCase();
       const time = `${Number(Math.max(0.1, status.remaining).toFixed(1))}s`;
       if (nodes.value.textContent !== value) nodes.value.textContent = value;
       if (nodes.time.textContent !== time) nodes.time.textContent = time;
-      const description = `${elementLabels[status.element]}: ${dps > 0 ? `${fmt(dps)} damage per second, ` : ''}${time} remaining`;
+      const description = `${label}: ${dps > 0 ? `${fmt(dps)} damage per second, ` : ''}${time} remaining`;
       nodes.chip.title = description;
       nodes.chip.setAttribute('aria-label', description);
     }
@@ -1197,7 +1198,7 @@ export class GameUI {
     heading.append(el('strong', '', status.label.toUpperCase()));
     if (status.duration > 0) {
       const duration = el('span', 'card-effect-duration', `${compactCardNumber(status.duration)}s`);
-      duration.title = `Effect duration: ${status.durationDisplay}. Repeated procs refresh the effect.`;
+      duration.title = status.gravityWell?`Active well lifetime: ${status.durationDisplay}, after ${status.gravityWell.deployment} s deployment.`:`Effect duration: ${status.durationDisplay}. Repeated procs refresh the effect.`;
       heading.append(duration);
     }
     body.append(heading);
@@ -1209,12 +1210,13 @@ export class GameUI {
         cardDelta(status.dpsDelta, 'Base damage per second on proc'));
       values.append(power);
     } else if (status.element !== 'kinetic') {
-      values.append(el('strong', 'card-element-control', status.duration > 0 ? 'CONTROL' : 'NO EFFECT'));
+      values.append(el('strong', 'card-element-control', status.gravityWell?'VARIABLE CRUSH':status.duration > 0 ? 'CONTROL' : 'NO EFFECT'));
     }
     if (status.element !== 'kinetic') {
       const chance = el('div', 'card-proc-chance');
-      chance.title = 'Chance per impact to apply this effect. Repeated procs refresh the effect.';
-      chance.append(el('strong', '', status.chanceDisplay), el('span', 'card-chance-label', 'chance'), cardDelta(status.chanceDelta, 'Proc chance'));
+      chance.title = status.gravityWell?status.description:'Chance per impact to apply this effect. Repeated procs refresh the effect.';
+      chance.append(el('strong', '', status.chanceDisplay));
+      if(!status.gravityWell)chance.append(el('span', 'card-chance-label', 'chance'), cardDelta(status.chanceDelta, 'Proc chance'));
       values.append(chance);
     }
     if (values.childElementCount > 0) body.append(values);

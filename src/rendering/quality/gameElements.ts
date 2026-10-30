@@ -5,12 +5,12 @@ import {radiationModule} from './radiation/presentation';
 import {fireModule,createFireModule,type FireOptions} from './fire/presentation';
 import {shockModule,createShockModule,type ShockPresentationOptions} from './shock/module';
 import {createAdhesiveModule,type AdhesiveOptions} from './adhesive/module';
-import {gravityEquipmentModule} from './gravity/equipmentModule';
+import {gravityModule,type GravityVisualOptions} from './gravity/response';
 
-export interface GameElementOptions {shock?:ShockPresentationOptions;fire?:FireOptions;adhesive?:AdhesiveOptions;gravity?:{equipment?:'aligned'|'legacy'}}
+export interface GameElementOptions {shock?:ShockPresentationOptions;fire?:FireOptions;adhesive?:AdhesiveOptions;gravity?:GravityVisualOptions}
 
 function productionModules(options:GameElementOptions):Partial<Record<ElementType,ElementModule>>{
- return{fire:options.fire?createFireModule({full:true,hybrid:true,...options.fire}):fireModule,radiation:radiationModule,shock:options.shock?createShockModule('capacitor',options.shock):shockModule,adhesive:createAdhesiveModule(options.adhesive),...(options.gravity?.equipment==='legacy'?{}:{gravity:gravityEquipmentModule()})};
+ return{fire:options.fire?createFireModule({full:true,hybrid:true,...options.fire}):fireModule,radiation:radiationModule,shock:options.shock?createShockModule('capacitor',options.shock):shockModule,adhesive:createAdhesiveModule(options.adhesive),gravity:gravityModule(undefined,options.gravity)};
 }
 function beforeElement(scene:THREE.Scene,camera:THREE.Camera,element:ElementType,options:GameElementOptions){
  const modules=productionModules(options);delete modules[element];return new ComposedElementalPresentation(scene,camera,modules);
@@ -38,3 +38,6 @@ export function createGameElementsBeforeAdhesive(scene:THREE.Scene,camera:THREE.
 
 /** Equipment-only Gravity baseline: preserve every sibling registration, recipe and option. */
 export function createGameElementsBeforeGravityEquipment(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,gravity:{...options.gravity,equipment:'legacy'}});}
+
+/** Same authoritative fields, equipment and sound, with world Gravity art omitted for matched rendering cost. */
+export function createGameElementsBeforeGravityField(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,gravity:{...options.gravity,field:'audio-only'}});}

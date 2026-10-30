@@ -1,6 +1,6 @@
 # Effects architecture and organization
 
-Recorded 30 October 2026 at the user's explicit request for persistent organization guidance: keep effects DRY, open/closed, extensible and composable while keeping files organized. This is the guide for new effects work and incremental shared extraction. The gravity prototype now supplies the concrete shared extraction and composition listed below; production integration remains an explicit handoff.
+Recorded 30 October 2026 at the user's explicit request for persistent organization guidance: keep effects DRY, open/closed, extensible and composable while keeping files organized. This is the guide for new effects work and incremental shared extraction. Gravity now supplies the concrete shared extraction, composition and combat-lead integration listed below; its full mechanic runs by default in normal gameplay.
 
 ## Core rule
 
@@ -127,4 +127,4 @@ Coordinate changes to shared seams and files being edited by other element works
 6. Complete the required equipment alignment and Opus 5.5 review above, retaining actual equipment/gameplay evidence and unresolved findings in the element's handoff.
 7. After visual approval, integrate in normal Enhanced gameplay; a review-lab-only feature is not complete. Preserve Legacy for comparison.
 
-The gravity implementation and ownership handoff are documented in [gravity-integration.md](quality/gravity-integration.md). It establishes plain gameplay modules, neutral shared helpers, a generic composition layer and an actual-Game review fixture. It does not perform the proposed workspace migration or claim normal-main gravity integration.
+The normal Gravity integration is documented in [gravity-integration.md](quality/gravity-integration.md) and the [production receipt](quality/gravity-field-production.md). Game owns one `GravityCombat` composition of `GravityFields`/`GravityActivation`, advances it after normal ballistics, then sends copied snapshots and authoritative events through `GamePresentation.gravity`. The one production registry composes field/equipment presentation, and `GravitySound` uses the existing shared elemental audio engine. Legacy changes art only. The three-well gameplay budget matches the renderer; this is not a general crowd-body solver. Preserved standalone labs explicitly disable the normal host mechanic in their constructors; they do not gate ordinary gameplay. No workspace migration is performed.

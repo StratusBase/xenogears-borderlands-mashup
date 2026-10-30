@@ -15,17 +15,17 @@ before(()=>{originalDocument=Object.getOwnPropertyDescriptor(globalThis,'documen
 after(()=>{if(originalDocument)Object.defineProperty(globalThis,'document',originalDocument);else Reflect.deleteProperty(globalThis,'document');});
 const keys=(map:Map<unknown,unknown>)=>[...map.keys()].sort();
 
-test('normal production registers equipment-only Gravity; its baseline removes only that capability',()=>{
+test('normal production registers full Gravity; its equipment baseline retains authoritative field presentation',()=>{
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),current=registry.createGameElements(scene,camera),baseline=registry.createGameElementsBeforeGravityEquipment(scene,camera);
- try{assert.deepEqual(keys(baseline.responses),keys(current.responses).filter(k=>k!=='gravity'));const gravity=current.responses.get('gravity')!;assert.equal(typeof gravity.equipment,'function');assert.equal(Reflect.get(gravity,'sync'),undefined);assert.equal(Reflect.get(gravity,'event'),undefined);assert.equal(gravity.status,undefined);assert.equal(gravity.decorateProjectile,undefined);assert.equal(gravity.confirmedPulse,undefined);assert.equal(scene.getObjectByName('gravity-well-presentation'),undefined);}finally{current.dispose();baseline.dispose();}
+ try{assert.deepEqual(keys(baseline.responses),keys(current.responses));const gravity=current.responses.get('gravity')!;assert.equal(typeof gravity.equipment,'function');assert.equal(typeof Reflect.get(gravity,'sync'),'function');assert.equal(typeof Reflect.get(gravity,'event'),'function');assert.equal(baseline.responses.get('gravity')!.equipment,undefined);assert.equal(gravity.status,undefined);assert.equal(gravity.decorateProjectile,undefined);assert.equal(gravity.confirmedPulse,undefined);assert.ok(scene.getObjectByName('gravity-well-presentation'));}finally{current.dispose();baseline.dispose();}
 });
 
 test('all production baselines retain Gravity defaults and explicit sibling options',()=>{
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),options={fire:{full:false,hybrid:false},shock:{equipment:'legacy' as const}};
  const optional=(name:string):typeof registry.createGameElements[]=>{const factory=Reflect.get(registry,name);return typeof factory==='function'?[factory]:[];};
  for(const factory of [registry.createGameElements,registry.createGameElementsBeforeRadiation,registry.createGameElementsBeforeShock,registry.createGameElementsBeforeShockEquipment,registry.createGameElementsBeforeAdhesive,...optional('createGameElementsBeforeFire'),...optional('createGameElementsBeforeFireEquipment'),registry.createGameElementsBeforeGravityEquipment]){
-  const layer=factory(scene,camera,options);try{const fire=layer.responses.get('fire');if(fire)assert.equal(Boolean(Reflect.get(fire,'fire').hybrid),false,factory.name);const shock=layer.responses.get('shock');if(shock)assert.equal(shock.equipment,undefined,factory.name);assert.equal(layer.responses.has('gravity'),factory!==registry.createGameElementsBeforeGravityEquipment,factory.name);}finally{layer.dispose();}
-  const legacy=factory(scene,camera,{...options,gravity:{equipment:'legacy'}});try{assert.equal(legacy.responses.has('gravity'),false,factory.name);}finally{legacy.dispose();}
+  const layer=factory(scene,camera,options);try{const fire=layer.responses.get('fire');if(fire)assert.equal(Boolean(Reflect.get(fire,'fire').hybrid),false,factory.name);const shock=layer.responses.get('shock');if(shock)assert.equal(shock.equipment,undefined,factory.name);assert.equal(layer.responses.has('gravity'),true,factory.name);}finally{layer.dispose();}
+  const legacy=factory(scene,camera,{...options,gravity:{equipment:'legacy'}});try{assert.equal(legacy.responses.has('gravity'),true,factory.name);assert.equal(legacy.responses.get('gravity')!.equipment,undefined,factory.name);}finally{legacy.dispose();}
  }
 });
 

@@ -10,12 +10,13 @@ import {infallDistance,flowEnvelope,pressureProfile,samplePressure,type Pressure
 import {GravityLens} from './lens';
 import {gravityCoreMaterial} from './coreMaterial';
 import {GravityEquipmentResponse} from './equipmentModule';
+import {GravitySound} from './sound';
 import type {WeaponSpec} from '../../../core/arsenal';
 import type {Mode} from '../../../core/index';
 
 export const GRAVITY_VFX_CAPACITY=Object.freeze({wells:3,lanes:8,segments:24,grains:144,holds:32,events:128,wakes:12,history:24});
 type Snapshot=ReturnType<GravityFields['snapshot']>;
-export interface GravityVisualOptions {seed?:number;equipment?:'aligned'|'legacy'}
+export interface GravityVisualOptions {seed?:number;equipment?:'aligned'|'legacy';field?:'visible'|'audio-only'}
 export interface GravityView extends ElementResponse {setDistortionEnabled?(enabled:boolean):void;sync(state:Snapshot):void;event(event:GravityEvent):void;readonly diagnostics:Record<string,unknown>}
 interface Visual {id:string;group:THREE.Group;well:GravityWell;folds:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;core:THREE.Mesh;wakes:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;profile:PressureProfile;lens:GravityLens;endAge:number;pulse:number;bedBeat:number}
 const foldVertex=`attribute float visibility;varying vec3 vLocal;varying float vVisibility;varying vec2 vUv;void main(){vLocal=position;vVisibility=visibility;vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
@@ -35,11 +36,13 @@ function material(seed:number,wake=false){return new THREE.ShaderMaterial({verte
 export class GravityResponse implements GravityView {
  readonly group=cosmetic(new THREE.Group());readonly events:GravityEvent[]=[];readonly equipmentResponse=new GravityEquipmentResponse();
  readonly equipment:ElementResponse['equipment'];
+ private sound:GravitySound;
  private visuals=new Map<string,Visual>();private state:Snapshot={wells:[],members:[]};private disposed=false;private variation:EffectVariationSequence;
  private history:{id:string;seed:number;variant:number;widths:number[];lengths:number[];durations:number[];scale:number}[]=[];private updates=0;private distortionEnabled=true;
  private dummy=new THREE.Object3D();private grains:THREE.InstancedMesh;private alpha:THREE.InstancedBufferAttribute;private tint:THREE.InstancedBufferAttribute;
  private p=new THREE.Vector3();private next=new THREE.Vector3();private tangent=new THREE.Vector3();private side=new THREE.Vector3();private view=new THREE.Vector3();private cameraPosition=new THREE.Vector3();private center=new THREE.Vector3();
  constructor(private readonly scene:THREE.Scene,private camera:THREE.Camera,private audio:ElementalAudio,options:GravityVisualOptions={}){
+  this.sound=new GravitySound(audio,camera);
   if(options.equipment!=='legacy')this.equipment=(root,appearance)=>this.equipmentResponse.equipment(root,appearance);
   this.variation=new EffectVariationSequence(options.seed);this.group.name='gravity-well-presentation';scene.add(this.group);
   const g=new THREE.IcosahedronGeometry(1,0);this.alpha=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains),1);this.tint=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains*3),3);g.setAttribute('opacity',this.alpha);g.setAttribute('tint',this.tint);
@@ -51,12 +54,12 @@ export class GravityResponse implements GravityView {
  release(root:THREE.Object3D){this.equipmentResponse.release(root);}
  event(event:GravityEvent):void{
   if(this.disposed)return;this.events.push(event);if(this.events.length>GRAVITY_VFX_CAPACITY.events)this.events.shift();
-  const well='well'in event?event.well:undefined,distance=well?this.center.set(well.center.x,well.center.y,well.center.z).distanceTo(this.camera.getWorldPosition(this.cameraPosition)):0;
-  if(event.kind==='pulse'){this.audio.cue('gravity','impact',{splash:true,strength:.6,distance});const v=this.visuals.get(event.well.id);if(v)v.pulse=1;}
-  if(event.kind==='end'){this.audio.cue('gravity','release',{distance});const v=this.visuals.get(event.well.id);if(v&&v.endAge<0)v.endAge=0;}
+  this.sound.event(event);
+  if(event.kind==='pulse'){const v=this.visuals.get(event.well.id);if(v)v.pulse=1;}
+  if(event.kind==='end'){const v=this.visuals.get(event.well.id);if(v&&v.endAge<0)v.endAge=0;}
  }
  sync(state:Snapshot):void{
-  if(this.disposed)return;this.state=state;const ids=new Set(state.wells.map(w=>w.id));for(const v of this.visuals.values())if(!ids.has(v.id)&&v.endAge<0)v.endAge=0;
+  if(this.disposed)return;this.state=state;this.sound.sync(state);const ids=new Set(state.wells.map(w=>w.id));for(const v of this.visuals.values())if(!ids.has(v.id)&&v.endAge<0)v.endAge=0;
   for(const well of state.wells){let v=this.visuals.get(well.id);if(!v){if(this.visuals.size>=GRAVITY_VFX_CAPACITY.wells)this.remove([...this.visuals.values()].find(v=>v.endAge>=0)??this.visuals.values().next().value!);v=this.create(well);this.visuals.set(well.id,v);}v.well=well;}
   // One geometry write per authoritative snapshot. update() only advances the cosmetic end envelope and audio cues.
   this.draw();
@@ -73,8 +76,8 @@ export class GravityResponse implements GravityView {
  }
  update(dt:number,_time:number):void{
   if(this.disposed||!Number.isFinite(dt)||dt<=0)return;
+  this.sound.update(dt);
   for(const v of [...this.visuals.values()]){v.pulse=Math.max(0,v.pulse-dt*7);if(v.endAge>=0){v.endAge+=dt;if(v.endAge>=.45){this.remove(v);continue;}}
-   const beat=Math.floor(v.well.age/.55);if(gravityActive(v.well)&&v.endAge<0&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(this.cameraPosition))});}
   }
  }
  private ribbon(v:Visual){
@@ -118,7 +121,13 @@ export class GravityResponse implements GravityView {
  }
  private remove(v:Visual){v.lens.dispose();v.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});v.group.removeFromParent();this.visuals.delete(v.id);}
  get diagnostics(){return{...this.equipmentResponse.diagnostics,wells:this.visuals.size,grains:this.grains.count,heldContours:0,sources:[...this.visuals.values()].map(v=>({id:v.id,center:v.group.position.toArray(),corePresence:(v.core.material as THREE.ShaderMaterial).uniforms.presence.value,pressurePresence:v.folds.material.uniforms.presence.value,lensRadius:v.lens.mesh.scale.x,lensVisible:v.lens.mesh.visible,lensReady:v.lens.mesh.material.uniforms.ready.value,coreRadius:(v.core.geometry as THREE.IcosahedronGeometry).parameters.radius*v.core.scale.x*v.well.radius/6})),foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths],durations:[...p.durations]}))};}
- clear():void{this.equipmentResponse.clear();for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
+ clear():void{this.equipmentResponse.clear();this.sound.clear();for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
  dispose():void{if(this.disposed)return;this.clear();this.equipmentResponse.dispose();this.grains.geometry.dispose();(this.grains.material as THREE.Material).dispose();this.grains.dispose();this.group.removeFromParent();this.disposed=true;}
 }
-export function gravityModule(onCreate?:(response:GravityResponse)=>void,options:GravityVisualOptions={}):ElementModule{return{recipe:gravityAudioRecipe,replaceEquipment:options.equipment!=='legacy',create:({scene,camera,audio})=>{const response=new GravityResponse(scene,camera,audio,options);onCreate?.(response);return response;}};}
+export function gravityModule(onCreate?:(response:GravityView)=>void,options:GravityVisualOptions={}):ElementModule{return{recipe:gravityAudioRecipe,replaceEquipment:options.equipment!=='legacy',create:({scene,camera,audio})=>{
+ if(options.field==='audio-only'){
+  const equipment=new GravityEquipmentResponse(),sound=new GravitySound(audio,camera);
+  const response:GravityView={impact(){},shot:(_s,_m,root,index)=>equipment.shot(root,index),...(options.equipment==='legacy'?{}:{equipment:(root,appearance)=>equipment.equipment(root,appearance)}),release:root=>equipment.release(root),sync:state=>sound.sync(state),event:event=>sound.event(event),update:dt=>sound.update(dt),clear(){sound.clear();equipment.clear();},dispose(){sound.clear();equipment.dispose();},get diagnostics(){return{...equipment.diagnostics,wells:0,fieldVisible:false};}};onCreate?.(response);return response;
+ }
+ const response=new GravityResponse(scene,camera,audio,options);onCreate?.(response);return response;
+}};}

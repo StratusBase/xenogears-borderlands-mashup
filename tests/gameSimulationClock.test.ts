@@ -15,6 +15,7 @@ import { cacheDamageAnchors } from '../src/ui/damageAnchors.ts';
 import type { DamageFeedbackContext, DamagePoint } from '../src/ui/damageNumbers.ts';
 import { DamageNumberModel } from '../src/ui/damageNumbers.ts';
 import type { DamageEffect } from '../src/core/feedback.ts';
+import {GravityCombat} from '../src/core/effects/gravity/combat.ts';
 
 // Browser styles have no effect on this headless Game orchestration regression.
 const { Game } = await (async () => {
@@ -79,6 +80,7 @@ function gameHarness(mode: Mode, quality: boolean) {
   const bodies = { pilot: makeBody('pilot'), mech: makeBody('mech') };
   Object.assign(state, {
     scene, camera, weapon, pilotGun, mechGuns, pilotRig, mechRig, progression, presentation, ballistics, bodies, keys, mode,
+    gravityCombat:new GravityCombat({targets:()=>[],move:(_t,p)=>p,visible:()=>true,clearCenter:()=>true,clearSourcePath:()=>true,damage(){}}),enemyFallSpeed:new Map(),
     world: { parkedMech, vendingMachines: [], occluders: [] }, enemies: [], testDummy: { id: 41, mesh: target.group },
     ray: new THREE.Raycaster(), muzzle: new THREE.Mesh(new THREE.SphereGeometry(.1), new THREE.MeshBasicMaterial()),
     weaponPose: new SimulationWeaponPose(), presentationPosition: camera.position.clone(), presentationTime: 0,

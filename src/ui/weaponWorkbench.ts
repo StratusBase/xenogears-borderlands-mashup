@@ -285,7 +285,7 @@ export class WeaponWorkbench {
     strip.append(createItemIcon(status.element, status.label));
     const copy = node('div'); copy.append(node('span', 'workbench-eyebrow', status.label));
     const detail = node('div', 'workbench-status-values');
-    detail.append(node('strong', '', status.element === 'kinetic' ? 'DIRECT IMPACT' : status.dps === null ? 'CONTROL' : `${Number(status.dps.toFixed(2))} DMG/s`));
+    detail.append(node('strong', '', status.gravityWell?'VARIABLE CRUSH':status.element === 'kinetic' ? 'DIRECT IMPACT' : status.dps === null ? 'CONTROL' : `${Number(status.dps.toFixed(2))} DMG/s`));
     if (status.element !== 'kinetic') detail.append(node('span', '', `${status.chanceDisplay} · ${status.durationDisplay}`));
     copy.append(detail);
     if (status.dps === null && status.element !== 'kinetic') copy.append(node('small', '', status.effect));

@@ -16,6 +16,8 @@ if(new URLSearchParams(location.search).has('verifyShock')){
   import('./dev/effects/shock/integrationVerification').then(({shockVerificationOptions,attachShockVerification})=>{const game=new Game(host,shockVerificationOptions);attachShockVerification(game);game.run();}).catch(fatal);
 }else if(new URLSearchParams(location.search).has('verifyRadiation')){
   import('./dev/effects/radiation/integrationVerification').then(({radiationVerificationOptions,attachRadiationVerification})=>{const game=new Game(host,radiationVerificationOptions);attachRadiationVerification(game);game.run();}).catch(fatal);
+}else if(new URLSearchParams(location.search).has('verifyGravityField')){
+  import('./dev/effects/gravity/fieldVerification').then(({gravityFieldVerificationOptions,attachGravityFieldVerification})=>{const game=new Game(host,gravityFieldVerificationOptions);attachGravityFieldVerification(game);game.run();}).catch(fatal);
 }else if(new URLSearchParams(location.search).has('verifyGravity')){
   import('./dev/effects/gravity/integrationVerification').then(({gravityVerificationOptions,attachGravityVerification})=>{const game=new Game(host,gravityVerificationOptions);attachGravityVerification(game);game.run();}).catch(fatal);
 }else if(new URLSearchParams(location.search).has('verifyAdhesive')){

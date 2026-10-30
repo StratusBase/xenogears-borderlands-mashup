@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createProgression, deserializeProgression, serializeProgression, getStats, equipItem, sellItem, sellJunk, setItemMark, rollItem, seededRandom, rarityColors, checkZoneAccess, INVENTORY_CAPACITY, type Mode, type Item, type Progression } from './core/index';
-import { createWorld, getZone, isWalkable } from './world';
+import { createWorld, getZone, isWalkable, navigationAtHeight } from './world';
 import { GameUI, type HUDData } from './ui';
 import { GamepadInput, type GamepadFrame } from './input/gamepad';
 import { MouseLook } from './input/mouse';
@@ -24,7 +24,11 @@ import { createEquipmentWeapon, createEquipmentCharacter, disposeEquipmentModel,
 import { createHealingVisual, type HealingVisual } from './rendering/healingVisual';
 import { getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, elementColors, type ElementType } from './core/arsenal';
 import { createStatusState, applyStatus, advanceStatuses, getStatusDps, getStatusModifiers, activeStatusElements, type StatusState, type StatusElement } from './core/statusEffects';
-import { PlayerBallistics, type BallisticHit } from './rendering/PlayerBallistics';
+import { PlayerBallistics, type BallisticHit, type BallisticWorldImpact } from './rendering/PlayerBallistics';
+import {GravityCombat} from './core/effects/gravity/combat';
+import type {GravityTarget} from './core/effects/gravity/field';
+import {effectBodyClear,effectBodyPathClear,effectLineClear,sweepEffectBody} from './core/effects/shared/collision';
+import {gravityCapturePose} from './core/effects/gravity/capture';
 import type { DamageEffect } from './core/feedback';
 import { JumpMotion } from './core/jump';
 import { findLedgeGrab, sampleLedgeClimb, pilotBodyClear, pilotSupportHeight, pilotCeilingHeight,
@@ -91,6 +95,8 @@ export interface GameOptions {
   evaluationBalanceRules?: WeaponBalanceRules;
   /** Driver-owned clock from construction; RAF may draw but cannot step gameplay. */
   manualEvaluation?: boolean;
+  /** Explicit prototype / total-cost comparison only. Ordinary gameplay owns full fields. */
+  gravityFields?: boolean;
   onEvaluationShot?: (shot: EvaluationShot) => void;
   onEvaluationProc?: (proc: EvaluationProc) => void;
 }
@@ -154,6 +160,9 @@ export class Game {
   private readonly effects: Effect[] = [];
   private readonly projectiles: Projectile[] = [];
   private readonly ballistics: PlayerBallistics;
+  private readonly gravityCombat: GravityCombat;
+  private readonly gravityFieldsEnabled: boolean;
+  private readonly enemyFallSpeed = new Map<number,number>();
   private progression: Progression;
   private bodies: Record<Mode, Body>;
   private mode: Mode = 'pilot';
@@ -236,6 +245,7 @@ export class Game {
     this.saveKey = options.saveKey ?? SAVE_KEY;
     this.autoEncounters = options.autoEncounters ?? false;
     this.trainingTargets = options.trainingTargets ?? false;
+    this.gravityFieldsEnabled = options.gravityFields !== false;
     let saved: string | null = null;
     try { saved = localStorage.getItem(this.saveKey); } catch { /* Storage is optional. */ }
     const loaded = options.initialProgression
@@ -271,14 +281,17 @@ export class Game {
     const dummyBounds = new THREE.Box3().setFromObject(this.dummyVisual.group);
     const dummyCollider = { minX: dummyBounds.min.x, maxX: dummyBounds.max.x, minZ: dummyBounds.min.z, maxZ: dummyBounds.max.z };
     this.world.colliders.push(dummyCollider); this.world.traversalColliders.push({ ...dummyCollider });
+    this.world.effectColliders.push({...dummyCollider,minY:dummyBounds.min.y,maxY:dummyBounds.max.y});
     this.dummyVisual.group.traverse(object => {
       if (object instanceof THREE.Mesh && object.userData.enemyId !== this.testDummy.id) this.world.occluders.push(object);
     });
-    window.addEventListener('pagehide', () => { this.climbVisual?.dispose(); this.presentation?.dispose(); this.resetTestDummy(); this.dummyVisual.dispose(); });
+    this.gravityCombat = this.createGravityCombat();
+    window.addEventListener('pagehide', () => { this.gravityCombat.dispose(); this.climbVisual?.dispose(); this.presentation?.dispose(); this.resetTestDummy(); this.dummyVisual.dispose(); });
     this.ballistics = new PlayerBallistics(this.scene, {
       targets: () => this.combatTargets.map(target => ({ id: target.id, root: target.mesh, radius: target === this.testDummy ? this.dummyVisual.radius : target.heavy ? 1.6 : 0.85 })),
       occluders: () => this.world.occluders,
       hit: hit => this.onBallisticHit(hit),
+      worldImpact: event => this.onBallisticWorldImpact(event),
     });
     this.camera.rotation.order = 'YXZ';
     this.placeAtCheckpoint();
@@ -413,7 +426,12 @@ export class Game {
       this.camera.updateWorldMatrix(true, false);
       this.updateEnemies(dt); this.updateTargetEffects(this.testDummy, dt); this.updateProjectiles(dt);
       if (!this.isRespawning) {
-        this.ballistics.update(dt); this.updateDrops(dt); this.updateRecoveryAction();
+        this.ballistics.update(dt);
+        if(this.gravityFieldsEnabled){
+          this.gravityCombat.update(dt);
+          this.presentation?.gravity(this.gravityCombat.snapshot(),this.gravityCombat.drainEvents());
+        }
+        this.updateDrops(dt); this.updateRecoveryAction();
         if (this.shooting || this.gamepad.fire) this.fire();
       }
     }
@@ -427,6 +445,8 @@ export class Game {
 
   get presentationMode(): 'quality' | 'legacy' { return this.presentation?.enabled ? 'quality' : 'legacy'; }
   get presentationDiagnostics() { return this.presentation?.diagnostics; }
+  /** Copied authoritative state for review; no renderer-owned field or writable simulation handle. */
+  get gravityDiagnostics(){return{enabled:this.gravityFieldsEnabled,...this.gravityCombat.diagnostics};}
   get feedbackQuality(): DamageFeedbackQuality { return this.ui.feedbackQuality; }
   get feedbackDiagnostics() { return this.ui.feedbackDiagnostics; }
 
@@ -899,12 +919,21 @@ export class Game {
     this.updateHUD();
   }
 
+  private onBallisticWorldImpact(event:Readonly<BallisticWorldImpact>):void{
+    if(this.gravityFieldsEnabled)this.gravityCombat.impact(event);
+  }
+
   private onBallisticHit(hit: BallisticHit): void {
     const enemy = this.combatTargets.find(candidate => candidate.id === hit.targetId);
     const movable = this.enemies.find(candidate => candidate === enemy);
     if (!enemy || movable && movable.health <= 0) return;
-    const procs = new Set(getWeaponElements(hit.spec).filter(element => element !== 'kinetic' && this.combatRandom() < getHitStatusChance(hit.spec)
-      && applyStatus(enemy.statuses, element, this.time, getHitStatusPower(hit.damage, hit.spec))));
+    const procs = new Set(getWeaponElements(hit.spec).filter(element => {
+      if(element==='kinetic')return false;
+      // Keep every existing channel's RNG draw/order even when the field replaces the gravity proc.
+      const proc=this.combatRandom()<getHitStatusChance(hit.spec);
+      return proc&&!(element==='gravity'&&this.gravityFieldsEnabled&&this.gravityCombat.qualifies(hit.spec))
+        &&applyStatus(enemy.statuses,element,this.time,getHitStatusPower(hit.damage,hit.spec));
+    }));
     for (const element of procs) this.onEvaluationProc?.({ at: this.time, mode: this.mode, targetId: enemy.id, element,
       projectile: hit.spec.projectile, chance: getHitStatusChance(hit.spec), power: getHitStatusPower(hit.damage, hit.spec) });
     const modifiers = getStatusModifiers(enemy.statuses, this.time);
@@ -924,7 +953,7 @@ export class Game {
       for (const other of this.enemies) {
         const delta = hit.point.clone().sub(other.mesh.position); delta.y = 0;
         const distance = delta.length();
-        if (distance > 6 || !this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5))) continue;
+        if (distance > 6 || !this.clearLine(hit.point, other.mesh.position.clone().add(new THREE.Vector3(0,other.heavy ? 2.6 : 1.5,0)))) continue;
         applyStatus(other.statuses, 'gravity', this.time, getHitStatusPower(hit.damage, hit.spec));
         other.gravityPoint = hit.point.clone();
         if (distance > 0.05) {
@@ -937,9 +966,9 @@ export class Game {
     if (procs.has('shock') && modifiers.chain) {
       const next = this.combatTargets.filter(other => other !== enemy && other.mesh.position.distanceTo(enemy.mesh.position) < 6)
         .sort((a, b) => a.mesh.position.distanceToSquared(enemy.mesh.position) - b.mesh.position.distanceToSquared(enemy.mesh.position))
-        .find(other => this.clearLine(hit.point, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5)));
+        .find(other => this.clearLine(hit.point, other.mesh.position.clone().add(new THREE.Vector3(0,other.heavy ? 2.6 : 1.5,0))));
       if (next) {
-        const end = next.mesh.position.clone().setY(next.heavy ? 2.6 : 1.5);
+        const end = next.mesh.position.clone().add(new THREE.Vector3(0,next.heavy ? 2.6 : 1.5,0));
         const chainDamage = shieldAdjustedDamage(next.shield, hit.damage * 0.35, 1.6);
         const chained = this.hurtTarget(next, chainDamage, 'shock');
         if (!this.presentation?.confirmedShockChain({
@@ -969,7 +998,7 @@ export class Game {
     const point = this.damagePoint;
     if (impact) { point.copy(impact); point.y += .2; }
     else if (enemy === this.testDummy) enemy.mesh.localToWorld(point.copy(this.dummyVisual.damageAnchor));
-    else point.copy(enemy.mesh.position).setY(enemy.heavy ? 5.1 : 2.75);
+    else point.copy(enemy.mesh.position).add(new THREE.Vector3(0,enemy.heavy ? 5.1 : 2.75,0));
     this.camera.updateMatrixWorld();
     const projected = point.project(this.camera);
     if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1) return;
@@ -984,10 +1013,49 @@ export class Game {
   }
 
   private displaceEnemy(enemy: Enemy, dx: number, dz: number): void {
-    if (!this.enemies.includes(enemy)) return;
+    if (!this.enemies.includes(enemy)||this.gravityCombat.owns(enemy.id)) return;
     const p = enemy.mesh.position, x = p.x + dx, z = p.z + dz;
     if (isWalkable(x, z, enemy.heavy ? 1.4 : 0.6, this.world.colliders)
       && getZone(x, z).id === getZone(enemy.home.x, enemy.home.z).id) p.set(x, p.y, z);
+  }
+
+  private createGravityCombat():GravityCombat{
+    return new GravityCombat({
+      // Bosses are conservatively immune; player, parked mech, dummy and props are never candidates.
+      targets:()=>this.enemies.filter(e=>!e.boss&&e.health>0).map(e=>this.gravityTarget(e)),
+      move:(target,desired)=>{
+        const enemy=this.enemies.find(e=>e.id===target.id);if(!enemy)return target.position;
+        const zone=getZone(enemy.home.x,enemy.home.z).bounds;
+        const goal={...desired,x:THREE.MathUtils.clamp(desired.x,zone.minX+target.radius,zone.maxX-target.radius),z:THREE.MathUtils.clamp(desired.z,zone.minZ+target.radius,zone.maxZ-target.radius)};
+        const actual=sweepEffectBody(target.position,goal,target,this.world.effectColliders);
+        enemy.mesh.position.set(actual.x,actual.y-target.halfHeight,actual.z);enemy.mesh.updateWorldMatrix(true,true);
+        this.enemyFallSpeed.delete(enemy.id);return actual;
+      },
+      visible:(center,target)=>effectLineClear(center,target.position,this.world.effectColliders),
+      clearCenter:(center,radius)=>effectBodyClear(center,{radius,halfHeight:radius},this.world.effectColliders),
+      clearSourcePath:(start,end,radius)=>effectBodyPathClear(start,end,{radius,halfHeight:radius},this.world.effectColliders),
+      capturePosition:(desired,target,well)=>gravityCapturePose(desired,target,well,this.world.effectColliders),
+      damage:(id,amount)=>{
+        const enemy=this.enemies.find(e=>e.id===id&&!e.boss&&e.health>0);if(!enemy)return;
+        const modifiers=getStatusModifiers(enemy.statuses,this.time);
+        const result=this.hurtTarget(enemy,shieldAdjustedDamage(enemy.shield,amount*modifiers.incomingDamage,modifiers.shieldDamage),'gravity',false,'status');
+        this.showEnemyDamage(enemy,result.healthDamage+result.shieldDamage,false,'gravity',undefined,'status');
+      },
+    });
+  }
+
+  private gravityTarget(enemy:Enemy):GravityTarget{
+    const halfHeight=enemy.heavy?2.35:1.3;
+    return{id:enemy.id,position:{x:enemy.mesh.position.x,y:enemy.mesh.position.y+halfHeight,z:enemy.mesh.position.z},radius:enemy.heavy?1.4:.6,halfHeight,alive:enemy.health>0};
+  }
+
+  /** Continue ordinary falling after walking off a raised landing. Fields own release until first support. */
+  private settleEnemy(enemy:Enemy,dt:number):void{
+    if(this.gravityCombat.owns(enemy.id)||enemy.mesh.position.y<=.0001){this.enemyFallSpeed.delete(enemy.id);return;}
+    const body=this.gravityTarget(enemy),speed=Math.min(12,(this.enemyFallSpeed.get(enemy.id)??0)+14*dt);
+    const actual=sweepEffectBody(body.position,{...body.position,y:body.position.y-speed*dt},body,this.world.effectColliders);
+    enemy.mesh.position.set(actual.x,actual.y-body.halfHeight,actual.z);enemy.mesh.updateWorldMatrix(true,true);
+    this.enemyFallSpeed.set(enemy.id,Math.abs(actual.y-body.position.y)<.00001?0:speed);
   }
 
   private spawnWave(): void {
@@ -1219,23 +1287,27 @@ export class Game {
       if (!this.enemies.includes(enemy)) continue;
       const p = enemy.mesh.position;
       const modifiers = getStatusModifiers(enemy.statuses, this.time);
-      const origin = p.clone().setY(enemy.heavy ? 3.1 : 1.7);
+      const owned=this.gravityCombat.owns(enemy.id);
+      const origin = p.clone().add(new THREE.Vector3(0,enemy.heavy ? 3.1 : 1.7,0));
       const visible = this.clearLine(origin, this.camera.position);
       const decision = updateEnemyBrain(enemy.brain, { dt: this.trainingTargets || modifiers.frozen ? 0 : dt,
         position: p, player: this.camera.position, hasLineOfSight: visible, moveSpeedScale: modifiers.moveSpeed });
       if (!this.trainingTargets && !modifiers.frozen) {
-        const next = navigateEnemy(p, decision.destination, Math.hypot(decision.move.x, decision.move.z), dt,
-          enemy.heavy ? 1.4 : 0.6, this.world.colliders, getZone(enemy.home.x, enemy.home.z).bounds, enemy.navigation);
-        p.x = next.x; p.z = next.z;
-        if (modifiers.pull && enemy.gravityPoint) {
-          const delta = enemy.gravityPoint.clone().sub(p); delta.y = 0;
-          if (delta.length() > 0.3) { delta.setLength(Math.min(delta.length(), 3 * dt)); this.displaceEnemy(enemy, delta.x, delta.z); }
-        } else enemy.gravityPoint = null;
+        if(!owned){
+          const colliders=p.y>.001?navigationAtHeight(this.world.traversalColliders,p.y,(enemy.heavy?2.35:1.3)*2):this.world.colliders;
+          const next = navigateEnemy(p, decision.destination, Math.hypot(decision.move.x, decision.move.z), dt,
+            enemy.heavy ? 1.4 : 0.6, colliders, getZone(enemy.home.x, enemy.home.z).bounds, enemy.navigation);
+          p.x = next.x; p.z = next.z;
+          if (modifiers.pull && enemy.gravityPoint) {
+            const delta = enemy.gravityPoint.clone().sub(p); delta.y = 0;
+            if (delta.length() > 0.3) { delta.setLength(Math.min(delta.length(), 3 * dt)); this.displaceEnemy(enemy, delta.x, delta.z); }
+          } else enemy.gravityPoint = null;
+        }
         const attack = decision.attack;
         if (attack && visible) {
           if (attack.kind !== 'melee') this.presentation?.enemyAttack(enemy.mesh, enemy.heavy ? 'mech' : 'pilot');
           if (attack.kind === 'melee') {
-            if (Math.hypot(p.x - this.camera.position.x, p.z - this.camera.position.z) <= attack.range
+            if (origin.distanceTo(this.camera.position) <= attack.range
               && Math.hypot(attack.target.x - this.camera.position.x, attack.target.z - this.camera.position.z) < 3) this.hurtPlayer(attack.damage);
           } else {
             for (let shot = 0; shot < attack.shots; shot++) {
@@ -1250,10 +1322,11 @@ export class Game {
         }
       }
       if (this.isRespawning) return;
+      this.settleEnemy(enemy,dt);
       enemy.mesh.rotation.y = decision.facing;
       enemy.bars.group.quaternion.copy(this.camera.quaternion).premultiply(enemy.mesh.quaternion.clone().invert());
       enemy.visual.update(this.trainingTargets || modifiers.frozen ? 0 : dt, this.time,
-        { ...decision.presentation, moving: decision.presentation.moving && !this.trainingTargets && !modifiers.frozen,
+        { ...decision.presentation, moving: decision.presentation.moving && !owned && !this.trainingTargets && !modifiers.frozen,
           shieldFraction: enemy.maxShield > 0 ? enemy.shield / enemy.maxShield : 0 });
       if (enemy.lastPhase !== enemy.brain.phase) {
         enemy.lastPhase = enemy.brain.phase;
@@ -1327,13 +1400,13 @@ export class Game {
     const target: Mode = enemy.heavy || this.progression.kills % 2 === 0 ? 'mech' : 'pilot';
     this.addDrop(rollItem(target, Math.min(100, this.progression.wave), this.combatRandom), at);
     if (irradiated) {
-      const center = at.clone().setY(enemy.heavy ? 2.6 : 1.5);
+      const center = at.clone().add(new THREE.Vector3(0,enemy.heavy ? 2.6 : 1.5,0));
       const presented = this.presentation?.handlesPulse('radiation') ?? false;
       if (!presented) this.burst(center, Number.parseInt(elementColors.radiation.slice(1), 16), 14);
       const recipients: ConfirmedElementPulse['recipients'][number][] = [];
       for (const other of this.combatTargets) {
         if (other.mesh.position.distanceTo(at) > 5) continue;
-        const point = other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5);
+        const point = other.mesh.position.clone().add(new THREE.Vector3(0,other.heavy ? 2.6 : 1.5,0));
         if (!this.clearLine(center, point)) continue;
         const pulse = this.hurtTarget(other, enemy.maxHealth * 0.18, other === this.testDummy ? 'radiation' : undefined, false, 'status');
         this.showEnemyDamage(other, pulse.healthDamage + pulse.shieldDamage, false, 'radiation');
@@ -1388,7 +1461,7 @@ export class Game {
       this.body.heat = Math.max(0, this.body.heat - 40);
       let hits = 0;
       for (const enemy of this.combatTargets) {
-        if (enemy.mesh.position.distanceTo(this.camera.position) < 14 && this.clearLine(this.camera.position, enemy.mesh.position.clone().setY(enemy.heavy ? 2.6 : 1.5))) {
+        if (enemy.mesh.position.distanceTo(this.camera.position) < 14 && this.clearLine(this.camera.position, enemy.mesh.position.clone().add(new THREE.Vector3(0,enemy.heavy ? 2.6 : 1.5,0)))) {
           const movable = this.enemies.find(candidate => candidate === enemy);
           if (movable) staggerEnemy(movable.brain, true);
           const hit = this.hurtTarget(enemy, this.stats.damage * 1.6, undefined, false, 'ability');
@@ -1686,7 +1759,7 @@ export class Game {
     const forward = this.camera.getWorldDirection(new THREE.Vector3());
     let target: CombatTarget | undefined, best = Math.cos(10 * Math.PI / 180);
     for (const enemy of this.combatTargets) {
-      const point = enemy === this.testDummy ? enemy.mesh.localToWorld(this.dummyVisual.aimPoint.clone()) : enemy.mesh.position.clone().setY(enemy.heavy ? 2.6 : 1.3);
+      const point = enemy === this.testDummy ? enemy.mesh.localToWorld(this.dummyVisual.aimPoint.clone()) : enemy.mesh.position.clone().add(new THREE.Vector3(0,enemy.heavy ? 2.6 : 1.3,0));
       const towards = point.clone().sub(this.camera.position);
       if (towards.length() > 80) continue;
       const score = forward.dot(towards.normalize());
@@ -1834,6 +1907,8 @@ export class Game {
     this.finishMeasurement('aborted');
     if (this.encounter.snapshot.phase !== 'complete') this.encounter.reset();
     this.ballistics.clear();
+    this.gravityCombat.reset();this.enemyFallSpeed.clear();
+    this.presentation?.gravity(this.gravityCombat.snapshot(),[]);
     for (const enemy of this.enemies) {
       enemy.bars.dispose();
       for (const effect of enemy.statusEffects.values()) effect.dispose();
@@ -1950,11 +2025,18 @@ export class Game {
     const statusTarget = this.screen === 'none' && !this.isRespawning ? this.targetedEnemy() : undefined;
     this.ui.setTestDummy(statusTarget === this.testDummy ? this.dummyMeter.snapshot(this.time) : null);
     const statusModifiers = statusTarget ? getStatusModifiers(statusTarget.statuses, this.time) : null;
-    this.ui.setTargetStatuses(statusTarget ? activeStatusElements(statusTarget.statuses, this.time).map(element => ({
+    const targetStatuses:Parameters<GameUI['setTargetStatuses']>[0]=statusTarget ? activeStatusElements(statusTarget.statuses, this.time).map(element => ({
       element, dps: getStatusDps(element, statusTarget.statuses[element]!.power) * statusModifiers!.incomingDamage
         * (statusTarget.shield > 0 ? statusModifiers!.shieldDamage : 1),
       remaining: Math.max(0, statusTarget.statuses[element]!.expiresAt - this.time),
-    })) : []);
+    })) : [];
+    const field=statusTarget?this.gravityCombat.status(statusTarget.id):undefined;
+    if(field){
+      const legacy=targetStatuses.findIndex(status=>status.element==='gravity');if(legacy>=0)targetStatuses.splice(legacy,1);
+      targetStatuses.push({element:'gravity',label:'Gravity crush',dps:field.dps*statusModifiers!.incomingDamage
+        *(statusTarget!.shield>0?statusModifiers!.shieldDamage:1),remaining:field.remaining});
+    }
+    this.ui.setTargetStatuses(targetStatuses);
     if (this.screen === 'vending') this.updateVending();
   }
 

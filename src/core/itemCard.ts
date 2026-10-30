@@ -2,6 +2,8 @@ import type { Item, Stats } from './index';
 import { elementColors, elementLabels, getWeaponSpec, getWeaponElements, getHitStatusChance, getHitStatusPower, getDamagePacketCount, getClusterBombletFuseRange, type ElementType, type WeaponSpec } from './arsenal';
 import { ELEMENT_STATUS, elementEffectDescriptions, getStatusDps, getStatusDuration } from './statusEffects';
 import { DEFAULT_WEAPON_BALANCE, effectiveProjectileDamage, hasSecondaryElementCost, type WeaponBalanceRules } from './weaponBalance';
+import {GRAVITY_COMBAT_POLICY} from './effects/gravity/combat';
+import {GRAVITY_PROTOTYPE} from './effects/gravity/profile';
 
 export interface CardDelta {
   /** Selected value minus equipped value, in the metric's displayed units. */
@@ -46,6 +48,8 @@ export interface CardStatus {
   dpsLabel: 'DMG/s';
   effect: string;
   description: string;
+  /** Delivery-aware presentation only; this row describes a source, not a per-hit status proc. */
+  gravityWell?:{deployment:number;secondaryPower:number};
 }
 
 export interface WeaponCardModel {
@@ -129,7 +133,19 @@ function weaponNumbers(item: Item, spec: WeaponSpec, rules: WeaponBalanceRules) 
   return { damage, projectiles, splitCount, packetCount, rate, magazine, reload, damagePerTrigger, burst, sustained, spread: spec.spread * 180 / Math.PI };
 }
 
-function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): CardStatus {
+function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus, source:WeaponSpec=spec): CardStatus {
+  if(spec.element==='gravity'&&source.blastRadius>0&&GRAVITY_COMBAT_POLICY.deliveries.some(delivery=>delivery===source.projectile)){
+    const secondaryPower=source.element==='gravity'?1:GRAVITY_COMBAT_POLICY.secondaryPower;
+    const duration=GRAVITY_PROTOTYPE.duration,deployment=GRAVITY_PROTOTYPE.deploymentDuration;
+    const weighting=secondaryPower===1?'Full crush power.':`Secondary Gravity uses ${number(secondaryPower*100)}% crush power with the same reach and control.`;
+    return{element:'gravity',label:elementLabels.gravity,color:elementColors.gravity,
+      chancePercent:100,chanceDisplay:'Every detonation',chanceDelta:null,
+      duration,durationDisplay:`${number(duration)} s active`,dps:null,dpsDisplay:'',dpsDelta:null,dpsLabel:'DMG/s',
+      gravityWell:{deployment,secondaryPower},
+      effect:`Pull · lift · hold · ${number(deployment,2)} s deploy${secondaryPower===1?'':` · ${number(secondaryPower*100)}% crush`}`,
+      description:`Each Gravity blast detonation creates a well when its placement is clear, independent of status-proc chance. Deploys over ${number(deployment,2)} s, then stays active for ${number(duration)} s. Pulls eligible enemies from all directions, lifts and holds them; they remain hittable by other guns. Recurring crush every ${number(GRAVITY_PROTOTYPE.tickInterval)} s varies with shot energy and distance exposure; it is not a flat weapon DPS value. ${weighting} Bosses, players, friendlies and the fixed dummy are excluded from capture/crush; direct and blast damage are retained. One source per projectile detonation, not per trigger; at most ${GRAVITY_PROTOTYPE.maxFields} active wells.`,
+    };
+  }
   const info = ELEMENT_STATUS[spec.element];
   const power = getHitStatusPower(damage, spec);
   const applied = getStatusDuration(spec.element) > 0 && power > 0;
@@ -153,7 +169,7 @@ function statusCard(spec: WeaponSpec, damage: number, equipped?: CardStatus): Ca
   return {
     element: spec.element, label: elementLabels[spec.element], color: elementColors[spec.element],
     chancePercent, chanceDisplay: `${number(chancePercent)}%`,
-    chanceDelta: spec.element === 'kinetic' ? null : delta(chancePercent, equipped?.chancePercent, false, '%', 1),
+    chanceDelta: spec.element === 'kinetic'||equipped?.gravityWell ? null : delta(chancePercent, equipped?.chancePercent, false, '%', 1),
     duration, durationDisplay: seconds,
     dps, dpsDisplay: dps === null ? '' : withUnit(number(dps, 2), '/s'),
     dpsDelta: dps === null ? null : delta(dps, equipped ? equipped.dps ?? 0 : undefined, false, '/s', 2),
@@ -232,11 +248,11 @@ export function buildItemCard(item: Item, equipped?: Item, rules: WeaponBalanceR
         : `Damage per trigger × magazine ÷ (magazine ÷ fire rate + reload). Excludes heat, misses, critical hits, shields, splash, chains and status damage.${splitNotice}${costNotice}`),
   };
   const previousSpec = baseline ? getWeaponSpec(baseline) : undefined;
-  const previousStatuses = previousSpec && previous ? getWeaponElements(previousSpec).map(element => statusCard({ ...previousSpec, element }, previous.damage)) : [];
+  const previousStatuses = previousSpec && previous ? getWeaponElements(previousSpec).map(element => statusCard({ ...previousSpec, element }, previous.damage,undefined,previousSpec)) : [];
   const statuses = getWeaponElements(spec).map((element, index) => statusCard({ ...spec, element }, values.damage,
     previousStatuses.find(status => status.element === element) ?? (index === 0 ? previousStatuses[0]
-      : previousSpec ? statusCard({ ...previousSpec, element: 'kinetic' }, 0) : undefined)));
-  if (values.packetCount > 1) for (const status of statuses) status.description += mirv
+      : previousSpec ? statusCard({ ...previousSpec, element: 'kinetic' }, 0) : undefined),spec));
+  if (values.packetCount > 1) for (const status of statuses) if(!status.gravityWell)status.description += mirv
     ? ` Each successful explosion proc uses the carrier's status strength, with blast falloff preserved. The per-explosion chance is shared across the parent burst and ${values.splitCount} bomblets; all ${values.packetCount} explosions reaching one target retain the saved carrier chance of at least one proc, independently per element.`
     : " Each successful child proc uses the carrier's status strength, with splash falloff preserved. The per-child chance shares the saved carrier chance; all children connecting in one impact stage retain that chance of at least one proc.";
   if (costNotice) for (const status of statuses) status.description += costNotice;
