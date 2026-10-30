@@ -63,6 +63,10 @@ Qualifying deliveries skip the old Gravity status/planar proc, preserving siblin
 
 Bosses, player/friendlies, the fixed test dummy and props are excluded from field capture/crush. Qualifying ordnance still deals its ordinary direct/blast damage to damageable targets; removing the old zero-DPS Gravity control status does not remove direct damage or dummy-meter damage. Ordinary eligible enemies retain their AI attacks while the field owns movement. Normal unshielded crush reactions do not restart ranged windup; existing critical/shield-break interruption rules remain.
 
+## Spike presentation coverage
+
+The user's actual Ironvale Gravity Spike Rifle now uses the approved dark core and soft inward vapor for its projectile, short wake, contact and lingering control cue in normal Enhanced gameplay. This is a **visual-only** extension: preserve spike flight/collision/damage and the existing 35% / 3 s control proc; do not spawn full wells. Other deliveries keep their prior art. See [spike coverage and verification](gravity-spikes.md). The production module selects replacement by weapon specification, retaining existing mixed-element routing, sound, equipment and muzzles.
+
 ## Module and integration boundaries
 
 - Gameplay location: `src/core/effects/gravity/`. `GravityCombat` composes the existing `GravityFields` and `GravityActivation`; `capture.ts` resolves surface-aware capture goals. Use plain data, injected collision/damage ports and the Game simulation clock. Keep source/target/event identities stable and tuning centralized.

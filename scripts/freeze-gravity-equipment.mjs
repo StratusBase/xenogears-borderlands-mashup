@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..'),dir=path.resolve(root,process.argv.includes('--dir')?process.argv[process.argv.indexOf('--dir')+1]:'artifacts/gravity-equipment'),source=path.join(dir,'source');
 if(!dir.startsWith(path.join(root,'artifacts')+path.sep))throw new Error('Review archive must be under artifacts/');
 fs.mkdirSync(source,{recursive:true});
-for(const name of ['src','public','tests','scripts','package.json','package-lock.json','tsconfig.json','index.html','gravity-equipment.html','vite.gravity-equipment.config.ts','gravity-timing.html','vite.gravity-timing.config.ts','vite.gravity-integration.config.ts','vite.gravity-production-field.config.ts','tsconfig.tools.json'])if(fs.existsSync(path.join(root,name)))fs.cpSync(path.join(root,name),path.join(source,name),{recursive:true});
+for(const name of ['src','public','tests','scripts','package.json','package-lock.json','tsconfig.json','index.html','gravity-equipment.html','vite.gravity-equipment.config.ts','gravity-timing.html','vite.gravity-timing.config.ts','vite.gravity-integration.config.ts','vite.gravity-production-field.config.ts','tsconfig.tools.json','vite.gravity-spikes.config.ts'])if(fs.existsSync(path.join(root,name)))fs.cpSync(path.join(root,name),path.join(source,name),{recursive:true});
 if(!fs.existsSync(path.join(source,'node_modules')))fs.symlinkSync(path.join(root,'node_modules'),path.join(source,'node_modules'),'dir');
 function files(folder){return fs.readdirSync(folder,{withFileTypes:true}).flatMap(e=>e.name==='node_modules'?[]:e.isDirectory()?files(path.join(folder,e.name)):[path.join(folder,e.name)]);}
 const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');

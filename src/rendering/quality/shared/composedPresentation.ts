@@ -31,13 +31,14 @@ export interface ElementResponse {
  readonly diagnostics?:Record<string,unknown>;
 }
 export type ElementFlightHook='decorateProjectile'|'trail'|'beam';
+export type ElementFlightReplacement=boolean|((spec:WeaponSpec)=>boolean);
 export interface ElementModule {
  create(context:{scene:THREE.Scene;camera:THREE.Camera;audio:ElementalAudio}):ElementResponse;
  recipe?:typeof elementalAudioRecipe;
  /** Additive is the compatibility default. Replacements own their visual and impact audio once. */
- replaceImpact?:boolean;
+ replaceImpact?:boolean|((spec:Readonly<WeaponSpec>)=>boolean);
  /** Boolean retains full replacement semantics; a map replaces only selected flight hooks. */
- replaceFlight?:boolean|Partial<Record<ElementFlightHook,boolean>>;
+ replaceFlight?:boolean|Partial<Record<ElementFlightHook,ElementFlightReplacement>>;
  replaceEquipment?:boolean;
  /** Optional resource-independent flight hooks remain valid for already-fired shots after world presentation is disposed. */
  flight?:Pick<ElementResponse,'decorateProjectile'|'updateProjectile'|'trail'|'beam'>;
@@ -45,8 +46,9 @@ export interface ElementModule {
 /** One coordinator and lifecycle for additive modules and approved complete replacements. */
 export class ComposedElementalPresentation extends ElementalPresentation {
  readonly responses=new Map<ElementType,ElementResponse>();
+ private ownsImpact(element:ElementType,spec:Readonly<WeaponSpec>){const rule=this.modules[element]?.replaceImpact;return typeof rule==='function'?rule(spec):!!rule;}
  private flightFor(element:ElementType){return this.responses.get(element)??this.modules[element]?.flight;}
- private ownsFlight(element:ElementType,hook:ElementFlightHook){const policy=this.modules[element]?.replaceFlight,replace=typeof policy==='boolean'?policy:policy?.[hook]??false;return replace&&(this.responses.has(element)||!!this.modules[element]?.flight?.[hook]);}
+ private ownsFlight(element:ElementType,hook:ElementFlightHook,spec:WeaponSpec){const policy=this.modules[element]?.replaceFlight,rule=typeof policy==='boolean'?policy:policy?.[hook]??false,replace=typeof rule==='function'?rule(spec):rule;return replace&&(this.responses.has(element)||!!this.modules[element]?.flight?.[hook]);}
  constructor(scene:THREE.Scene,private view:THREE.Camera,private modules:Readonly<Partial<Record<ElementType,ElementModule>>>){
   super(scene,view,{corrosiveAB:true});
   const recipes:Partial<Record<ElementType,typeof elementalAudioRecipe>>={};
@@ -56,28 +58,28 @@ export class ComposedElementalPresentation extends ElementalPresentation {
  override impact(event:BallisticPresentationImpact):void{
   this.impacts.delivery(event);
   const elements=getWeaponElements(event.spec);
-  this.impactChannels(event,elements.filter(e=>!this.modules[e]?.replaceImpact));
+  this.impactChannels(event,elements.filter(e=>!this.ownsImpact(e,event.spec)));
   for(const element of elements)this.responses.get(element)?.impact(event);
  }
  protected override splashImpact(event:BallisticPresentationSplash):void{
   for(const element of getWeaponElements(event.spec))this.responses.get(element)?.splash?.(event);
-  if(!this.modules.corrosive?.replaceImpact)super.splashImpact(event);
+  if(!this.ownsImpact('corrosive',event.spec))super.splashImpact(event);
  }
  protected override createStatus(root:THREE.Group,element:ElementType):ReturnType<ElementalPresentation['status']>{return this.responses.get(element)?.status?.(root)??super.createStatus(root,element);}
  override projectile(spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
-  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'decorateProjectile')));
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'decorateProjectile',spec)));
   const root=omitPayloads.size?createElementalProjectile(spec,brand,{omitPayloads,role}):super.projectile(spec,brand,role);
   for(const element of elements)this.flightFor(element)?.decorateProjectile?.(root,spec,brand);return root;
  }
  override updateProjectile(root:THREE.Group,dt:number,age:number):void{let handled=false;const flight=this.responses.size?this.responses.values():Object.values(this.modules).flatMap(m=>m?.flight?[m.flight]:[]);for(const r of flight)if(r.updateProjectile?.(root,dt,age))handled=true;if(!handled)super.updateProjectile(root,dt,age);}
  override trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
   if(spec.projectile==='cluster'&&role==='bomblet')return super.trail(start,end,spec,brand,role);
-  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'trail')));if(!omitPayloads.size)return super.trail(start,end,spec,brand,role);
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'trail',spec)));if(!omitPayloads.size)return super.trail(start,end,spec,brand,role);
   const root=createElementalTrail(start,end,spec,brand,{omitPayloads,role});
   for(const element of elements){const response=this.flightFor(element),own=response?.trail;if(own)root.add(own.call(response,start,end,spec,brand));}return root;
  }
  override beam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group{
-  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'beam')));if(!omitPayloads.size)return super.beam(start,end,spec,jagged,brand);
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e,'beam',spec)));if(!omitPayloads.size)return super.beam(start,end,spec,jagged,brand);
   const root=createElementalBeam(start,end,spec,jagged,brand,{omitPayloads});
   for(const element of elements){const response=this.flightFor(element),own=response?.beam;if(own)root.add(own.call(response,start,end,spec,jagged,brand));}return root;
  }

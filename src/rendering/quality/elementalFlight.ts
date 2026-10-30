@@ -29,6 +29,7 @@ function variantOf(spec: WeaponSpec): number { return Number.isFinite(spec.visua
 function familyScale(spec: WeaponSpec): number {
   return ({ pistol: .84, smg: .76, rifle: 1, shotgun: .86, sniper: 1.17, launcher: 1.30 } as const)[spec.weaponType ?? 'rifle'];
 }
+export {familyScale as elementalFlightFamilyScale};
 function rootGroup(name: string, spec: WeaponSpec, brand: BrandId): THREE.Group {
   const group = new THREE.Group(); group.name = name; group.userData.comicOverlay = true;
   group.userData.presentationOnly = true; group.userData.qualityElementalFlight = true;
@@ -95,9 +96,11 @@ function moving(root: THREE.Group, object: THREE.Object3D, rate: readonly [numbe
   const parts = motions.get(root) ?? []; parts.push({object,home:object.rotation.clone(),rate,pulse}); motions.set(root,parts);
 }
 
+function payloadPosition(radius:number,z:number,secondary:boolean):[number,number,number]{return[secondary?-radius*.8:0,secondary?radius*.3:0,z];}
+export interface ElementalPayloadAnchor {radius:number;position:[number,number,number];carrier:boolean;secondary:boolean;omitted:boolean}
 function payload(parent: THREE.Group, element: ElementType, brand: BrandId, radius: number, z: number, variant: number, root: THREE.Group, secondary: boolean): void {
   const group = new THREE.Group(); group.name = `quality-${secondary ? 'secondary' : 'primary'}-${element}-payload`;
-  group.userData.comicOverlay = true; group.userData.element = element; group.position.set(secondary ? -radius * .8 : 0, secondary ? radius * .3 : 0, z); parent.add(group);
+  group.userData.comicOverlay = true; group.userData.element = element; group.position.set(...payloadPosition(radius,z,secondary)); parent.add(group);
   const p = new Parts(element, brand, secondary ? .76 : 1), r = radius;
   if (element === 'fire') {
     p.sphere('dark', 'heat-shielded-root', r * .91, [0,0,-r*.18], [1,1,1.25],0);
@@ -213,8 +216,9 @@ export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ir
   p.finish(carrier,'quality-carrier');
   const elements=getWeaponElements(spec);
   const payloadRoot=type==='cluster'&&role==='bomblet'?carrier:root;
-  if(!options.omitPayloads?.has(elements[0]))payload(payloadRoot,elements[0],brand,radius,z,variant,root,false);
-  if(elements[1]&&!options.omitPayloads?.has(elements[1]))payload(payloadRoot,elements[1],brand,radius*.60,z-radius*.30,variant,root,true);
+  const anchors:Partial<Record<ElementType,ElementalPayloadAnchor>>={};
+  for(const[channel,element]of elements.entries()){const secondary=channel>0,r=radius*(secondary?.60:1),at=secondary?z-radius*.30:z,omitted=!!options.omitPayloads?.has(element);anchors[element]={radius:r,position:payloadPosition(r,at,secondary),carrier:payloadRoot===carrier,secondary,omitted};if(!omitted)payload(payloadRoot,element,brand,r,at,variant,root,secondary);}
+  root.userData.elementalPayloadAnchors=anchors;
   root.userData.flightRadius=radius;root.userData.maxVisualParts=16;
   return root;
 }

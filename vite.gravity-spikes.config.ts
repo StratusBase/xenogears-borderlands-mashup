@@ -1,0 +1,6 @@
+import {defineConfig} from 'vite';
+import {createHash} from 'node:crypto';
+import {readFileSync,readdirSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+const files=['src/main.ts','src/game.ts','src/world.ts','src/ui.ts','src/rendering/PlayerBallistics.ts','src/rendering/quality/gameElements.ts','src/rendering/quality/shared/composedPresentation.ts','src/dev/effects/gravity/integrationVerification.ts',...readdirSync('src/rendering/quality/gravity').filter(f=>f.endsWith('.ts')).map(f=>'src/rendering/quality/gravity/'+f)];
+export default defineConfig({plugins:[{name:'gravity-spike-receipt',generateBundle(){this.emitFile({type:'asset',fileName:'provenance.json',source:JSON.stringify({checkpoint:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),sources:Object.fromEntries(files.map(f=>[f,createHash('sha256').update(readFileSync(f)).digest('hex')])),protocol:'Normal index.html?verifyGravity&gravitySpikes. One compiled build, six targets, fixed inputs/seed, native sound on, recording off. Before/current/before-repeat changes only Gravity spike presentation; equipment, ballistics, control procs and field policy stay identical.'},null,2)});}}],build:{outDir:'artifacts/gravity-spikes/build',rollupOptions:{input:['index.html']}},preview:{host:'127.0.0.1'}});

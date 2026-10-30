@@ -17,7 +17,7 @@ const keys=(map:Map<unknown,unknown>)=>[...map.keys()].sort();
 
 test('normal production registers full Gravity; its equipment baseline retains authoritative field presentation',()=>{
  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),current=registry.createGameElements(scene,camera),baseline=registry.createGameElementsBeforeGravityEquipment(scene,camera);
- try{assert.deepEqual(keys(baseline.responses),keys(current.responses));const gravity=current.responses.get('gravity')!;assert.equal(typeof gravity.equipment,'function');assert.equal(typeof Reflect.get(gravity,'sync'),'function');assert.equal(typeof Reflect.get(gravity,'event'),'function');assert.equal(baseline.responses.get('gravity')!.equipment,undefined);assert.equal(gravity.status,undefined);assert.equal(gravity.decorateProjectile,undefined);assert.equal(gravity.confirmedPulse,undefined);assert.ok(scene.getObjectByName('gravity-well-presentation'));}finally{current.dispose();baseline.dispose();}
+ try{assert.deepEqual(keys(baseline.responses),keys(current.responses));const gravity=current.responses.get('gravity')!;assert.equal(typeof gravity.equipment,'function');assert.equal(typeof Reflect.get(gravity,'sync'),'function');assert.equal(typeof Reflect.get(gravity,'event'),'function');assert.equal(baseline.responses.get('gravity')!.equipment,undefined);assert.equal(typeof gravity.status,'function');assert.equal(typeof gravity.decorateProjectile,'function');assert.equal(gravity.beam,undefined);assert.equal(gravity.confirmedPulse,undefined);assert.ok(scene.getObjectByName('gravity-well-presentation'));}finally{current.dispose();baseline.dispose();}
 });
 
 test('all production baselines retain Gravity defaults and explicit sibling options',()=>{

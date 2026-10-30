@@ -41,3 +41,6 @@ export function createGameElementsBeforeGravityEquipment(scene:THREE.Scene,camer
 
 /** Same authoritative fields, equipment and sound, with world Gravity art omitted for matched rendering cost. */
 export function createGameElementsBeforeGravityField(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,gravity:{...options.gravity,field:'audio-only'}});}
+
+/** Matched comparison: only spike payload/wake/contact art changes. Combat, equipment, fields and sound stay active. */
+export function createGameElementsBeforeGravitySpikes(scene:THREE.Scene,camera:THREE.Camera,options:GameElementOptions={}){return createGameElements(scene,camera,{...options,gravity:{...options.gravity,spikes:'legacy'}});}
