@@ -6,6 +6,10 @@ Approved-direction checkpoint: `944c664`, created before implementation. The pla
 
 Required invariants: unchanged damage, status/proc clocks, chain recipient and damage, projectile trajectories/fuse, cover, muzzle transforms, equipment-slot ownership and secondary falloff. One read-only confirmed-chain callback will be provided for integration; the prototype may observe the existing confirmed chain through its review instrumentation. No presentation callback applies damage or selects another target.
 
+## Visual review follow-up
+
+The first moving A+B result was rejected as too primitive compared with the boards. It remains a frozen baseline. The [lightning revision](shock-lightning-revision.md) replaces rods/ribbons with branching luminous filaments and larger primary material coverage; secondary sizing and combat remain unchanged. It is a new review candidate, not an assertion of visual acceptance.
+
 ## Review
 
 - [Gameplay with live sound, before/current stills and full measurements](http://127.0.0.1:5218/review/).

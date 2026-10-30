@@ -117,3 +117,31 @@ test('only confirmed heavy impact receives the capacitor bass; secondary/lingeri
  const small=shockABAudioRecipe('shock','impact',{delivery:'sticky',strength:.72}),heavy=shockABAudioRecipe('shock','impact',{delivery:'sticky',strength:1.05}),secondary=shockABAudioRecipe('shock','impact',{delivery:'sticky',splash:true}),status=shockABAudioRecipe('shock','status');
  assert.ok(heavy.some(v=>v.frequency<200));assert.ok(small.every(v=>v.frequency>200));assert.ok(secondary.length<small.length&&secondary.every(v=>v.gain<.06&&v.duration<=.06));assert.ok(status.every(v=>v.gain<.025&&v.duration<.04));
 });
+
+test('first A+B remains selectable, and the lightning revision keeps secondary size records exact',()=>{
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),spec=createWeaponSpec('sticky','shock'),{root}=target(scene);
+ const a=new ShockResponse(scene,camera,'prototype'),b=new ShockResponse(scene,camera,'lightning');
+ const event={target:root,point:new THREE.Vector3(0,1.5,-2.8),normal:new THREE.Vector3(0,0,1),spec,radius:2.5,phase:'detonate' as const,energy:70};
+ a.impact(event);b.impact(event);assert.ok(b.events[0].size.reach>a.events[0].size.reach);assert.equal(b.events[0].size.heavy,true);
+ for(const exposure of [.01,.10,.35,.75,1]){const splash={...event,phase:'contact' as const,origin:event.point,primary:false,energy:70*exposure,exposure};a.splash(splash);b.splash(splash);assert.deepEqual(a.events.at(-1)?.size,b.events.at(-1)?.size);}
+ assert.equal(a.segments.meshes.length,3);assert.equal(b.segments.meshes.length,1);a.dispose();b.dispose();
+});
+test('revised camera-facing filaments stay outside five support planes and keep finite matrices',()=>{
+ for(const normal of [new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,.65,.76).normalize(),new THREE.Vector3(1,0,0)]){
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera();camera.position.set(2,3,4);const layer=new ShockResponse(scene,camera),point=new THREE.Vector3(0,2,0);
+  layer.impact({point,normal,spec:createWeaponSpec('rocket','shock'),phase:'detonate',radius:2.5,energy:70});
+  for(let tick=0;tick<20;tick++){
+   layer.update(1/60);const mesh=layer.segments.meshes[0];
+   for(let i=0;i<mesh.count;i++){const matrix=new THREE.Matrix4();mesh.getMatrixAt(i,matrix);assert.ok(matrix.elements.every(Number.isFinite));for(const y of [-.5,.5]){const endpoint=new THREE.Vector3(0,y,0).applyMatrix4(matrix);assert.ok(endpoint.sub(point).dot(normal)>.01);}}
+  }layer.dispose();
+ }
+});
+test('old and revised profiles yield identical real rifle and heavy projectile outcomes',()=>{
+ for(const delivery of ['bullet','sticky','rocket','beam','scatter','slug','arc'] as const){
+  function run(profile:'prototype'|'lightning'){
+   const scene=new THREE.Scene(),list=[target(scene,'cloth',1),target(scene,'armor',2,1.2)],layer=new ShockPresentation(scene,new THREE.PerspectiveCamera(),profile),hits:unknown[]=[];
+   const engine=new PlayerBallistics(scene,{targets:()=>list,occluders:()=>[],hit:e=>hits.push({id:e.targetId,damage:e.damage,point:e.point.toArray(),spec:e.spec})});engine.setPresentation(layer);const spec=createWeaponSpec(delivery,'shock');spec.spread=0;
+   engine.fire(new THREE.Vector3(0,1.5,2),new THREE.Vector3(0,0,-1),spec,70);for(let i=0;i<240;i++){engine.update(1/120);layer.update(1/120,i/120,false,spec,'pilot');}engine.clear();layer.dispose();return hits;
+  }assert.deepEqual(run('lightning'),run('prototype'),delivery);
+ }
+});

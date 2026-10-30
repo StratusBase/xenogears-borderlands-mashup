@@ -1,42 +1,54 @@
 import * as THREE from 'three';
-import { corrosiveSources, corrosiveSurfaceOf, type CorrosiveStatusVisual } from '../corrosive/surfaces';
+import { bodySurfaceSources, surfaceKindOf, type SurfaceStatusVisual } from '../shared/surfaces';
 
-const vertex=/* glsl */`uniform mat3 worldNormal;varying vec3 vWorld;void main(){vec4 world=modelMatrix*vec4(position,1.);world.xyz+=normalize(worldNormal*normal)*.008;vWorld=world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
+import { prototypeVertex,prototypeFragment } from './prototypeSurface';
+const vertex=prototypeVertex;
 const fragment=/* glsl */`
  uniform vec3 centers[3],uaxes[3],vaxes[3],normals[3];uniform float radii[3],ages[3],seeds[3],presence,kind;
  varying vec3 vWorld;
- float line(vec2 p,vec2 a,vec2 b){vec2 ab=b-a;float t=clamp(dot(p-a,ab)/dot(ab,ab),0.,1.);return length(p-a-ab*t);}
- void main(){float core=0.,blue=0.,knots=0.;
+ float noise(float n){return fract(sin(n*127.1+311.7)*43758.5453);}
+ float stroke(vec2 p,vec2 a,vec2 b){vec2 ab=b-a;float t=clamp(dot(p-a,ab)/max(dot(ab,ab),.00001),0.,1.);return length(p-a-ab*t);}
+ void main(){float core=0.,ion=0.,halo=0.;
   for(int i=0;i<3;i++){
    vec3 delta=vWorld-centers[i];float radius=max(.002,radii[i]);vec2 p=vec2(dot(delta,uaxes[i]),dot(delta,vaxes[i]))/radius;
-   float gate=(1.-smoothstep(.68,1.,length(p)))*(1.-smoothstep(.16,.32,abs(dot(delta,normals[i]))/radius));
-   float age=ages[i],seed=seeds[i],reveal=smoothstep(-.1,.05,age*8.-(p.x*.5+.5));
-   float blink=.18+.82*smoothstep(.10,.70,sin(age*18.+seed*4.));float distance=4.;
-   for(int branch=0;branch<3;branch++){
-    float b=float(branch);vec2 q=branch==0?p:branch==1?vec2(p.y,-p.x)*1.3+vec2(.2,.1):vec2(-p.x,p.y)*1.8+vec2(.6,-.25);
-    vec2 previous=vec2(-.80,.24*sin(seed+b));
-    for(int j=1;j<6;j++){float k=float(j);vec2 next=vec2(-.80+k*.32,.30*sin(k*2.27+seed+b));distance=min(distance,line(q,previous,next));previous=next;}
+   float gate=(1.-smoothstep(.77,1.,length(p)))*(1.-smoothstep(.18,.48,abs(dot(delta,normals[i]))/radius));
+   if(gate<.002)continue;
+   float age=ages[i],seed=seeds[i],epoch=floor(age*7.),pulse=.38+.62*pow(max(0.,sin(age*23.+seed)),2.);
+   float reveal=smoothstep(0.,.09,age-length(p)*.09),dist=3.,runner=0.;
+   for(int branch=0;branch<5;branch++){
+    float b=float(branch),angle=branch==0?.32:branch==1?3.85:branch==2?-1.22:branch==3?1.65:2.48;
+    angle+=(noise(seed+b*9.)-.5)*.45;vec2 direction=vec2(cos(angle),sin(angle)),side=vec2(-direction.y,direction.x);
+    float extent=branch==0?.97:branch==1?.79:branch==2?.88:.62;vec2 previous=vec2(0.);
+    for(int j=1;j<=7;j++){
+     float q=float(j)/7.,jitter=(noise(seed+float(j)*3.77+b*27.+epoch*.73)-.5)*.32*sin(q*3.14159);
+     vec2 next=direction*q*extent+side*jitter;
+     float d=stroke(p,previous,next);dist=min(dist,d);
+     // Fine forks actually join the parent conductor; they are not independent spokes.
+     if(j==3||j==5){vec2 tip=next+side*(j==3?.21:-.26)+direction*.17;dist=min(dist,stroke(p,next,tip));}
+     float hot=exp(-pow((q-fract(age*1.9+seed*.11+b*.17))*9.,2.));runner=max(runner,exp(-d*d*1000.)*hot);
+     previous=next;
+    }
    }
-   float moving=fract(age*1.8+seed*.13),hot=.25+.75*exp(-pow((p.x*.5+.5-moving)*8.,2.));
-   float width=mix(.027,.016,kind);core=max(core,(1.-smoothstep(width*.30,width,distance))*gate*reveal*blink*hot);
-   blue=max(blue,(1.-smoothstep(width,width*2.8,distance))*gate*reveal*(.3+.7*blink));
-   vec2 node=vec2(-.28,.24*sin(2.27+seed));knots=max(knots,(1.-smoothstep(.018,.065,length(p-node)))*gate*blink*reveal);
+   float aa=max(fwidth(dist)*.6,.003),width=mix(.027,.023,kind),flash=exp(-age*22.);
+   float c=1.-smoothstep(width*.28-aa,width*.62+aa,dist),e=exp(-dist*dist/(width*width*2.4)),h=exp(-dist*dist/(width*width*22.));
+   core=max(core,(c*(.65+.35*pulse)+runner*.6)*gate*reveal);
+   ion=max(ion,e*gate*reveal*(.42+.58*pulse));halo=max(halo,(h*.25+exp(-dot(p,p)*14.)*flash*.35)*gate*reveal);
   }
-  float a=max(blue*.50,max(core,knots)) * presence;if(a<.012)discard;
-  vec3 color=mix(vec3(.035,.23,.95),vec3(.77,.95,1.),clamp(core+knots,0.,1.));gl_FragColor=vec4(color,a);
+  float a=clamp(core+ion*.65+halo,0.,1.)*presence;if(a<.006)discard;
+  vec3 color=mix(vec3(.025,.19,.94),vec3(.82,.97,1.),clamp(core+ion*.17,0.,1.));gl_FragColor=vec4(color,a);
  }
 `;
 interface Anchor {local:THREE.Vector3;normal:THREE.Vector3;u:THREE.Vector3;radius:number;age:number;seed:number}
 export interface ShockBinding {source:THREE.Mesh;mesh:THREE.Mesh;material:THREE.ShaderMaterial;anchors:(Anchor|null)[]}
 /** Borrowed visible geometry, world-unit masks and target-local anchors. No material/body mutation. */
-export class ShockSurface implements CorrosiveStatusVisual{
+export class ShockSurface implements SurfaceStatusVisual{
  readonly group=new THREE.Group();readonly bindings:ShockBinding[]=[];
  private intensity=1;private next=0;private disposed=false;
- constructor(readonly root:THREE.Group,sources=corrosiveSources(root)){
+ constructor(readonly root:THREE.Group,sources=bodySurfaceSources(root),readonly profile:'prototype'|'lightning'='lightning'){
   this.group.name='shock-live-wire-surface';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;root.add(this.group);
   for(const source of sources){
-   const material=new THREE.ShaderMaterial({name:'shock-live-wire-charge',vertexShader:vertex,fragmentShader:fragment,transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
-    uniforms:{worldNormal:{value:new THREE.Matrix3()},centers:{value:Array.from({length:3},()=>new THREE.Vector3(1e4,1e4,1e4))},uaxes:{value:Array.from({length:3},()=>new THREE.Vector3(1,0,0))},vaxes:{value:Array.from({length:3},()=>new THREE.Vector3(0,1,0))},normals:{value:Array.from({length:3},()=>new THREE.Vector3(0,0,1))},radii:{value:[.002,.002,.002]},ages:{value:[0,0,0]},seeds:{value:[0,0,0]},presence:{value:1},kind:{value:corrosiveSurfaceOf(source)==='armor'?1:0}}});
+   const material=new THREE.ShaderMaterial({name:'shock-live-wire-charge',vertexShader:vertex,fragmentShader:profile==='prototype'?prototypeFragment:fragment,transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
+    uniforms:{worldNormal:{value:new THREE.Matrix3()},centers:{value:Array.from({length:3},()=>new THREE.Vector3(1e4,1e4,1e4))},uaxes:{value:Array.from({length:3},()=>new THREE.Vector3(1,0,0))},vaxes:{value:Array.from({length:3},()=>new THREE.Vector3(0,1,0))},normals:{value:Array.from({length:3},()=>new THREE.Vector3(0,0,1))},radii:{value:[.002,.002,.002]},ages:{value:[0,0,0]},seeds:{value:[0,0,0]},presence:{value:1},kind:{value:surfaceKindOf(source)==='armor'?1:0}}});
    const mesh=new THREE.Mesh(source.geometry,material);mesh.name='shock-local-charge-overlay';mesh.visible=false;mesh.raycast=()=>{};mesh.userData.comicOverlay=true;mesh.userData.presentationOnly=true;mesh.userData.borrowedGeometry=true;mesh.renderOrder=3;source.add(mesh);this.bindings.push({source,mesh,material,anchors:[null,null,null]});
   }
  }
@@ -44,7 +56,7 @@ export class ShockSurface implements CorrosiveStatusVisual{
   if(this.disposed||!Number.isFinite(point.lengthSq())||!Number.isFinite(radius)||radius<=0)return;
   const slot=secondary?2:this.next++%2;this.root.updateWorldMatrix(true,true);
   for(const b of this.bindings){
-   if(source&&source!==b.source&&(corrosiveSurfaceOf(source)??'armor')!==(corrosiveSurfaceOf(b.source)??'armor'))continue;
+   if(source&&source!==b.source&&(surfaceKindOf(source)??'armor')!==(surfaceKindOf(b.source)??'armor'))continue;
    const bounds=new THREE.Box3().setFromBufferAttribute(b.source.geometry.attributes.position as THREE.BufferAttribute).applyMatrix4(b.source.matrixWorld);
    if(bounds.distanceToPoint(point)>radius)continue;
    const inverse=b.source.matrixWorld.clone().invert(),n=normal.clone().normalize(),u=new THREE.Vector3(0,1,0).cross(n).normalize();if(u.lengthSq()<.1)u.set(1,0,0);

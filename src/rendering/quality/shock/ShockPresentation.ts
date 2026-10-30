@@ -11,7 +11,7 @@ import { shockABAudioRecipe } from '../../../audio/shockAudio';
 export class ShockPresentation extends ElementalPresentation{
  readonly shock:ShockResponse;
  private shockMode:Mode='pilot';
- constructor(scene:THREE.Scene,private listener:THREE.Camera){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener);}
+ constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:'prototype'|'lightning'='lightning'){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile);}
  override impact(event:BallisticPresentationImpact):void{
   const elements=getWeaponElements(event.spec);if(!elements.includes('shock')){super.impact(event);return;}
   const surface=this.shock.impact(event),corrosive=elements.includes('corrosive')&&this.corrosive;

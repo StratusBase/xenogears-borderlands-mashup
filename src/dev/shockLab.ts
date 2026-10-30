@@ -9,7 +9,7 @@ import type { StatusState } from '../core/statusEffects';
 import { ElementalPresentation } from '../rendering/quality/elementalPresentation';
 import { ShockPresentation } from '../rendering/quality/shock/ShockPresentation';
 import type { GamePresentation } from '../rendering/quality/GamePresentation';
-import { createCorrosiveReviewTarget } from '../rendering/quality/corrosive/reviewTargets';
+import { createHumanReviewTarget } from './effects/shared/reviewTargets';
 import { QualityPerformance, distribution } from '../rendering/quality/performance';
 import type { EncounterEnemyVisual } from '../rendering/encounterEnemy';
 import type { BallisticHit, BallisticPresentationImpact } from '../rendering/PlayerBallistics';
@@ -52,16 +52,16 @@ let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;request
 const errors:string[]=[], surfaceResults:unknown[]=[], performanceResults:unknown[]=[];
 window.addEventListener('error',event=>errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
-const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>SHOCK / A+B PLAYABLE PROTOTYPE</strong><p>Actual Game · intact human targets · live sound</p>
+const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>SHOCK / A+B / LIGHTNING REVISION</strong><p>Actual Game · intact human targets · live sound</p>
 <label>Target<select id="study-target"><option value="0">Clothed human</option><option value="1">Armored human</option><option value="skin">Exposed forearm</option></select></label>
 <label>Delivery<select id="study-delivery"><option value="bullet">Rifle</option><option value="sticky">Sticky / heavy</option><option value="rocket">Rocket / heavy</option><option value="beam">Beam</option><option value="scatter">Scatter</option><option value="slug">Slug</option><option value="arc">Arc</option></select></label>
-<button id="study-run">Fire target study</button><button id="study-linger">Show lingering charge</button><button id="study-live">Play target shot with sound</button><button id="study-version" aria-pressed="false">View previous Shock</button>
+<button id="study-run">Fire target study</button><button id="study-linger">Show lingering charge</button><button id="study-live">Play target shot with sound</button><button id="study-version" aria-pressed="false">View first A+B</button>
 <label>Surface case<select id="surface-case"><option value="raised">Raised platform</option><option value="wall">Vertical wall</option><option value="slope">Sloped face</option><option value="ceiling">Ceiling / underside</option><option value="ledge">Finite ledge</option></select></label>
 <button id="surface-run">Fire surface test</button><button id="surface-settle">Show surface aftermath</button><button id="surface-live">Play surface shot with sound</button>
 <label>Performance scene<select id="perf-scene"><option value="crowd-rifle">Six humans / rifle</option><option value="crowd-sticky">Six humans / sticky</option><option value="crowd-and-surfaces">Six humans + raised surface / sticky</option></select></label>
 <button id="perf-run">Run matched comparison with sound</button><button id="crowd-live">Play crowded scene with sound</button>
 <button id="record-start">Record live gameplay with sound</button><button id="record-stop" disabled>Stop recording</button><a id="record-download" hidden download="shock-ab.webm">Download gameplay recording</a><textarea id="record-data" aria-label="Recording export" hidden></textarea>
-<output id="signoff-state">Ready · before = previous Shock · current = A+B / C heavy</output><details><summary>Raw verification results</summary><pre id="signoff-results">{}</pre></details>`;
+<output id="signoff-state">Ready · before = first A+B · current = branching lightning</output><details><summary>Raw verification results</summary><pre id="signoff-results">{}</pre></details>`;
 document.body.append(ui);
 const caption=document.createElement('div');caption.className='signoff-caption';document.body.append(caption);
 function state(text:string){document.querySelector('#signoff-state')!.textContent=text;}
@@ -77,7 +77,7 @@ function standOnPlatform(x:number,z:number){
 function response(old:boolean){
  game.setPresentationMode('legacy');before=old;
  g.presentation.setElementalFactory((scene,camera)=>{
-  layer=old?new ElementalPresentation(scene,camera,{corrosiveAB:true}):new ShockPresentation(scene,camera);
+  layer=new ShockPresentation(scene,camera,old?'prototype':'lightning');
   const impact=layer.impact.bind(layer);layer.impact=(event:BallisticPresentationImpact)=>{contacts.push({phase:event.phase,point:event.point.toArray(),normal:event.normal.toArray(),surface:event.hitSurface?.name,target:targets.findIndex(t=>t.mesh===event.target),at:g.time});impact(event);};
   return layer;
  });
@@ -89,7 +89,7 @@ function setup(old:boolean,delivery:ProjectileType,count=6){
  g.combatRandom=seededRandom(37391);g.ballistics.shotSequence=0;g.world.parkedMech.position.set(8,0,-5);
  for(let i=0;i<count;i++){
   const target=g.makeEnemy(-4.0+(i%3)*2.1,-2-Math.floor(i/3)*2.2,false,'rusher');target.health=target.maxHealth=100000;target.shield=target.maxShield=0;
-  const original=target.visual,look=createCorrosiveReviewTarget(target.mesh,target.id,i%2===1);
+  const original=target.visual,look=createHumanReviewTarget(target.mesh,target.id,i%2===1);
   target.visual={...original,update(dt,time,presentation){original.update(dt,time,presentation);look.update(dt,time,presentation);},dispose(){look.dispose();original.dispose();}};
   g.enemies.push(target);g.scene.add(target.mesh);targets.push(target);
  }
@@ -134,7 +134,7 @@ function humanFixture(){
  setup(showPrevious,studyDelivery,3);study='human';g.camera.position.set(targets[studyTarget].mesh.position.x,1.8,4);
  const point=targets[studyTarget].mesh.position.clone().add(new THREE.Vector3(targetValue==='skin'?-.56:0,targetValue==='skin'?1.20:1.55,targetValue==='skin'?.10:0));aim(point);
  game.driveEvaluation({fire:false,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/240);
- caption.innerHTML=`SHOCK / ${showPrevious?'PREVIOUS':'A+B / C HEAVY'}<span>${targetValue==='skin'?'Exposed forearm':studyTarget===0?'Clothed human':'Armored human'} · ${studyDelivery} · real Game / intact characters</span>`;
+ caption.innerHTML=`SHOCK / ${showPrevious?'FIRST A+B':'REVISED LIGHTNING'}<span>${targetValue==='skin'?'Exposed forearm':studyTarget===0?'Clothed human':'Armored human'} · ${studyDelivery} · real Game / intact characters</span>`;
 }
 function humanAudit(){const surface=targets[studyTarget].mesh.getObjectByName('shock-live-wire-surface');const bindings:unknown[]=[];
  targets[studyTarget].mesh.traverse(mesh=>{if(mesh instanceof THREE.Mesh&&mesh.name==='shock-local-charge-overlay'&&mesh.visible){const u=(mesh.material as THREE.ShaderMaterial).uniforms;bindings.push({source:mesh.parent?.name,kind:mesh.parent?.userData.corrosiveSurface,radii:[...u.radii.value],ages:[...u.ages.value]});}});
@@ -147,8 +147,8 @@ function surfaceAudit(){
  if(shock){shock.group.updateWorldMatrix(true,true);shock.group.traverse(mesh=>{
   if(!(mesh instanceof THREE.Mesh)||!mesh.visible)return;
   const positions=mesh.geometry.attributes.position,normal=new THREE.Vector3().fromArray(contact.normal),origin=new THREE.Vector3().fromArray(contact.point);
-  if(mesh instanceof THREE.InstancedMesh){for(let j=0;j<mesh.count;j++){const m=new THREE.Matrix4();mesh.getMatrixAt(j,m);m.premultiply(mesh.matrixWorld);for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(m);minimum=Math.min(minimum,p.sub(origin).dot(normal));}}}
-  else if(mesh.name==='shock-heavy-capacitor-fan'){visibleFans++;for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);minimum=Math.min(minimum,p.sub(origin).dot(normal));}}
+  if(mesh instanceof THREE.InstancedMesh){if(mesh.name==='shock-lightning-filaments'){for(let j=0;j<mesh.count;j++){const m=new THREE.Matrix4();mesh.getMatrixAt(j,m);m.premultiply(mesh.matrixWorld);for(const y of [-.5,.5]){const p=new THREE.Vector3(0,y,0).applyMatrix4(m);minimum=Math.min(minimum,p.sub(origin).dot(normal));}}return;}for(let j=0;j<mesh.count;j++){const m=new THREE.Matrix4();mesh.getMatrixAt(j,m);m.premultiply(mesh.matrixWorld);for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(m);minimum=Math.min(minimum,p.sub(origin).dot(normal));}}}
+  else if(mesh.name==='shock-heavy-capacitor-fan'){visibleFans++;if(mesh.material instanceof THREE.ShaderMaterial&&mesh.material.name==='shock-contact-corona')return;for(let i=0;i<positions.count;i++){const p=new THREE.Vector3().fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);minimum=Math.min(minimum,p.sub(origin).dot(normal));}}
  });}
  const overlays:unknown[]=[];probe?.traverse(mesh=>{if(mesh instanceof THREE.Mesh&&mesh.name==='shock-local-charge-overlay'){const u=(mesh.material as THREE.ShaderMaterial).uniforms;overlays.push({visible:mesh.visible,centers:u.centers.value.map((p:THREE.Vector3)=>p.toArray()),radii:[...u.radii.value],source:mesh.parent?.name});}});
  return{case:surfaceCase,contact,visibleFans,minimumClearance:Number.isFinite(minimum)?minimum:null,overlays,events:shock?.events??[],snapshot:snapshot()};
@@ -178,7 +178,7 @@ function lingerStudy(){for(let i=0;i<36;i++)shotStep(false);studyResults.push({s
 function crowdedFixture(old:boolean,scene:SceneCase){
  setup(old,scene==='crowd-rifle'?'bullet':'sticky');
  if(scene==='crowd-and-surfaces'){solid('signoff-benchmark-raised-top',[3,.45,2.0],[-1.7,.9,1.25]);standOnPlatform(-1.8,5.4);}
- caption.innerHTML=`${scene.toUpperCase()} / ${old?'PREVIOUS SHOCK':'A+B / C HEAVY'}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
+ caption.innerHTML=`${scene.toUpperCase()} / ${old?'FIRST A+B':'REVISED LIGHTNING'}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
 }
 function benchmarkAim(frame:number){
  const slot=Math.floor(frame/90)%6;
@@ -236,7 +236,7 @@ document.querySelector('#record-stop')!.addEventListener('click',guard(stopRecor
 document.querySelector('#study-run')!.addEventListener('click',guard(fireStudy));
 document.querySelector('#study-linger')!.addEventListener('click',guard(lingerStudy));
 document.querySelector('#study-live')!.addEventListener('click',guard(liveHuman));
-document.querySelector('#study-version')!.addEventListener('click',()=>{showPrevious=!showPrevious;const button=document.querySelector('#study-version')!;button.setAttribute('aria-pressed',String(showPrevious));button.textContent=showPrevious?'View A+B / C heavy':'View previous Shock';});
+document.querySelector('#study-version')!.addEventListener('click',()=>{showPrevious=!showPrevious;const button=document.querySelector('#study-version')!;button.setAttribute('aria-pressed',String(showPrevious));button.textContent=showPrevious?'View revised lightning':'View first A+B';});
 const draw=g.comicRenderer.render.bind(g.comicRenderer);let previous=performance.now();
 g.comicRenderer.render=()=>{
  const now=performance.now(),dt=Math.min(.05,(now-previous)/1000);previous=now;
@@ -251,6 +251,6 @@ g.comicRenderer.render=()=>{
 };
 g.start(false);surfaceFixture('raised');publish();
 const gl=g.renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');
-const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:'944c664 / previous Shock',current:'Shock A+B prototype',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
+const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:'b2dd1ec / first A+B prototype',current:'Branching lightning revision',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
 const meta=document.createElement('script');meta.type='application/json';meta.id='signoff-metadata';meta.textContent=JSON.stringify(metadata);document.body.append(meta);
 window.addEventListener('pagehide',()=>perf.dispose());game.run();
