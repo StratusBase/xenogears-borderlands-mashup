@@ -13,6 +13,8 @@ The review entry is `gravity-lab.html` (`src/dev/effects/gravity/lab.ts`). It ru
 | `rendering/PlayerBallistics.ts` | Optional `worldImpact` callback / `setWorldImpactHandler`, including world-only contacts and detonations |
 | `rendering/quality/gravity/response.ts` | `gravityModule`, `GravityView` / `GravityResponse.sync(snapshot)` / `.event(event)`; presentation only |
 | `rendering/quality/gravity/flow.ts` | Cached pressure paths, arc-length sampling and cosmetic profiles; no combat state |
+| `rendering/quality/gravity/lens.ts` | Transient background distortion around the unchanged dark core; borrowed compositor inputs |
+| `rendering/quality/shared/sceneColor.ts` | Neutral scene-color/depth binding and ordered sampling-surface marker |
 | `rendering/quality/shared/composedPresentation.ts` | One generic composition layer, alongside existing carrier effects |
 | `audio/gravityAudio.ts` | Recipe in existing shared audio engine; no new runtime context/engine |
 
@@ -29,6 +31,8 @@ Imports are relative to `src/`. No Three.js, DOM or audio dependency exists in t
 7. While `fields.owns(targetId)` is true, avoid a competing AI movement write, including during the release fall. Keep attack/AI policy explicit; this prototype does not authorize globally disabling enemy attacks or boss/player capture. Ordinary weapon raycasts continue against the moved meshes; no separate airborne proxy is needed.
 8. Register `gravityModule` at the production composition root. Forward authoritative events to its response and snapshots through `.sync` once per tick. Its cosmetic `update` handles pulse/end envelopes and audio without rebuilding geometry again. Optional `{seed}` is for reproducible presentation only; never feed it to simulation. `GamePresentation` still owns update/pause/audio/clear/dispose. Its factory supports this generic composition without changing existing standalone renderers. Do not register the dev-only `gravityReferenceModule` in production.
 9. Replace the **legacy gravity proc / planar displacement** for deliveries using the new field. Do not combine both pulls. The lab explicitly gives its gravity weapon `statusChance=0` and activates qualifying blasts through the new event; this is isolated to its fixture, not a silent weapon balance edit.
+
+The [current wisps pass](gravity-wisps.md) keeps all deployment/gameplay/audio modules unchanged. `ComicRenderer` automatically supplies borrowed inputs for the transient envelope; no extra Game context, audio bus or simulation update is needed. A plain renderer without that binding retains the core/wisps and a faint envelope fallback. Optional `GravityView.setDistortionEnabled()` changes presentation only. Use the new `vite.gravity-wisps.config.ts` and `/gravity-wisp-lab.html` for the exact prior-pressure comparison; its build-only virtual reference is not registered by the default dev server. The ordinary `/gravity-lab.html` remains usable with its earlier thin reference.
 
 ## Explicit prototype policies
 

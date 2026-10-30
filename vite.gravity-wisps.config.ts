@@ -1,0 +1,6 @@
+import {defineConfig,transformWithEsbuild} from 'vite';
+import {execFileSync} from 'node:child_process';
+import path from 'node:path';
+const root=process.cwd(),referenceRoot=process.env.GRAVITY_REFERENCE_ROOT??root;
+/** Build-only historical comparison. No copied renderer or legacy look switch ships in the runtime module. */
+export default defineConfig({plugins:[{name:'gravity-pressure-reference',resolveId(id){if(id==='virtual:gravity-pressure-before'||id==='virtual:gravity-flow-before')return '\0'+id;},async load(id){if(!id.startsWith('\0virtual:gravity-'))return;const flow=id.endsWith('flow-before'),file='src/rendering/quality/gravity/'+(flow?'flow.ts':'response.ts'),source=execFileSync('git',['show','e05b31b:'+file],{cwd:referenceRoot,encoding:'utf8'});const rewritten=source.replace(/from '(\.[^']+)'/g,(_match,specifier:string)=>`from '${specifier==='./flow'?'virtual:gravity-flow-before':path.resolve(root,'src/rendering/quality/gravity',specifier)}'`);return transformWithEsbuild(rewritten,file,{loader:'ts'});}}],build:{outDir:'artifacts/gravity-wisps/build',rollupOptions:{input:['index.html','gravity-lab.html','gravity-wisp-lab.html']}},server:{host:'127.0.0.1'},preview:{host:'127.0.0.1'}});

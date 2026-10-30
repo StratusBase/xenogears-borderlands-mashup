@@ -2,6 +2,8 @@
 
 30 October 2026. User correction to the [pressure-fold pass](gravity-pressure.md): remove the strand that stays and pulses, and make the orb float quickly/smoothly off a struck surface before suction begins.
 
+Historical receipt: the deployment behavior below is retained by the later [distortion and ethereal-wisps pass](gravity-wisps.md). Its former solid-band material is superseded; this build and its evidence remain frozen.
+
 ## Result and contract
 
 - Removed lane zero's anchored head/window, fixed direction/reach/width and travelling pulse displacement. All eight lanes now carry staggered inward windows with faded restarts. Crush still contracts the core; it does not deform sheet geometry.

@@ -5,8 +5,10 @@ const SAMPLES=64;
 export interface PressureLane {readonly points:Float32Array;readonly distances:Float32Array;readonly length:number;readonly width:number;readonly duration:number;readonly offset:number;readonly window:number;readonly primary:boolean;readonly roughness:number}
 export interface PressureProfile {readonly seed:number;readonly variant:number;readonly lanes:readonly PressureLane[]}
 const TAU=Math.PI*2;
-/** Travel timing, separate from curve shape. Finite speed grows from .2 to 1.8 lengths per duration. */
-export function infallDistance(progress:number):number{const p=Math.max(0,Math.min(1,progress));return .2*p+.8*p*p;}
+/** Travel timing, separate from curve shape. Finite speed grows from .7 to 1.3 lengths per duration. */
+export function infallDistance(progress:number):number{const p=Math.max(0,Math.min(1,progress));return .7*p+.3*p*p;}
+/** Fixed-time fade avoids whole-lane flashes at fast loop restarts. */
+export function flowEnvelope(phase:number,duration:number):number{const elapsed=phase*duration;return Math.max(0,Math.min(1,elapsed/.035,(duration-elapsed)/.045));}
 /** Build immutable cosmetic curves once per source. No simulation RNG, source movement or per-frame reroll. */
 export function pressureProfile(variation:EffectVariation,normal:THREE.Vector3,clearance:number):PressureProfile{
  const lanes:PressureLane[]=[],rotation=variation.range(1,0,TAU),hand=variation.sample(2)>.5?1:-1;
@@ -24,7 +26,7 @@ export function pressureProfile(variation:EffectVariation,normal:THREE.Vector3,c
    const floor=-clearance+.08;if(p.dot(normal)<floor)p.addScaledVector(normal,floor-p.dot(normal));
    points.set([p.x,p.y,p.z],sample*3);if(sample)length+=Math.hypot(p.x-points[(sample-1)*3],p.y-points[(sample-1)*3+1],p.z-points[(sample-1)*3+2]);distances[sample]=length;
   }
-  lanes.push({points,distances,length,width:primary?variation.range(dim+6,.31,.48):variation.range(dim+6,.035,.065),duration:variation.range(dim+7,1.45,2.2),offset:(lane*.307+variation.range(dim+8,0,.21))%1,window:variation.range(dim+9,primary?.55:.29,primary?.74:.43),primary,roughness:variation.range(dim+10,0,TAU)});
+  lanes.push({points,distances,length,width:primary?variation.range(dim+6,.22,.30):variation.range(dim+6,.07,.11),duration:length/variation.range(dim+7,28,36),offset:(lane*.307+variation.range(dim+8,0,.21))%1,window:variation.range(dim+9,primary?.22:.16,primary?.36:.27),primary,roughness:variation.range(dim+10,0,TAU)});
  }
  return{seed:variation.seed,variant:variation.variant,lanes};
 }

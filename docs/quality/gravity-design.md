@@ -16,6 +16,8 @@ Recorded 30 October 2026. The user has specified the mechanic and asked to prepa
 
 The concept combines Tidal Fold's asymmetric inward pressure language with restrained Orbital Crush grit, rearranged around one shared source rather than isolated chest flares. Primary and secondary visuals, gun construction and shot delivery remain purposeful. A continuous well should stay open enough to aim at captured heads and torsos; it must not look or behave like an opaque shield.
 
+Latest art direction: keep the **dark singularity at the center**. A separate large background-distortion envelope forms after deployment, contracts rapidly into that core and fades. Purple inflow is ethereal, soft and faster than enemy pull, without solid ribbon bodies, ink borders or hard bright edges. The core does not disappear with the envelope. See the [wisps and distortion pass](gravity-wisps.md); this is based on the user's written description, not a verified exact Borderlands video match.
+
 ## Placement and collision
 
 ```text

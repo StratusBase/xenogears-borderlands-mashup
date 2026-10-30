@@ -6,6 +6,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 import { CopyShader } from 'three/addons/shaders/CopyShader.js';
+import {publishSceneColor,isSceneColorSurface,type SceneColorFrame} from './quality/shared/sceneColor';
 
 type Drawable = THREE.Mesh | THREE.Line | THREE.Points | THREE.Sprite;
 
@@ -61,7 +62,7 @@ class OverlayPass extends Pass {
   });
   private readonly quad = new FullScreenQuad(this.depthCopy);
 
-  constructor(depth: THREE.DepthTexture, private readonly drawOverlays: () => void) {
+  constructor(depth: THREE.DepthTexture, private readonly drawOverlays: (frame:Readonly<SceneColorFrame>) => void) {
     super();
     this.target.texture.name = 'comic-ink-with-depth-tested-overlays';
     this.depthCopy.uniforms.tOpaqueDepth.value = depth;
@@ -82,7 +83,7 @@ class OverlayPass extends Pass {
       // This full-screen initialization writes every color/depth pixel. The
       // following FX draw preserves both and uses normal hardware depth tests.
       this.quad.render(renderer);
-      this.drawOverlays();
+      this.drawOverlays({color:readBuffer.texture,depth:this.depthCopy.uniforms.tOpaqueDepth.value,width:this.target.width,height:this.target.height,pixelRatio:renderer.getPixelRatio()});
 
       renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
       this.colorCopy.uniforms.tDiffuse.value = this.target.texture;
@@ -222,7 +223,7 @@ export class ComicRenderer {
     this.inkPass = new ShaderPass(inkShader);
     this.inkPass.uniforms.tNormals.value = this.normalTarget.texture;
     this.inkPass.uniforms.tDepth.value = this.normalTarget.depthTexture;
-    this.overlayPass = new OverlayPass(this.normalTarget.depthTexture, () => this.renderOverlays());
+    this.overlayPass = new OverlayPass(this.normalTarget.depthTexture, frame => this.renderOverlays(frame));
     this.composer.addPass(new RenderPass(scene, camera));
     this.composer.addPass(this.inkPass);
     this.composer.addPass(this.overlayPass);
@@ -303,7 +304,7 @@ export class ComicRenderer {
     }
   }
 
-  private renderOverlays(): void {
+  private renderOverlays(frame:Readonly<SceneColorFrame>): void {
     const oldBackground = this.scene.background;
     const oldOverride = this.scene.overrideMaterial;
     const oldShadowUpdate = this.renderer.shadowMap.autoUpdate;
@@ -324,6 +325,14 @@ export class ComicRenderer {
       this.scene.background = null;
       this.scene.overrideMaterial = null;
       this.renderer.shadowMap.autoUpdate = false;
+      publishSceneColor(this.scene,frame);
+      // Scene-sampling surfaces must precede opaque as well as transparent FX.
+      // Reuse this target and its opaque depth; only these surfaces draw here.
+      if ([...this.overlays].some(isSceneColorSurface)) {
+        this.drawableMasks.forEach((mask, object) => { object.layers.mask = this.overlays.has(object) && isSceneColorSurface(object) ? mask : 0; });
+        this.renderer.render(this.scene, this.camera);
+        this.drawableMasks.forEach((mask, object) => { object.layers.mask = this.overlays.has(object) && !isSceneColorSurface(object) ? mask : 0; });
+      }
       this.renderer.render(this.scene, this.camera);
     } finally {
       materialDepth.forEach((state, material) => { material.depthTest = state.test; material.depthWrite = state.write; });
