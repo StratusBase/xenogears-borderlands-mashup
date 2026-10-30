@@ -39,12 +39,13 @@ export class ElementalImpacts{
  private emit(kind:Kind,point:THREE.Vector3,element:ElementType,life:number,size:readonly[number,number,number]):Particle{
   const pool=this.pools.get(kind)!,p=pool.items[pool.next];pool.next=(pool.next+1)%pool.items.length;p.active=true;p.age=0;p.life=life;p.position.copy(point);p.size.set(...size);p.rotation.identity();p.velocity.set(0,0,0);p.color.setHex(palette[element]);p.element=element;p.target=undefined;p.local=undefined;p.normal=undefined;p.localRotation=undefined;p.seed=this.random();return p;
  }
- impact(event:BallisticPresentationImpact):void{
+ impact(event:BallisticPresentationImpact,excluded?:ReadonlySet<ElementType>):void{
   if(this.disposed||!Number.isFinite(event.point.lengthSq()))return;
   const normal=event.normal.clone().normalize();if(!Number.isFinite(normal.lengthSq())||normal.lengthSq()<.5)normal.set(0,1,0);
   const radius=Number.isFinite(event.radius)?Math.max(0,Math.min(15,event.radius)):0;
   const point=event.point.clone().addScaledVector(normal,.018),scale=Math.min(1.65,event.phase==='detonate'?.75+radius*.15:.72),elements=getWeaponElements(event.spec);
   for(const[elementNumber,element]of elements.entries()){
+   if(excluded?.has(element))continue;
    const s=scale*(elementNumber?.65:1),life=element==='fire'?2.2:element==='shock'?.4:element==='gravity'?1.3:element==='kinetic'?.9:3.1;
    const patch=this.emit('patch',point,element,life,[s*.34,s*.34,1]);patch.rotation.setFromUnitVectors(zAxis,normal);
    if(event.target?.parent){event.target.updateWorldMatrix(true,false);patch.target=event.target;patch.local=event.target.worldToLocal(point.clone());patch.normal=normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(event.target.matrixWorld).invert()).normalize();}

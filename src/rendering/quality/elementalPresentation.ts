@@ -7,12 +7,12 @@ import { setEquipmentEffectPresentation, setEquipmentEffectFactory } from '../eq
 import { ElementalEquipment, ElementalStatus } from './elementalSurfaces';
 import { createElementalProjectile, createElementalTrail, createElementalBeam, updateElementalProjectile } from './elementalFlight';
 import { ElementalImpacts } from './elementalImpacts';
-import { ElementalAudio } from '../../audio/elementalAudio';
+import { ElementalAudio, elementalAudioRecipe } from '../../audio/elementalAudio';
 import { corrosiveABAudioRecipe } from '../../audio/corrosiveAudio';
 import { CorrosiveResponse,type CorrosiveMotion } from './corrosive/liquid';
 import type { CorrosiveStatusVisual } from './corrosive/surfaces';
 
-export interface ElementalPresentationOptions { corrosiveAB?: boolean;corrosiveMotion?:CorrosiveMotion }
+export interface ElementalPresentationOptions { corrosiveAB?: boolean;corrosiveMotion?:CorrosiveMotion;audioRecipe?:typeof elementalAudioRecipe }
 type StatusPresentation=ElementalStatus|CorrosiveStatusVisual;
 
 /** Complete opt-in presentation adapter. It consumes authoritative combat events only. */
@@ -24,7 +24,7 @@ export class ElementalPresentation implements BallisticPresentation{
  private restoreFactory:()=>void;
  private activeEquipment=new Set<ElementType>();private mode:Mode='pilot';
  constructor(private scene:THREE.Scene,private camera:THREE.Camera,options:ElementalPresentationOptions={}){this.impacts=new ElementalImpacts(scene);
-  this.corrosive=options.corrosiveAB?new CorrosiveResponse(scene,camera,options.corrosiveMotion):null;this.audio=options.corrosiveAB?new ElementalAudio(corrosiveABAudioRecipe):new ElementalAudio();
+  this.corrosive=options.corrosiveAB?new CorrosiveResponse(scene,camera,options.corrosiveMotion):null;this.audio=new ElementalAudio(options.audioRecipe??(options.corrosiveAB?corrosiveABAudioRecipe:elementalAudioRecipe));
   if(this.corrosive)this.splash=event=>this.splashImpact(event);
   this.restoreFactory=setEquipmentEffectFactory(root=>{
    const owners=new Map<THREE.Object3D,ElementType[]>();
@@ -54,7 +54,7 @@ export class ElementalPresentation implements BallisticPresentation{
   else for(const element of elements.filter(e=>e!=='corrosive'))this.impacts.impact({...event,spec:{...event.spec,element,secondaryElement:undefined}});
   for(const element of elements)this.audio.impact(element,{mode:this.mode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.camera.getWorldPosition(new THREE.Vector3())),strength:event.phase==='detonate'?1:.72});
  }
- private splashImpact(event:BallisticPresentationSplash):void{
+ protected splashImpact(event:BallisticPresentationSplash):void{
   if(!this.corrosive||event.primary||!getWeaponElements(event.spec).includes('corrosive'))return;
   const surface=this.corrosive.splash(event);
   this.audio.impact('corrosive',{mode:this.mode,delivery:event.spec.projectile,surface,splash:true,distance:event.point.distanceTo(this.camera.getWorldPosition(new THREE.Vector3())),strength:Math.min(.28,.08+event.exposure*.24)});
@@ -68,8 +68,12 @@ export class ElementalPresentation implements BallisticPresentation{
  status(root:THREE.Group,element:ElementType):StatusPresentation{
   let map=this.statuses.get(root);if(!map){map=new Map();this.statuses.set(root,map);}
   const existing=map.get(element);if(existing)return existing;
-  const visual=element==='corrosive'&&this.corrosive?this.corrosive.status(root):new ElementalStatus(root,element as Exclude<ElementType,'kinetic'>),dispose=visual.dispose.bind(visual);
+  const visual=this.createStatus(root,element),dispose=visual.dispose.bind(visual);
   visual.dispose=()=>{dispose();map!.delete(element);if(!map!.size)this.statuses.delete(root);};map.set(element,visual);return visual;
+ }
+ /** Presentation extension point; status ownership and authoritative expiry remain with the existing lifecycle. */
+ protected createStatus(root:THREE.Group,element:ElementType):StatusPresentation{
+  return element==='corrosive'&&this.corrosive?this.corrosive.status(root):new ElementalStatus(root,element as Exclude<ElementType,'kinetic'>);
  }
  shot(spec:WeaponSpec,mode:Mode):void{
   this.mode=mode;

@@ -8,6 +8,7 @@ import type { PlayerBallistics } from '../PlayerBallistics';
 import { QualityPresentation } from './presentation';
 import { ElementalPresentation } from './elementalPresentation';
 import { applyQualityInk } from './target';
+import type { ShockChainEvent } from './shock/response';
 
 export type PresentationMode='quality'|'legacy';
 export interface PresentationStatus {
@@ -111,6 +112,11 @@ export class GamePresentation {
  }
  status(root:THREE.Group,element:ElementType):PresentationStatus|undefined{
   return this.elements?.status(root,element);
+ }
+ /** Optional confirmed-event handoff. Returning false keeps the combat owner's existing tracer usable. */
+ confirmedShockChain(event:ShockChainEvent):boolean{
+  const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent)=>void})|null;
+  if(!layer?.confirmedChain)return false;layer.confirmedChain(event);return true;
  }
  release(root:THREE.Object3D):void{
   this.elements?.release(root);this.quality?.release(root);this.enemies.delete(root as THREE.Group);
