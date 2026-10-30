@@ -4,10 +4,12 @@
 
 Reference: `artifacts/concepts/adhesive-v2/a-tack-resin.png` (local generated paintover, not gameplay). A shared clean reference derived from the Fire concept board keeps the clothed/armored humans, framing and illustrated finish consistent. The mixed adhesive-v1 study is superseded.
 
+Gameplay corrections: the user rejected the initial opaque foam-like pad, flower-petal release and repeated long spike. A remains the target. Keep honey-like volume, pinched necks, weighted amber ends and a smaller translucent surface deposit. Vary the event between a compact tack, split pull, low sweep, heavy slump and occasional long draw; continuously vary handedness, direction, lengths, curvature, bead weight, sag and timing. Consecutive detonations must not select the same family, including when contact and secondary events occur between them. Broad flat petals and pale merged foam masses are not an accepted interpretation of A.
+
 ## Approved visual and audio target
 
 - Heavy golden-amber resin, dark honey depth, creamy restrained glints and an intact, readable target silhouette.
-- Contact compresses into a small tack pad; one generous leading fold stretches outward with a shorter counterfold and trailing neck; it then sags back into a glossy localized deposit with weighted drips. Geometry must deform, not simply scale a static crown.
+- Contact compresses into a small tack pad; one to three uneven thick pulls stretch, sag and retract into a glossy localized deposit with weighted drips. Long draws are occasional. Geometry must deform, not simply scale or rotate a static crown. Choose a stable event profile from independent cosmetic randomness; fixed seeds are reserved for reproducible review/performance.
 - Cloth remains visible and intact beneath the cosmetic resin. Armor response sits on the actual outer plate. Faces, body shape and armor remain intact; no gore, melting, material destruction or body deformation.
 - Equipment accents are local to a caged feed cartridge, short hose and applicator collar. Projectiles retain their existing carrier and trajectory, with a short weighted resin neck and restrained beads.
 - A primary explosive contact can carry the substantial fold; ordinary contacts are compact. Secondary recipients get smaller deposition, fewer beads and quiet contact, without another full primary fold or puddle.

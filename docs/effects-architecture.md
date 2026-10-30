@@ -85,6 +85,8 @@ Implemented extraction: `quality/shared/surfaces.ts` owns visible-surface select
 
 No new cross-element deep imports after that extraction. An element imports its own internals, neutral shared mechanisms and plain common contracts. Composition code may import the element's public entry. Do not hide cross-element coupling through aliases such as importing a corrosion implementation as `genericSurface`.
 
+Every new or revised effect must vary between events. Choose a stable cosmetic profile once per event: silhouette, direction, particle distribution and timing should change within the element's art direction and size envelope. Avoid a signature spike or a fixed shape merely rotated each time. Use `shared/variation.ts` for independent cosmetic seeds, reproducible review seeds and nonrepeating shape families; never consume gameplay randomness or reroll the shape every frame. Keep collision, damage, exposure and primary/secondary hierarchy authoritative. Verify repeated real shots at native speed with sound. Existing element owners should adopt this rule when revising their effects; adding the helper alone does not retrofit them.
+
 ## Composition and open/closed extension
 
 - Prefer injected element definitions/factories and a typed handler map at one composition root. A new element registers its own response and recipes; existing element internals should not need edits.
