@@ -50,6 +50,8 @@ All four delivered MP4s were also played unmuted in the browser: advancing clock
 
 ## Interface and integration
 
+Equipment alignment and its required Claude Opus 5.5 review remain **pending**; see the [Ice equipment handoff](ice-equipment.md). This plate/material approval does not sign off equipment.
+
 `IceResponse(scene, camera, {plateStyle:'layered'|'previous', variationSeed?:number})` is the presentation response; `IcePresentation` accepts the same optional third argument for the existing prototype adapter. Default style is layered; previous remains available. Existing audio and gameplay events/status ownership continue to drive it.
 
 This remains the opt-in Ice prototype. The combat lead should register its response/recipe through the existing composition mechanism when normal-game adoption is approved; do not replace other approved element handlers or chain their adapters. No edit to game.ts, world.ts or ui.ts is supplied by this workstream. Frost aftermath and audio tuning are separate future passes.

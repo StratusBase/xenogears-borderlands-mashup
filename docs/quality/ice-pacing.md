@@ -61,6 +61,8 @@ The evidence packager reads actual receipts and media, verifies full replay equa
 
 ## Handoff and remaining gate
 
+**Equipment alignment is also pending and required before adoption.** Complete the [Ice equipment phase](ice-equipment.md), including Claude Opus 5.5 review, actual pilot/mech idle/firing/reload evidence, mixed-slot checks, sound, matched performance and user visual approval. The impact-only and pacing receipts do not close that gate.
+
 Main-game integration is **not approved by this performance result**. Native callback-delivery gaps, the older unassigned within-callback stall and an adequate GPU noise calibration remain open. A quiet coordinated run and/or a native scheduler/compositor capture is the smallest useful next step; do not change art or combat to hide the intervals. Keep all current outliers. Further controlled runs should use identical preflight, raw frame/GPU receipts, randomized interleaved null controls and predeclared gates.
 
 Production uses the common `gameElements.ts` registry with Fire/Radiation/Shock. Do not replace that factory with `IcePresentation`. After the gate closes, adapt the existing Ice response and recipe to the existing `ElementModule` contract and preserve all other registrations; the combat lead owns any `game.ts`, `world.ts` or `ui.ts` integration. The standalone Ice adapter remains usable for review.
