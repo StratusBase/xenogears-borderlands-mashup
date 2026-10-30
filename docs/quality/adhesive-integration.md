@@ -2,6 +2,8 @@
 
 The approved direction is [Tack Resin](adhesive-design.md). The playable prototype remains opt-in pending gameplay/material approval. Normal Enhanced has not adopted this adapter. Legacy and the previous adhesive renderer remain available. No changes to combat-lead-owned `src/game.ts`, `src/world.ts` or `src/ui.ts` belong to this pass.
 
+The subsequent [honey-material pass](adhesive-honey-material.md) adds `material:'honey'|'previous'` to the adapter options; honey is the current opt-in default. Its separate build/report preserves the original verification receipt below. It compares against the previous Tack Resin material, with identical animation and audio in both modes.
+
 ## Review entry
 
 `npx vite --host 127.0.0.1 --port 5186 --strictPort` serves `/adhesive-lab.html`. For a frozen comparison, build with `npx vite build --config vite.adhesive.config.ts`, then preview that config on a free port. The review build contains both prior adhesive and Tack Resin, plus transformed-source SHA-256 provenance. The lab locks the renderer/camera to 1440 × 900, DPR 1.

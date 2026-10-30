@@ -17,7 +17,7 @@ export function createResinProfile(seed:number,variant=(seed>>>0)%RESIN_VARIANTS
 }
 const STEPS=20,RINGS=8;
 /** Closed thick sections: no cutout crown, radial disk or hole mask. */
-export function createResinFold(){
+export function createResinFold(thickness=false){
  const count=3*(STEPS+1)*RINGS,positions=new Float32Array(count*3),indices:number[]=[],lanes:number[]=[],params:number[]=[];
  for(let lane=0;lane<3;lane++){
   const base=lane*(STEPS+1)*RINGS;
@@ -25,11 +25,11 @@ export function createResinFold(){
   for(let i=0;i<STEPS;i++)for(let j=0;j<RINGS;j++){const a=base+i*RINGS+j,b=base+i*RINGS+(j+1)%RINGS,c=a+RINGS,d=b+RINGS;indices.push(a,b,c,b,d,c);}
   for(let j=1;j<RINGS-1;j++){indices.push(base,base+j+1,base+j);const end=base+STEPS*RINGS;indices.push(end,end+j,end+j+1);}
  }
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setAttribute('resinLane',new THREE.Float32BufferAttribute(lanes,1));g.setAttribute('resinParam',new THREE.Float32BufferAttribute(params,2));g.setIndex(indices);deformResinFold(g,0,0);return g;
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(positions,3));g.setAttribute('resinLane',new THREE.Float32BufferAttribute(lanes,1));g.setAttribute('resinParam',new THREE.Float32BufferAttribute(params,2));if(thickness)g.setAttribute('resinThickness',new THREE.BufferAttribute(new Float32Array(count),1));g.setIndex(indices);deformResinFold(g,0,0);return g;
 }
 /** Event-specific thick pulls, pinched necks and weighted beads; never a fixed radial crown. */
 export function deformResinFold(geometry:THREE.BufferGeometry,age:number,seed:number,gravity=new THREE.Vector3(0,-1,0),chosen?:ResinProfile){
- const p=geometry.attributes.position,param=geometry.attributes.resinParam,lane=geometry.attributes.resinLane,t=THREE.MathUtils.clamp(Number.isFinite(age)?age:0,0,.8);
+ const p=geometry.attributes.position,param=geometry.attributes.resinParam,lane=geometry.attributes.resinLane,thicknessAttribute=geometry.attributes.resinThickness,t=THREE.MathUtils.clamp(Number.isFinite(age)?age:0,0,.8);
  let profile=chosen;if(!profile){if(geometry.userData.resinSeed!==seed){geometry.userData.resinSeed=seed;geometry.userData.resinProfile=createResinProfile(seed);}profile=geometry.userData.resinProfile as ResinProfile;}
  for(let i=0;i<p.count;i++){
   const s=profile.pulls[lane.getX(i)],q=param.getX(i),angle=param.getY(i)*Math.PI*2,clock=Math.max(0,t-s.delay-.035*(1-q)),grow=s.active?1-Math.exp(-clock*profile.speed):0,returning=THREE.MathUtils.smoothstep(clock,.25,.70);
@@ -43,8 +43,9 @@ export function deformResinFold(geometry:THREE.BufferGeometry,age:number,seed:nu
   const outward=.018+s.z*travel*q+Math.sin(q*Math.PI)*grow*.14*(1-returning*.85)+side*Math.sin(roll)*.18+depth+gravity.z*clock*clock*q*profile.sag;
   const clearance=outward-.009,z=.009+(clearance+Math.sqrt(clearance*clearance+.0001))*.5;
   p.setXYZ(i,x,y,z);
+  if(thicknessAttribute)thicknessAttribute.setX(i,THREE.MathUtils.clamp(width/(s.width*.75),.08,1));
  }
- p.needsUpdate=true;geometry.computeVertexNormals();
+ p.needsUpdate=true;if(thicknessAttribute)thicknessAttribute.needsUpdate=true;geometry.computeVertexNormals();
 }
 
 export const resinVertex=/* glsl */`varying vec3 vN,vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;

@@ -3,7 +3,8 @@ import type {BallisticPresentationImpact,BallisticPresentationSplash} from '../.
 import {nearestVisibleSurface,bodySurfaceSources,targetSurfaceSpan,type SurfaceKind} from '../shared/surfaces';
 import {surfaceContactFrame,settleSurfaceParticle,type SurfaceSupport} from '../shared/contactFrame';
 import {resinSizing} from './sizing';
-import {createResinFold,deformResinFold,createResinProfile,RESIN_VARIANTS,type ResinProfile,resinVertex,resinFragment,resinParticleVertex,resinParticleFragment} from './resin';
+import {createResinFold,deformResinFold,createResinProfile,RESIN_VARIANTS,type ResinProfile} from './resin';
+import {resinShaders,type ResinMaterialStyle} from './material';
 import {EffectVariationSequence} from '../shared/variation';
 import {AdhesiveStatus,ResinMask,type ResinContact} from './surfaces';
 
@@ -18,18 +19,18 @@ export class AdhesiveResponse {
  readonly group=new THREE.Group();readonly events:{phase:string;role:string;surface:SurfaceKind;reach:number;pad:number;drops:number;exposure:number;point:number[];normal:number[];visualSeed:number;variant:string}[]=[];
  private folds:Fold[]=[];private pools=new Map<string,Pool>();private statuses=new Map<THREE.Group,AdhesiveStatus>();private contacts=new WeakMap<THREE.Group,ResinContact[]>();private surfaces=new Map<THREE.Mesh,{mask:ResinMask;age:number}>();
  private serial=0;private nextFold=0;private randomState=513;private disposed=false;private dummy=new THREE.Object3D();private variations:EffectVariationSequence;
- constructor(scene:THREE.Scene,private camera:THREE.Camera,visualSeed?:number){
+ constructor(scene:THREE.Scene,private camera:THREE.Camera,visualSeed?:number,private materialStyle:ResinMaterialStyle='honey'){
   this.variations=new EffectVariationSequence(visualSeed);
   this.group.name='adhesive-a-resin-response';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;scene.add(this.group);
   for(let i=0;i<ADHESIVE_CAPACITY.folds;i++){
-   const material=new THREE.ShaderMaterial({name:'adhesive-thick-resin-fold',vertexShader:resinVertex,fragmentShader:resinFragment,uniforms:{age:{value:1},life:{value:.72}},transparent:true,depthTest:true,depthWrite:false,side:THREE.FrontSide,toneMapped:false});
-   const mesh=new THREE.Mesh(createResinFold(),material);mesh.name='adhesive-directional-fold';mesh.visible=false;mesh.frustumCulled=false;mesh.renderOrder=3;mesh.raycast=()=>{};this.group.add(mesh);this.folds.push({mesh,active:false,age:0,life:.72,seed:0,gravity:new THREE.Vector3(0,-1,0),profile:createResinProfile(0)});
+   const material=new THREE.ShaderMaterial({name:'adhesive-thick-resin-fold',...resinShaders(materialStyle,'fold'),uniforms:{age:{value:1},life:{value:.72}},transparent:true,depthTest:true,depthWrite:false,side:THREE.FrontSide,toneMapped:false});
+   const mesh=new THREE.Mesh(createResinFold(materialStyle==='honey'),material);mesh.name='adhesive-directional-fold';mesh.visible=false;mesh.frustumCulled=false;mesh.renderOrder=3;mesh.raycast=()=>{};this.group.add(mesh);this.folds.push({mesh,active:false,age:0,life:.72,seed:0,gravity:new THREE.Vector3(0,-1,0),profile:createResinProfile(0)});
   }
   this.pool('drops',ADHESIVE_CAPACITY.drops);this.pool('pads',ADHESIVE_CAPACITY.pads);
  }
  private pool(name:string,count:number){
   const geometry=new THREE.SphereGeometry(1,12,8),alpha=new THREE.InstancedBufferAttribute(new Float32Array(count),1);geometry.setAttribute('resinAlpha',alpha);
-  const material=new THREE.ShaderMaterial({name:`adhesive-${name}`,vertexShader:resinParticleVertex,fragmentShader:resinParticleFragment,transparent:true,depthTest:true,depthWrite:false,toneMapped:false});
+  const material=new THREE.ShaderMaterial({name:`adhesive-${name}`,...resinShaders(this.materialStyle,'particles'),transparent:true,depthTest:true,depthWrite:false,toneMapped:false});
   const mesh=new THREE.InstancedMesh(geometry,material,count);mesh.name=`adhesive-${name}-pool`;mesh.count=0;mesh.frustumCulled=false;mesh.raycast=()=>{};mesh.renderOrder=3;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.group.add(mesh);
   this.pools.set(name,{mesh,alpha,next:0,items:Array.from({length:count},()=>({active:false,age:0,life:1,size:1,position:new THREE.Vector3(),velocity:new THREE.Vector3(),rotation:new THREE.Quaternion(),resting:false,intensity:1}))});
  }
@@ -59,13 +60,13 @@ export class AdhesiveResponse {
    p.rotation.copy(basis);this.anchor(p,source,at,basis,event.target);p.owner=event.target?this.statuses.get(event.target):undefined;
   }
   if(contact.source&&event.target){const c:ResinContact={source:contact.source,point:contact.point.clone(),normal:normal.clone(),radius:size.pad,secondary};const list=this.contacts.get(event.target)??[];list.push(c);while(list.length>3)list.shift();this.contacts.set(event.target,list);this.statuses.get(event.target)?.contact(c);}
-  else if(source&&!secondary){let record=this.surfaces.get(source);if(!record){if(this.surfaces.size>=ADHESIVE_CAPACITY.surfaceMasks){const[key,old]=this.surfaces.entries().next().value!;old.mask.dispose();this.surfaces.delete(key);}record={mask:new ResinMask(source),age:0};this.surfaces.set(source,record);}record.age=0;record.mask.contact(contact.point,size.pad,normal);}
+  else if(source&&!secondary){let record=this.surfaces.get(source);if(!record){if(this.surfaces.size>=ADHESIVE_CAPACITY.surfaceMasks){const[key,old]=this.surfaces.entries().next().value!;old.mask.dispose();this.surfaces.delete(key);}record={mask:new ResinMask(source,this.materialStyle),age:0};this.surfaces.set(source,record);}record.age=0;record.mask.contact(contact.point,size.pad,normal);}
   this.upload(0);return contact.surface;
  }
  status(root:THREE.Group){
   const previous=this.statuses.get(root);if(previous)return previous;
   if(this.statuses.size>=ADHESIVE_CAPACITY.statuses)this.statuses.values().next().value!.dispose();
-  const status=new AdhesiveStatus(root,(c,intensity)=>this.drip(c,intensity),()=>this.statuses.delete(root));this.statuses.set(root,status);
+  const status=new AdhesiveStatus(root,(c,intensity)=>this.drip(c,intensity),()=>this.statuses.delete(root),this.materialStyle);this.statuses.set(root,status);
   const contacts=this.contacts.get(root)??[];for(const c of contacts)status.contact(c);
   if(!contacts.length){const source=bodySurfaceSources(root).find(s=>/breastplate|shirt-torso|front-breastplate|torso/.test(s.name));if(source){source.updateWorldMatrix(true,false);const bounds=new THREE.Box3().setFromBufferAttribute(source.geometry.attributes.position as THREE.BufferAttribute),p=bounds.getCenter(new THREE.Vector3());p.z=bounds.max.z;p.applyMatrix4(source.matrixWorld);status.contact({source,point:p,normal:Z.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(source.matrixWorld)).normalize(),radius:.075,secondary:true});}}
   for(const p of this.pools.get('pads')!.items)if(p.active&&p.root===root)p.owner=status;
