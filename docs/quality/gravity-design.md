@@ -10,7 +10,7 @@ Recorded 30 October 2026. The user has specified the mechanic and asked to prepa
 - Deal recurring **crush / gravity damage** while affected, through the normal authoritative damage path.
 - Held targets remain hittable and damageable by other guns. Their bodies, hitboxes and damage anchors move together.
 - Offset the core outward from the struck surface with enough room for visibility and capture. A wall impact places it out from the wall at that height; a floor impact places it above the floor; an underside impact places it below the ceiling.
-- Use the **same collision-checked world-space center** for art, attraction, hold and damage. A visual offset alone is insufficient. Once placed, the well is fixed; an enemy moving away does not move the source with them.
+- Use the **same collision-checked world-space center** for art, attraction, hold and damage. A visual offset alone is insufficient. On impact, the core starts just outside the contact face and floats smoothly to its final clearance over 0.28 seconds. No field pull, capture, periodic crush or pressure bed begins until it settles. It then stays fixed; an enemy moving away does not move the source with them. This replaces the rejected instant offset/teleport.
 - Keep enemies intact and stylized. No gore, anatomical crushing, melting, body stretching, missing armor or world destruction.
 - Expiry stops pull/hold/crush. Suspended targets return to normal gravity and land with collision. No extra slam or fall-damage mechanic is specified.
 
@@ -22,7 +22,9 @@ The concept combines Tidal Fold's asymmetric inward pressure language with restr
 world center = real contact point + outward world normal × clearance
 ```
 
-Clearance derives from well/core size, required capture space and nearby geometry; its exact value is tuning. Validate the candidate center against corners, neighboring solids and ceilings. Pull uses full 3D distance/direction and swept collision; it must not flatten the vertical component or teleport targets through cover. Capture positions remain distinct and collision-valid rather than stacking every actor at one coordinate. Cover/line-of-sight policy must be explicit.
+Clearance derives from well/core size, required capture space and nearby geometry; its exact value is tuning. Validate the candidate center and the entire source-volume deployment path against corners, neighboring solids and ceilings. An obstructed route is rejected instead of teleporting the source across it. Pull uses full 3D distance/direction and swept collision; it must not flatten the vertical component or teleport targets through cover. Capture positions remain distinct and collision-valid rather than stacking every actor at one coordinate. Cover/line-of-sight policy must be explicit.
+
+Deployment uses simulation time and a smooth start/stop curve. The full 4.5-second active duration and 0.5-second crush cadence start after settling; ordinary projectile flight, sticky fuse and direct blast damage retain their existing behavior. See the [deployment correction and evidence](gravity-deployment.md).
 
 ## Existing baseline and required work
 
@@ -61,4 +63,4 @@ Generated art/prompt history is local ignored evidence, not the only home of the
 
 ## Playable visual revision
 
-Review rejected the first six evenly spaced curved ribbons because they resembled flower petals. The [stronger-core and pressure-fold pass](gravity-pressure.md) now replaces the thin-strand revision: a dark contracting core, asymmetric curved pressure sheets, fine inward traces and sparse grit. Cached per-source profiles vary shape and timing without a radial rosette or leaf-shaped width envelope. This is implemented art for review, not final visual approval or background refraction. Gameplay tuning is unchanged. The previous thin-strand renderer remains a development-only same-build comparison.
+Review rejected the first six evenly spaced curved ribbons because they resembled flower petals. The [stronger-core and pressure-fold pass](gravity-pressure.md) replaced the thin-strand revision. Its anchored pulsing fold was subsequently rejected: **every sheet now travels inward in a finite faded window**, with no persistent strand or pulse-driven sheet deformation. The dark contracting core, asymmetric pressure sheets, fine traces and sparse grit remain. Cached per-source profiles vary shape and timing without a radial rosette or leaf-shaped width envelope. This is implemented art for review, not final visual approval or background refraction. Active combat tuning remains unchanged apart from the explicitly requested deployment delay. The previous thin renderer remains a development-only cost comparison, with its pressure-bed gate adapted to deployment.

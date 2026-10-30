@@ -1,7 +1,7 @@
-/** Frozen thin-strand renderer from 6f1ff2d, kept only for same-build review comparisons. */
+/** Thin-strand renderer from 6f1ff2d; only the authoritative deployment audio gate is adapted. */
 import * as THREE from 'three';
 import {GRAVITY_PROTOTYPE} from '../../../core/effects/gravity/profile';
-import type {GravityEvent,GravityFields,GravityWell} from '../../../core/effects/gravity/field';
+import {gravityActive,type GravityEvent,type GravityFields,type GravityWell} from '../../../core/effects/gravity/field';
 import type {ElementalAudio} from '../../../audio/elementalAudio';
 import type {BallisticPresentationImpact} from '../../../rendering/PlayerBallistics';
 import type {ElementModule,ElementResponse} from '../../../rendering/quality/shared/composedPresentation';
@@ -60,7 +60,7 @@ export class GravityReferenceResponse implements ElementResponse {
  update(dt:number,_time:number):void{
   if(this.disposed||!Number.isFinite(dt)||dt<=0)return;this.clock+=dt;
   for(const v of [...this.visuals.values()]){v.pulse=Math.max(0,v.pulse-dt*7);if(v.ending){v.fade=Math.max(0,v.fade-dt*4);if(!v.fade){this.remove(v);continue;}}
-   const beat=Math.floor(v.well.age/.55);if(!v.ending&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(new THREE.Vector3()))});}
+   const beat=Math.floor(v.well.age/.55);if(gravityActive(v.well)&&!v.ending&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(new THREE.Vector3()))});}
   }this.draw();
  }
  private draw(){

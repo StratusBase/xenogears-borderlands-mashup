@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import {GRAVITY_PROTOTYPE} from '../../../core/effects/gravity/profile';
-import type {GravityEvent,GravityFields,GravityWell} from '../../../core/effects/gravity/field';
+import {gravityActive,type GravityEvent,type GravityFields,type GravityWell} from '../../../core/effects/gravity/field';
 import type {ElementalAudio} from '../../../audio/elementalAudio';
 import type {BallisticPresentationImpact} from '../../PlayerBallistics';
 import type {ElementModule,ElementResponse} from '../shared/composedPresentation';
 import {EffectVariationSequence} from '../shared/variation';
 import {gravityAudioRecipe} from '../../../audio/gravityAudio';
-import {infallDistance,focusDisplacement,pressureProfile,samplePressure,type PressureProfile} from './flow';
+import {infallDistance,pressureProfile,samplePressure,type PressureProfile} from './flow';
 
 export const GRAVITY_VFX_CAPACITY=Object.freeze({wells:3,lanes:8,segments:24,grains:144,holds:32,events:128,wakes:12,history:24});
 type Snapshot=ReturnType<GravityFields['snapshot']>;
@@ -55,7 +55,7 @@ export class GravityResponse implements GravityView {
   this.draw();
  }
  private create(well:GravityWell):Visual{
-  const profile=pressureProfile(this.variation.next(4,'gravity-well'),new THREE.Vector3(well.normal.x,well.normal.y,well.normal.z),new THREE.Vector3(well.center.x-well.point.x,well.center.y-well.point.y,well.center.z-well.point.z).length()/(well.radius/6));
+  const profile=pressureProfile(this.variation.next(4,'gravity-well'),new THREE.Vector3(well.normal.x,well.normal.y,well.normal.z),new THREE.Vector3().subVectors(well.deployment?.destination??well.center,well.point).length()/(well.radius/6));
   const group=cosmetic(new THREE.Group());group.name=`gravity-source-${well.id}`;this.group.add(group);
   const folds=cosmetic(new THREE.Mesh(geometry(GRAVITY_VFX_CAPACITY.lanes,GRAVITY_VFX_CAPACITY.segments),material(profile.seed)));folds.name='gravity-pressure-folds';folds.renderOrder=3;group.add(folds);
   const core=cosmetic(new THREE.Mesh(new THREE.IcosahedronGeometry(GRAVITY_PROTOTYPE.coreRadius,2),new THREE.ShaderMaterial({vertexShader:coreVertex,fragmentShader:coreFragment,uniforms:{presence:{value:1},pulse:{value:0}},transparent:true,toneMapped:false})));core.name='gravity-dark-core';group.add(core);
@@ -66,19 +66,19 @@ export class GravityResponse implements GravityView {
  update(dt:number,_time:number):void{
   if(this.disposed||!Number.isFinite(dt)||dt<=0)return;
   for(const v of [...this.visuals.values()]){v.pulse=Math.max(0,v.pulse-dt*7);if(v.endAge>=0){v.endAge+=dt;if(v.endAge>=.45){this.remove(v);continue;}}
-   const beat=Math.floor(v.well.age/.55);if(v.endAge<0&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(this.cameraPosition))});}
+   const beat=Math.floor(v.well.age/.55);if(gravityActive(v.well)&&v.endAge<0&&beat!==v.bedBeat){v.bedBeat=beat;this.audio.cue('gravity','status',{strength:.55,distance:v.group.position.distanceTo(this.camera.getWorldPosition(this.cameraPosition))});}
   }
  }
  private ribbon(v:Visual){
   const positions=v.folds.geometry.attributes.position as THREE.BufferAttribute,visibility=v.folds.geometry.attributes.visibility as THREE.BufferAttribute,segments=GRAVITY_VFX_CAPACITY.segments;
   this.view.copy(this.cameraPosition).sub(v.group.position).divideScalar(v.well.radius/6);
   for(let index=0;index<v.profile.lanes.length;index++){
-   const lane=v.profile.lanes[index],age=v.well.age+(v.endAge>=0?v.endAge:0),phase=(age/lane.duration+lane.offset)%1,head=index===0?lane.length:infallDistance(phase)*lane.length,window=(index===0?.98:lane.window)*lane.length;
+   const lane=v.profile.lanes[index],age=v.well.age+(v.endAge>=0?v.endAge:0),phase=(age/lane.duration+lane.offset)%1,head=infallDistance(phase)*lane.length,window=lane.window*lane.length;
    for(let segment=0;segment<=segments;segment++){
-    const u=segment/segments,d=head-window*(1-u);samplePressure(lane,d,this.p);samplePressure(lane,d+.015,this.next);if(index===0){const wave=focusDisplacement(u,age);this.p.x+=wave;this.next.x+=wave;this.p.multiplyScalar(1-v.pulse*.09);this.next.multiplyScalar(1-v.pulse*.09);}
+    const u=segment/segments,d=head-window*(1-u);samplePressure(lane,d,this.p);samplePressure(lane,d+.015,this.next);
     this.tangent.copy(this.next).sub(this.p).normalize();this.next.copy(this.view).sub(this.p).normalize();const projected=Math.sqrt(Math.max(0,1-Math.pow(this.tangent.dot(this.next),2)));this.side.crossVectors(this.tangent,this.next).normalize();if(this.side.lengthSq()<.01)this.side.set(1,0,0);
     const torn=1+.14*Math.sin(u*33+lane.roughness)+.08*Math.sin(u*71+lane.roughness*2),width=d<=0?0:lane.width*Math.min(1,u*7)*(1-u*.74)*torn*(v.endAge>=0?Math.max(0,1-v.endAge/.45):1),k=(index*(segments+1)+segment)*2;
-    const envelope=(index===0?1:Math.min(1,phase*8)*Math.min(1,(1-phase)*8))*Math.min(1,projected/.15);visibility.setX(k,envelope);visibility.setX(k+1,envelope);positions.setXYZ(k,this.p.x-this.side.x*width,this.p.y-this.side.y*width,this.p.z-this.side.z*width);positions.setXYZ(k+1,this.p.x+this.side.x*width*.82,this.p.y+this.side.y*width*.82,this.p.z+this.side.z*width*.82);
+    const envelope=Math.min(1,phase*8)*Math.min(1,(1-phase)*8)*Math.min(1,projected/.15);visibility.setX(k,envelope);visibility.setX(k+1,envelope);positions.setXYZ(k,this.p.x-this.side.x*width,this.p.y-this.side.y*width,this.p.z-this.side.z*width);positions.setXYZ(k+1,this.p.x+this.side.x*width*.82,this.p.y+this.side.y*width*.82,this.p.z+this.side.z*width*.82);
    }
   }positions.needsUpdate=true;visibility.needsUpdate=true;
  }
@@ -93,21 +93,22 @@ export class GravityResponse implements GravityView {
  private draw(){
   this.updates++;let count=0;this.camera.getWorldPosition(this.cameraPosition);
   for(const v of this.visuals.values()){
-   const w=v.well,scale=w.radius/6,ending=v.endAge>=0,presence=Math.min(1,w.age/.10)*(ending?Math.max(0,1-v.endAge/.45):1);
+   const w=v.well,scale=w.radius/6,ending=v.endAge>=0,travel=w.deployment,elapsed=travel?travel.elapsed+w.age:w.age,presence=Math.min(1,elapsed/.05)*(ending?Math.max(0,1-v.endAge/.45):1),pressure=gravityActive(w)?Math.min(1,w.age/.16):0;
    v.group.position.set(w.center.x,w.center.y,w.center.z);v.group.scale.setScalar(scale);v.core.rotation.set(w.age*.13,w.age*.21,w.age*.07);v.core.scale.setScalar((1-v.pulse*.12)*(ending?Math.max(.02,1-v.endAge/.17):1));
    for(const mesh of [v.core,v.folds,v.wakes]){(mesh.material as THREE.ShaderMaterial).uniforms.presence.value=presence;(mesh.material as THREE.ShaderMaterial).uniforms.pulse.value=v.pulse;}
+   v.folds.material.uniforms.presence.value=presence*pressure;v.wakes.material.uniforms.presence.value=presence*pressure;
    let bodyCount=0;const bodies=v.folds.material.uniforms.bodies.value as THREE.Vector3[];for(const member of this.state.members)if(member.wellId===v.id&&bodyCount<12)bodies[bodyCount++].set((member.position.x-w.center.x)/scale,(member.position.y-w.center.y)/scale,(member.position.z-w.center.z)/scale);v.folds.material.uniforms.bodyCount.value=bodyCount;v.folds.material.uniforms.bodyScale.value=scale;
    this.ribbon(v);this.memberWakes(v);
    for(let i=0;i<48&&count<GRAVITY_VFX_CAPACITY.grains;i++){
     const lane=v.profile.lanes[i%v.profile.lanes.length],phase=(w.age/(lane.duration*1.05)+i*.618+lane.offset)%1;samplePressure(lane,infallDistance(phase)*lane.length,this.p);this.p.x+=Math.sin(i*7.3)*.09;this.p.y+=Math.cos(i*3.7)*.12;this.p.z+=Math.sin(i*2.9)*.09;if(ending){this.p.y-=v.endAge*v.endAge*3;const limit=-Math.hypot(w.center.x-w.point.x,w.center.y-w.point.y,w.center.z-w.point.z)/scale+.06,dot=this.p.x*w.normal.x+this.p.y*w.normal.y+this.p.z*w.normal.z;if(dot<limit){this.p.x+=w.normal.x*(limit-dot);this.p.y+=w.normal.y*(limit-dot);this.p.z+=w.normal.z*(limit-dot);}}
     this.dummy.position.set(w.center.x+this.p.x*scale,w.center.y+this.p.y*scale,w.center.z+this.p.z*scale);this.dummy.rotation.set(i+w.age,i*.4+w.age*.7,w.age*.8);this.dummy.scale.setScalar((i%5===0?.075:.028+(i%3)*.012)*scale);this.dummy.updateMatrix();this.grains.setMatrixAt(count,this.dummy.matrix);
-    this.alpha.setX(count,presence*Math.min(1,phase*8)*(1-Math.pow(phase,6))*.95);const color=GRIT[i%5===0?0:i%4===0?2:1];this.tint.setXYZ(count,color.r,color.g,color.b);count++;
+    this.alpha.setX(count,presence*pressure*Math.min(1,phase*8)*(1-Math.pow(phase,6))*.95);const color=GRIT[i%5===0?0:i%4===0?2:1];this.tint.setXYZ(count,color.r,color.g,color.b);count++;
    }
   }
   this.grains.count=count;this.grains.instanceMatrix.needsUpdate=true;this.alpha.needsUpdate=true;this.tint.needsUpdate=true;
  }
  private remove(v:Visual){v.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});v.group.removeFromParent();this.visuals.delete(v.id);}
- get diagnostics(){return{wells:this.visuals.size,grains:this.grains.count,heldContours:0,foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths]}))};}
+ get diagnostics(){return{wells:this.visuals.size,grains:this.grains.count,heldContours:0,sources:[...this.visuals.values()].map(v=>({id:v.id,center:v.group.position.toArray(),corePresence:(v.core.material as THREE.ShaderMaterial).uniforms.presence.value,pressurePresence:v.folds.material.uniforms.presence.value})),foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths]}))};}
  clear():void{for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
  dispose():void{if(this.disposed)return;this.clear();this.grains.geometry.dispose();(this.grains.material as THREE.Material).dispose();this.grains.dispose();this.group.removeFromParent();this.disposed=true;}
 }

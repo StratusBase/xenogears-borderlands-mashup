@@ -43,6 +43,12 @@ export function sweepEffectBody(start:EffectVector,end:EffectVector,body:EffectB
  p.y=Math.max(body.halfHeight,p.y);return effectBodyClear(p,body,solids)?p:copyVector(start);
 }
 
+/** Validate the entire source-volume route with the existing sweep, including thin solids. */
+export function effectBodyPathClear(start:EffectVector,end:EffectVector,body:EffectBody,solids:readonly EffectBounds[]):boolean{
+ if(!effectBodyClear(start,body,solids)||!effectBodyClear(end,body,solids))return false;
+ const actual=sweepEffectBody(start,end,body,solids);return Math.hypot(actual.x-end.x,actual.y-end.y,actual.z-end.z)<EPS;
+}
+
 export function effectLineClear(a:EffectVector,b:EffectVector,solids:readonly EffectBounds[]):boolean{
  if(!finiteVector(a)||!finiteVector(b))return false;const d={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z};
  return !solids.some(box=>inside(a,box)||!!firstHit(a,d,box));

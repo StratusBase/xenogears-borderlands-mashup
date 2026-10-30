@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import * as THREE from 'three';
 import {EffectVariationSequence} from '../src/rendering/quality/shared/variation';
-import {infallDistance,focusDisplacement,pressureProfile,samplePressure} from '../src/rendering/quality/gravity/flow';
+import {infallDistance,pressureProfile,samplePressure} from '../src/rendering/quality/gravity/flow';
 import {GravityResponse,GRAVITY_VFX_CAPACITY} from '../src/rendering/quality/gravity/response';
 import {GravityReferenceResponse} from '../src/dev/effects/gravity/reference';
 import {ElementalAudio} from '../src/audio/elementalAudio';
@@ -24,6 +24,10 @@ test('cosmetic curve generation uses its own seeded sequence and never ambient r
  const profiles=[],random=Math.random;Math.random=()=>{throw new Error('Ambient randomness consumed');};try{for(const seed of [104729,982451653]){const sequence=new EffectVariationSequence(seed);profiles.push(pressureProfile(sequence.next(4,'gravity-well'),new THREE.Vector3(0,1,0),1.8));}}finally{Math.random=random;}assert.notDeepEqual(profiles[0],profiles[1]);
 });
 
-test('the focusing crease propagates toward increasing path distance, from outer tail into the core',()=>{
- const u=.32,age=.41,dt=.12,advanced=u+dt*4/5.5;assert.ok(advanced>u&&advanced<1);const a=focusDisplacement(u,age)/Math.sin(u*Math.PI),b=focusDisplacement(advanced,age+dt)/Math.sin(advanced*Math.PI);assert.ok(Math.abs(a-b)<1e-10);assert.ok(Math.abs(focusDisplacement(0,age))<1e-10);assert.ok(Math.abs(focusDisplacement(1,age))<1e-10);
+test('the first sheet travels like the others and crush never deforms its path into a stationary pulse',()=>{
+ const scene=new THREE.Scene(),audio=new ElementalAudio(),v=new GravityResponse(scene,new THREE.PerspectiveCamera(),audio,{seed:7}),state={wells:[well('one',.5)],members:[]};v.sync(state);v.update(.1,.5);v.sync(state);const mesh=v.group.getObjectByName('gravity-pressure-folds')as THREE.Mesh,positions=mesh.geometry.attributes.position,tip=()=>Array.from(positions.array.slice(48*3,50*3));const before=tip();v.event({kind:'pulse',well:state.wells[0]});v.sync(state);assert.deepEqual(tip(),before);state.wells[0].age=.9;v.sync(state);assert.notDeepEqual(tip(),before);v.dispose();audio.dispose();
+});
+test('the travelling core is visible at the authoritative center while pressure and bed wait for settle',()=>{
+ const scene=new THREE.Scene(),audio=new ElementalAudio(),cues:unknown[]=[],v=new GravityResponse(scene,new THREE.PerspectiveCamera(),audio,{seed:7});audio.cue=(...args)=>{cues.push(args);};const w=well('deploying',0);w.point={x:0,y:0,z:0};w.normal={x:0,y:1,z:0};w.deployment={start:{x:0,y:.345,z:0},destination:{x:0,y:1.8,z:0},elapsed:.14,duration:.28};w.center={x:0,y:1.0725,z:0};const original=structuredClone(w);v.sync({wells:[w],members:[]});v.update(.1,0);let source=v.diagnostics.sources[0];assert.deepEqual(source.center,[0,1.0725,0]);assert.equal(source.corePresence,1);assert.equal(source.pressurePresence,0);assert.equal(cues.length,0);assert.deepEqual(w,original);
+ w.deployment.elapsed=.28;w.center={...w.deployment.destination};w.age=.16;v.sync({wells:[w],members:[]});v.update(.01,.16);source=v.diagnostics.sources[0];assert.deepEqual(source.center,[0,1.8,0]);assert.equal(source.pressurePresence,1);assert.equal(cues.length,1);v.dispose();audio.dispose();
 });

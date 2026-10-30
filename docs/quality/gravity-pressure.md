@@ -2,6 +2,8 @@
 
 30 October 2026. Art-only follow-up to the [Opus 5.5 review](gravity-opus-review.md). This changes the controlled actual-Game prototype, with the existing [combat integration handoff](gravity-integration.md) still applicable. Normal-main integration remains with the combat lead.
 
+Historical receipt: the user subsequently rejected the anchored pulsing fold and instant surface offset. The [smooth-deployment correction](gravity-deployment.md) supersedes that behavior; this pass's measurements, recordings and build remain frozen.
+
 ## What changed
 
 - The core uses a much darker interior and restrained rim. Its visible radius stays inside the existing collision-validated `.32 × delivery scale` envelope. It contracts on crush pulses and keeps ordinary depth testing.

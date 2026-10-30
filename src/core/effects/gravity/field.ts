@@ -3,7 +3,8 @@ import {GRAVITY_PROTOTYPE} from './profile';
 
 export interface GravityTarget extends EffectBody {id:number;position:EffectVector;alive:boolean}
 export interface GravitySource {id:EffectId;ownerId:EffectId;point:EffectVector;normal:EffectVector;power?:number;scale?:number}
-export interface GravityWell {id:EffectId;ownerId:EffectId;point:EffectVector;center:EffectVector;normal:EffectVector;radius:number;captureRadius:number;duration:number;age:number;power:number}
+export interface GravityDeployment {start:EffectVector;destination:EffectVector;elapsed:number;duration:number}
+export interface GravityWell {id:EffectId;ownerId:EffectId;point:EffectVector;center:EffectVector;normal:EffectVector;radius:number;captureRadius:number;duration:number;age:number;power:number;deployment?:GravityDeployment}
 export interface GravityMember {targetId:number;wellId:EffectId|null;position:EffectVector;velocity:EffectVector;phase:'pull'|'held'|'fall';slot:number}
 export type GravityEvent={kind:'spawn'|'pulse'|'end';well:GravityWell}|{kind:'capture'|'release';targetId:number;wellId:EffectId};
 export interface GravityPorts {
@@ -12,13 +13,16 @@ export interface GravityPorts {
  move(target:GravityTarget,desired:EffectVector):EffectVector;
  visible(center:EffectVector,target:GravityTarget):boolean;
  clearCenter(center:EffectVector,radius:number):boolean;
+ /** Swept source-volume clearance, including thin obstacles; never just an endpoint check. */
+ clearSourcePath(start:EffectVector,end:EffectVector,radius:number):boolean;
  /** Optional world adapter for collision-valid capture poses above raised support. Never moves the body. */
  capturePosition?(desired:EffectVector,target:GravityTarget,well:Readonly<GravityWell>):EffectVector;
  damage(targetId:number,amount:number,source:Readonly<GravityWell>):void;
  event?(event:GravityEvent):void;
 }
-export interface GravityTuning {radius:number;duration:number;clearance:number;coreRadius:number;captureRadius:number;acceleration:number;maxSpeed:number;response:number;crushDps:number;tickInterval:number;maxFields:number;maxTargets:number;maxMembers:number;maxEvents:number;fallAcceleration:number;maxFallSpeed:number}
-const cloneWell=(w:GravityWell):GravityWell=>({...w,point:copyVector(w.point),center:copyVector(w.center),normal:copyVector(w.normal)});
+export interface GravityTuning {radius:number;duration:number;clearance:number;coreRadius:number;captureRadius:number;deploymentDuration:number;acceleration:number;maxSpeed:number;response:number;crushDps:number;tickInterval:number;maxFields:number;maxTargets:number;maxMembers:number;maxEvents:number;fallAcceleration:number;maxFallSpeed:number}
+const cloneWell=(w:GravityWell):GravityWell=>({...w,point:copyVector(w.point),center:copyVector(w.center),normal:copyVector(w.normal),...(w.deployment?{deployment:{...w.deployment,start:copyVector(w.deployment.start),destination:copyVector(w.deployment.destination)}}:{})});
+export const gravityActive=(well:Readonly<GravityWell>):boolean=>!well.deployment||well.deployment.elapsed>=well.deployment.duration;
 /** Authoritative deterministic well system. Renderer-independent and updated once per simulation tick. */
 export class GravityFields {
  private wells=new Map<EffectId,GravityWell>();private members=new Map<number,GravityMember>();private pulses=new Map<EffectId,number>();private disposed=false;
@@ -34,12 +38,17 @@ export class GravityFields {
   if(this.disposed||!source.id||!source.ownerId||!finiteVector(source.point)||!finiteVector(source.normal)||this.wells.has(source.id))return;
   const length=Math.hypot(source.normal.x,source.normal.y,source.normal.z);if(!Number.isFinite(length)||length<1e-6||source.power!==undefined&&(!Number.isFinite(source.power)||source.power<=0))return;
   const scale=Math.max(.55,Math.min(1.5,Number.isFinite(source.scale)?source.scale!:1)),normal={x:source.normal.x/length,y:source.normal.y/length,z:source.normal.z/length};
-  let center:EffectVector|undefined;
+  let center:EffectVector|undefined,start:EffectVector|undefined;const radius=this.tuning.coreRadius*scale;
   // Clearance is deliberate and collision-checked; never offset just the visible art.
-  for(const multiplier of [1,1.25,1.5]){const d=this.tuning.clearance*scale*multiplier,candidate={x:source.point.x+normal.x*d,y:source.point.y+normal.y*d,z:source.point.z+normal.z*d};if(this.ports.clearCenter(candidate,this.tuning.coreRadius*scale)){center=candidate;break;}}
-  if(!center)return;
+  for(const multiplier of [1,1.25,1.5]){
+   const d=this.tuning.clearance*scale*multiplier,candidate={x:source.point.x+normal.x*d,y:source.point.y+normal.y*d,z:source.point.z+normal.z*d};if(!this.ports.clearCenter(candidate,radius))continue;
+   // Start tangent to the real contact face. Conservative world adapters may require a little more clearance.
+   for(let offset=radius+.025*scale,checks=0;offset<d-radius*.25&&checks<32;offset+=radius*.25,checks++){const near={x:source.point.x+normal.x*offset,y:source.point.y+normal.y*offset,z:source.point.z+normal.z*offset};if(this.ports.clearCenter(near,radius)){if(this.ports.clearSourcePath(near,candidate,radius)){start=near;center=candidate;}break;}}
+   if(center)break;
+  }
+  if(!center||!start)return;
   if(this.wells.size>=this.tuning.maxFields)this.end(this.wells.keys().next().value!);
-  const well:GravityWell={id:source.id,ownerId:source.ownerId,point:copyVector(source.point),center,normal,radius:this.tuning.radius*scale,captureRadius:this.tuning.captureRadius*scale,duration:this.tuning.duration,age:0,power:Math.min(4,source.power??1)};
+  const well:GravityWell={id:source.id,ownerId:source.ownerId,point:copyVector(source.point),center:copyVector(start),normal,radius:this.tuning.radius*scale,captureRadius:this.tuning.captureRadius*scale,duration:this.tuning.duration,age:0,power:Math.min(4,source.power??1),deployment:{start,destination:center,elapsed:0,duration:this.tuning.deploymentDuration}};
   this.wells.set(well.id,well);this.pulses.set(well.id,this.tuning.tickInterval);this.emit({kind:'spawn',well:cloneWell(well)});return cloneWell(well);
  }
  update(dt:number,paused=false):void{
@@ -47,7 +56,15 @@ export class GravityFields {
   const count=Math.ceil(dt*120),step=dt/count;for(let i=0;i<count;i++)this.advance(step);
  }
  private advance(dt:number){
-  for(const well of [...this.wells.values()]){well.age+=dt;if(well.age>=well.duration-1e-8)this.end(well.id);}
+  for(const well of [...this.wells.values()]){
+   let activeDt=dt;const travel=well.deployment;
+   if(travel&&!gravityActive(well)){
+    const remaining=travel.duration-travel.elapsed;travel.elapsed=Math.min(travel.duration,travel.elapsed+dt);activeDt=Math.max(0,dt-remaining);
+    const t=travel.elapsed/travel.duration,ease=t*t*(3-2*t),next=t===1?copyVector(travel.destination):{x:travel.start.x+(travel.destination.x-travel.start.x)*ease,y:travel.start.y+(travel.destination.y-travel.start.y)*ease,z:travel.start.z+(travel.destination.z-travel.start.z)*ease},radius=this.tuning.coreRadius*(well.radius/this.tuning.radius);
+    if(!this.ports.clearCenter(next,radius)||!this.ports.clearSourcePath(well.center,next,radius)){this.end(well.id);continue;}well.center=next;
+   }
+   well.age+=activeDt;if(well.age>=well.duration-1e-8)this.end(well.id);
+  }
   const seen=new Set<number>(),targets=[...this.ports.targets()].filter(t=>{if(!t.alive||!Number.isSafeInteger(t.id)||seen.has(t.id)||!finiteVector(t.position)||!Number.isFinite(t.radius)||!Number.isFinite(t.halfHeight)||t.radius<=0||t.halfHeight<=0)return false;seen.add(t.id);return true;}).sort((a,b)=>a.id-b.id).slice(0,this.tuning.maxTargets),valid=new Set(targets.map(t=>t.id));
   for(const id of this.members.keys())if(!valid.has(id))this.members.delete(id);
   for(const target of targets){
@@ -55,7 +72,7 @@ export class GravityFields {
    if(well&&(distance3(target.position,well.center)>well.radius+.1||!this.ports.visible(well.center,target))){this.release(member!);well=undefined;}
    if(!well){
     const counts=new Map<EffectId,number>();for(const m of this.members.values())if(m.wellId)counts.set(m.wellId,(counts.get(m.wellId)??0)+1);
-    well=[...this.wells.values()].filter(w=>distance3(target.position,w.center)<=w.radius&&this.ports.visible(w.center,target)&&(counts.get(w.id)??0)<this.tuning.maxMembers).sort((a,b)=>distance3(target.position,a.center)/a.radius-distance3(target.position,b.center)/b.radius)[0];
+    well=[...this.wells.values()].filter(w=>gravityActive(w)&&distance3(target.position,w.center)<=w.radius&&this.ports.visible(w.center,target)&&(counts.get(w.id)??0)<this.tuning.maxMembers).sort((a,b)=>distance3(target.position,a.center)/a.radius-distance3(target.position,b.center)/b.radius)[0];
     if(well){const used=new Set([...this.members.values()].filter(m=>m.wellId===well!.id).map(m=>m.slot));let slot=0;while(used.has(slot))slot++;
      member={targetId:target.id,wellId:well.id,position:copyVector(target.position),velocity:member?copyVector(member.velocity):{x:0,y:0,z:0},phase:'pull',slot};this.members.set(target.id,member);
     }
@@ -78,6 +95,7 @@ export class GravityFields {
    }
   }
   for(const well of this.wells.values()){
+   if(!gravityActive(well))continue;
    let next=this.pulses.get(well.id)!;
    while(well.age+1e-8>=next){
     for(const member of this.members.values())if(member.wellId===well.id){const target=targets.find(t=>t.id===member.targetId);if(target&&this.ports.visible(well.center,{...target,position:member.position})){
