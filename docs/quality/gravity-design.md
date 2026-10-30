@@ -20,7 +20,7 @@ Latest art direction: keep the **dark singularity at the center**. A separate la
 
 ## Equipment alignment: required next phase
 
-The user explicitly requires equipment to match this gravity language and collaboration with **Claude Opus 5.5** when that phase is reached. Equipment alignment is **pending**; the current generic gravity equipment still uses the older rotating rings. The world-effect captures do not establish equipment completion.
+The user explicitly requires equipment to match this gravity language and collaboration with **Claude Opus 5.5**. The [equipment prototype and evidence](gravity-equipment.md) now provide contained dark cores, soft inward wisps and construction-specific mounts in actual pilot/mech gameplay. Opus 5.5 peer critique is complete; user adoption approval remains open; normal production equipment still uses the older rings until coordinated registration. World-effect captures alone do not establish equipment completion.
 
 - Preserve the weapon's construction, silhouette and aiming space. Place contained dark-core cues, soft inward wisps and restrained local compression at purposeful chambers, feeds or emitters. Do not wrap the whole weapon in the deployed well or add permanent orbiting ribbons.
 - Vary the installation and motion with construction and delivery: compact cartridge/feed accents for conventional guns, a pressure chamber for launchers/sticky delivery, and an exposed focus where an energy/orb emitter supports it. An equipment cue is cosmetic; it does not create another damaging field.

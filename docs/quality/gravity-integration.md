@@ -14,6 +14,9 @@ The review entry is `gravity-lab.html` (`src/dev/effects/gravity/lab.ts`). It ru
 | `rendering/quality/gravity/response.ts` | `gravityModule`, `GravityView` / `GravityResponse.sync(snapshot)` / `.event(event)`; presentation only |
 | `rendering/quality/gravity/flow.ts` | Cached pressure paths, arc-length sampling and cosmetic profiles; no combat state |
 | `rendering/quality/gravity/lens.ts` | Transient background distortion around the unchanged dark core; borrowed compositor inputs |
+| `rendering/quality/gravity/equipmentModule.ts` | `gravityEquipmentModule()` equipment-only capability; `GravityEquipmentResponse` lifecycle composed by the full gravity module |
+| `rendering/quality/gravity/equipment.ts` | Mounted containment cells and finite inward wisps; exact source restoration, per-rig/muzzle shot response |
+| `rendering/quality/gravity/coreMaterial.ts` | One unchanged dark-core shader shared by deployed wells and equipment |
 | `rendering/quality/shared/sceneColor.ts` | Neutral scene-color/depth binding and ordered sampling-surface marker |
 | `rendering/quality/shared/composedPresentation.ts` | One generic composition layer, alongside existing carrier effects |
 | `audio/gravityAudio.ts` | Recipe in existing shared audio engine; no new runtime context/engine |
@@ -46,7 +49,7 @@ The [current wisps pass](gravity-wisps.md) keeps all deployment/gameplay/audio m
 
 ## Compatibility and remaining production checks
 
-**Equipment alignment remains pending.** The current world wisps/distortion pass does not replace the generic equipment rings. Before calling gravity complete, implement and verify the [equipment alignment phase](gravity-design.md#equipment-alignment-required-next-phase), including pilot/mech idle, firing, reload and mixed channels; actual gameplay with sound; matched equipment-only performance; and Claude Opus 5.5 critique of the actual equipment evidence. Reuse `ElementResponse.equipment` / `ElementModule.replaceEquipment` and the existing equipment lifecycle. A future gravity equipment replacement must suppress only the generic gravity channel, preserving other elements and original muzzle/slot ownership. Keep the existing renderer available for comparison, and coordinate the shared production registry rather than replacing another element's factory.
+**Equipment prototype implemented; production adoption pending.** See the [equipment evidence and review](gravity-equipment.md). The full `gravityModule()` now replaces the generic Gravity equipment channel through `ElementResponse.equipment` / `ElementModule.replaceEquipment`. `{equipment:'legacy'}` retains the old equipment for comparison. Until the authoritative field is integrated, the combat lead can register the narrower `gravityEquipmentModule()` at the existing production composition root; do not register both for Gravity. Preserve other registrations/recipes and forward the actual `rig.group` and `muzzleIndex` for each shot. No protected combat files or shared registry were edited. The required Opus 5.5 source/still critique is complete; user adoption approval and final combined normal-game verification remain required.
 
 `PlayerBallistics` still works with no observer; the 13-family exact old-engine replay passes. New surface helpers are extracted into `quality/shared` with old corrosive-path exports retained. The generic compositor invokes the original carrier impact once, preserving delivery and dual-element weights, then adds authoritative persistent response. Recipe composition changes gravity only.
 

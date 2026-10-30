@@ -8,10 +8,14 @@ import {EffectVariationSequence} from '../shared/variation';
 import {gravityAudioRecipe} from '../../../audio/gravityAudio';
 import {infallDistance,flowEnvelope,pressureProfile,samplePressure,type PressureProfile} from './flow';
 import {GravityLens} from './lens';
+import {gravityCoreMaterial} from './coreMaterial';
+import {GravityEquipmentResponse} from './equipmentModule';
+import type {WeaponSpec} from '../../../core/arsenal';
+import type {Mode} from '../../../core/index';
 
 export const GRAVITY_VFX_CAPACITY=Object.freeze({wells:3,lanes:8,segments:24,grains:144,holds:32,events:128,wakes:12,history:24});
 type Snapshot=ReturnType<GravityFields['snapshot']>;
-export interface GravityVisualOptions {seed?:number}
+export interface GravityVisualOptions {seed?:number;equipment?:'aligned'|'legacy'}
 export interface GravityView extends ElementResponse {setDistortionEnabled?(enabled:boolean):void;sync(state:Snapshot):void;event(event:GravityEvent):void;readonly diagnostics:Record<string,unknown>}
 interface Visual {id:string;group:THREE.Group;well:GravityWell;folds:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;core:THREE.Mesh;wakes:THREE.Mesh<THREE.BufferGeometry,THREE.ShaderMaterial>;profile:PressureProfile;lens:GravityLens;endAge:number;pulse:number;bedBeat:number}
 const foldVertex=`attribute float visibility;varying vec3 vLocal;varying float vVisibility;varying vec2 vUv;void main(){vLocal=position;vVisibility=visibility;vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
@@ -20,8 +24,6 @@ float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float
 void main(){float x=vUv.x,y=vUv.y;float drift=sin(x*12.-time*17.+seed)*.08;float a=exp(-pow((y-.30-drift)/.11,2.)),b=exp(-pow((y-.59+drift*.6)/.16,2.)),c=exp(-pow((y-.78-drift*.4)/.07,2.));float vapor=noise(vec2(x*16.-time*9.+seed,y*8.));float ends=smoothstep(0.,.25,x)*(1.-smoothstep(.72,1.,x));float haze=exp(-pow((y-.5)/.32,2.))*.14;float density=(a*.7+b+c*.35+haze)*mix(.16,1.,vapor)*ends;
 float targetClear=1.;for(int i=0;i<12;i++){if(i>=bodyCount)break;vec3 gap=(vLocal-bodies[i])*bodyScale;gap.y*=.55;targetClear=min(targetClear,smoothstep(.48,.85,length(gap)));}
 vec3 color=mix(vec3(.32,.15,.59),vec3(.72,.48,1.),vapor);float alpha=presence*vVisibility*density*mix(.40,.18,wake)*mix(.08,1.,targetClear);gl_FragColor=vec4(color,alpha);}`;
-const coreVertex=`varying vec3 vN,vV;void main(){vec4 p=modelViewMatrix*vec4(position,1.);vV=-p.xyz;vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*p;}`;
-const coreFragment=`uniform float presence,pulse;varying vec3 vN,vV;void main(){float facing=max(0.,dot(normalize(vN),normalize(vV)));float rim=1.-smoothstep(.015,.15,facing);float inner=(1.-smoothstep(.17,.31,facing))*(1.-rim);vec3 c=vec3(.0015,.0007,.004)+vec3(.16,.052,.26)*inner+vec3(.85,.51,1.)*rim*(.8+.2*pulse);gl_FragColor=vec4(c,presence);}`;
 const particleVertex=`attribute float opacity;attribute vec3 tint;varying float vA;varying vec3 vC;void main(){vA=opacity;vC=tint;gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.);}`;
 const particleFragment=`varying float vA;varying vec3 vC;void main(){if(vA<.01)discard;gl_FragColor=vec4(vC,vA);}`;
 const GRIT=[new THREE.Color(0xb39a77),new THREE.Color(0x493246),new THREE.Color(0xc9a0eb)];
@@ -31,18 +33,22 @@ function material(seed:number,wake=false){return new THREE.ShaderMaterial({verte
 
 /** Read-only source presentation. Placement, membership, damage, bodies and clocks remain gameplay-owned. */
 export class GravityResponse implements GravityView {
- readonly group=cosmetic(new THREE.Group());readonly events:GravityEvent[]=[];
+ readonly group=cosmetic(new THREE.Group());readonly events:GravityEvent[]=[];readonly equipmentResponse=new GravityEquipmentResponse();
+ readonly equipment:ElementResponse['equipment'];
  private visuals=new Map<string,Visual>();private state:Snapshot={wells:[],members:[]};private disposed=false;private variation:EffectVariationSequence;
  private history:{id:string;seed:number;variant:number;widths:number[];lengths:number[];durations:number[];scale:number}[]=[];private updates=0;private distortionEnabled=true;
  private dummy=new THREE.Object3D();private grains:THREE.InstancedMesh;private alpha:THREE.InstancedBufferAttribute;private tint:THREE.InstancedBufferAttribute;
  private p=new THREE.Vector3();private next=new THREE.Vector3();private tangent=new THREE.Vector3();private side=new THREE.Vector3();private view=new THREE.Vector3();private cameraPosition=new THREE.Vector3();private center=new THREE.Vector3();
  constructor(private readonly scene:THREE.Scene,private camera:THREE.Camera,private audio:ElementalAudio,options:GravityVisualOptions={}){
+  if(options.equipment!=='legacy')this.equipment=(root,appearance)=>this.equipmentResponse.equipment(root,appearance);
   this.variation=new EffectVariationSequence(options.seed);this.group.name='gravity-well-presentation';scene.add(this.group);
   const g=new THREE.IcosahedronGeometry(1,0);this.alpha=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains),1);this.tint=new THREE.InstancedBufferAttribute(new Float32Array(GRAVITY_VFX_CAPACITY.grains*3),3);g.setAttribute('opacity',this.alpha);g.setAttribute('tint',this.tint);
   this.grains=cosmetic(new THREE.InstancedMesh(g,new THREE.ShaderMaterial({vertexShader:particleVertex,fragmentShader:particleFragment,transparent:true,depthWrite:false,toneMapped:false}),GRAVITY_VFX_CAPACITY.grains));this.grains.name='gravity-inward-grit';this.grains.count=0;this.group.add(this.grains);
  }
  setDistortionEnabled(enabled:boolean):void{if(this.disposed)return;this.distortionEnabled=enabled;this.draw();}
  impact(_event:BallisticPresentationImpact):void{/* Existing carrier presentation owns the projectile/contact. */}
+ shot(_spec:WeaponSpec,_mode:Mode,root?:THREE.Object3D,index?:number){this.equipmentResponse.shot(root,index);}
+ release(root:THREE.Object3D){this.equipmentResponse.release(root);}
  event(event:GravityEvent):void{
   if(this.disposed)return;this.events.push(event);if(this.events.length>GRAVITY_VFX_CAPACITY.events)this.events.shift();
   const well='well'in event?event.well:undefined,distance=well?this.center.set(well.center.x,well.center.y,well.center.z).distanceTo(this.camera.getWorldPosition(this.cameraPosition)):0;
@@ -59,7 +65,7 @@ export class GravityResponse implements GravityView {
   const profile=pressureProfile(this.variation.next(4,'gravity-well'),new THREE.Vector3(well.normal.x,well.normal.y,well.normal.z),new THREE.Vector3().subVectors(well.deployment?.destination??well.center,well.point).length()/(well.radius/6));
   const group=cosmetic(new THREE.Group());group.name=`gravity-source-${well.id}`;this.group.add(group);
   const folds=cosmetic(new THREE.Mesh(geometry(GRAVITY_VFX_CAPACITY.lanes,GRAVITY_VFX_CAPACITY.segments),material(profile.seed)));folds.name='gravity-pressure-folds';folds.renderOrder=3;group.add(folds);
-  const core=cosmetic(new THREE.Mesh(new THREE.IcosahedronGeometry(GRAVITY_PROTOTYPE.coreRadius,2),new THREE.ShaderMaterial({vertexShader:coreVertex,fragmentShader:coreFragment,uniforms:{presence:{value:1},pulse:{value:0}},transparent:true,toneMapped:false})));core.name='gravity-dark-core';group.add(core);
+  const core=cosmetic(new THREE.Mesh(new THREE.IcosahedronGeometry(GRAVITY_PROTOTYPE.coreRadius,2),gravityCoreMaterial()));core.name='gravity-dark-core';group.add(core);
   const lens=new GravityLens(this.scene);group.add(lens.mesh);
   const wakes=cosmetic(new THREE.Mesh(geometry(GRAVITY_VFX_CAPACITY.wakes,8),material(profile.seed+719,true)));wakes.name='gravity-member-pressure';wakes.renderOrder=3;group.add(wakes);
   this.history.push({id:well.id,seed:profile.seed,variant:profile.variant,widths:profile.lanes.map(l=>l.width),lengths:profile.lanes.map(l=>l.length),durations:profile.lanes.map(l=>l.duration),scale:well.radius/6});if(this.history.length>GRAVITY_VFX_CAPACITY.history)this.history.shift();
@@ -111,8 +117,8 @@ export class GravityResponse implements GravityView {
   this.grains.count=count;this.grains.instanceMatrix.needsUpdate=true;this.alpha.needsUpdate=true;this.tint.needsUpdate=true;
  }
  private remove(v:Visual){v.lens.dispose();v.group.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});v.group.removeFromParent();this.visuals.delete(v.id);}
- get diagnostics(){return{wells:this.visuals.size,grains:this.grains.count,heldContours:0,sources:[...this.visuals.values()].map(v=>({id:v.id,center:v.group.position.toArray(),corePresence:(v.core.material as THREE.ShaderMaterial).uniforms.presence.value,pressurePresence:v.folds.material.uniforms.presence.value,lensRadius:v.lens.mesh.scale.x,lensVisible:v.lens.mesh.visible,lensReady:v.lens.mesh.material.uniforms.ready.value,coreRadius:(v.core.geometry as THREE.IcosahedronGeometry).parameters.radius*v.core.scale.x*v.well.radius/6})),foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths],durations:[...p.durations]}))};}
- clear():void{for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
- dispose():void{if(this.disposed)return;this.clear();this.grains.geometry.dispose();(this.grains.material as THREE.Material).dispose();this.grains.dispose();this.group.removeFromParent();this.disposed=true;}
+ get diagnostics(){return{...this.equipmentResponse.diagnostics,wells:this.visuals.size,grains:this.grains.count,heldContours:0,sources:[...this.visuals.values()].map(v=>({id:v.id,center:v.group.position.toArray(),corePresence:(v.core.material as THREE.ShaderMaterial).uniforms.presence.value,pressurePresence:v.folds.material.uniforms.presence.value,lensRadius:v.lens.mesh.scale.x,lensVisible:v.lens.mesh.visible,lensReady:v.lens.mesh.material.uniforms.ready.value,coreRadius:(v.core.geometry as THREE.IcosahedronGeometry).parameters.radius*v.core.scale.x*v.well.radius/6})),foldVertices:[...this.visuals.values()].reduce((sum,v)=>sum+v.folds.geometry.attributes.position.count,0),geometryUpdates:this.updates,profiles:this.history.map(p=>({...p,widths:[...p.widths],lengths:[...p.lengths],durations:[...p.durations]}))};}
+ clear():void{this.equipmentResponse.clear();for(const v of [...this.visuals.values()])this.remove(v);this.state={wells:[],members:[]};this.grains.count=0;this.events.length=0;this.history.length=0;this.variation.reset();this.updates=0;}
+ dispose():void{if(this.disposed)return;this.clear();this.equipmentResponse.dispose();this.grains.geometry.dispose();(this.grains.material as THREE.Material).dispose();this.grains.dispose();this.group.removeFromParent();this.disposed=true;}
 }
-export function gravityModule(onCreate?:(response:GravityResponse)=>void,options:GravityVisualOptions={}):ElementModule{return{recipe:gravityAudioRecipe,create:({scene,camera,audio})=>{const response=new GravityResponse(scene,camera,audio,options);onCreate?.(response);return response;}};}
+export function gravityModule(onCreate?:(response:GravityResponse)=>void,options:GravityVisualOptions={}):ElementModule{return{recipe:gravityAudioRecipe,replaceEquipment:options.equipment!=='legacy',create:({scene,camera,audio})=>{const response=new GravityResponse(scene,camera,audio,options);onCreate?.(response);return response;}};}
