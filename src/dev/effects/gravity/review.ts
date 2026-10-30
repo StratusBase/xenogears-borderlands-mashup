@@ -12,8 +12,10 @@ import type {EffectBounds,EffectVector} from '../../../core/effects/contracts';
 import {ElementalPresentation} from '../../../rendering/quality/elementalPresentation';
 import {ComposedElementalPresentation} from '../../../rendering/quality/shared/composedPresentation';
 import type {GravityView} from '../../../rendering/quality/gravity/response';
+import {GRAVITY_TIMING} from '../../../rendering/quality/gravity/timing';
 import type {ElementModule} from '../../../rendering/quality/shared/composedPresentation';
 import type {GamePresentation} from '../../../rendering/quality/GamePresentation';
+import type {ElementalAudioEvent,ElementalAudioOptions} from '../../../audio/elementalAudio';
 import {createHumanReviewTarget} from '../shared/reviewTargets';
 import {QualityPerformance,distribution} from '../../../rendering/quality/performance';
 import type {EncounterEnemyVisual} from '../../../rendering/encounterEnemy';
@@ -96,7 +98,7 @@ function fixture(old=before){
   event:event=>{if(event.kind==='spawn')sourceOrder.push(event.well.id);view?.event(event);},
  });activation=new GravityActivation(fields);g.ballistics.setWorldImpactHandler(event=>{worldImpacts.push(structuredClone(event));activation.impact(event);});
  applyDistortion();equip('gravity',(document.querySelector('#gravity-delivery') as HTMLSelectElement).value as ProjectileType);aim(contact);g.screen='none';g.ui.setScreen('none',g.progression,g.mode);g.presentation.setSoundEnabled(true);
- shots.length=0;hits.length=0;crush.length=0;worldImpacts.length=0;sourceOrder.length=0;audioCues.length=0;layer.clear();const cue=layer.audio.cue.bind(layer.audio);layer.audio.cue=(element,event,options)=>{audioCues.push({element,event,options:structuredClone(options),at:g.time});cue(element,event,options);};game.driveEvaluation({fire:false,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/240);
+ shots.length=0;hits.length=0;crush.length=0;worldImpacts.length=0;sourceOrder.length=0;audioCues.length=0;layer.clear();const observedAudio=layer.audio as unknown as {play(element:ElementType,event:ElementalAudioEvent,options:ElementalAudioOptions):void},play=observedAudio.play.bind(layer.audio);observedAudio.play=(element,event,options)=>{audioCues.push({element,event,options:structuredClone(options),at:g.time});play(element,event,options);};game.driveEvaluation({fire:false,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/240);
  caption.innerHTML=`GRAVITY / ${selected.toUpperCase()} / ${old?(options.referenceLabel??'THIN STRANDS / BEFORE'):(options.currentLabel??'PRESSURE FOLDS / AFTER')}<span>Actual Game shots + authoritative field module · ${old?'same physics and sound · reference renderer':(options.description??'smooth surface departure · transient inward sheets')} · provisional balance</span>`;
 }
 const originalHit=g.onBallisticHit.bind(g);g.onBallisticHit=hit=>{hits.push({target:targetIndex(hit.targetId),at:g.time,point:hit.point.toArray(),direction:hit.direction.toArray(),damage:hit.damage,critical:hit.critical,spec:structuredClone(hit.spec)});originalHit(hit);};
@@ -147,7 +149,7 @@ async function stopRecord(){
  clip.stream.getTracks().forEach(track=>track.stop());await clip.mix.close();recording=undefined;recordBusy=false;recordingControls(false);proofs.push({kind:'recording',info});publish();state(`Recording ready: ${info.scene} / ${info.style} / ${sha256.slice(0,8)}`);
 }
 const guard=(action:()=>void|Promise<void>)=>()=>{void Promise.resolve().then(action).catch(error=>{errors.push(String(error));state(`ERROR: ${error}`);publish();});};
-document.querySelector('#gravity-contract-start')!.addEventListener('click',guard(()=>onset(.025)));document.querySelector('#gravity-contract-mid')!.addEventListener('click',guard(()=>onset(.15)));document.querySelector('#gravity-contract-end')!.addEventListener('click',guard(()=>onset(.36)));
+document.querySelector('#gravity-contract-start')!.addEventListener('click',guard(()=>onset(.025)));document.querySelector('#gravity-contract-mid')!.addEventListener('click',guard(()=>onset(GRAVITY_TIMING.field.collapse*.5)));document.querySelector('#gravity-contract-end')!.addEventListener('click',guard(()=>onset(GRAVITY_TIMING.field.fadeEnd+.01)));
 document.querySelector('#gravity-deploy-start')!.addEventListener('click',guard(()=>deploy(0)));document.querySelector('#gravity-deploy-mid')!.addEventListener('click',guard(()=>deploy(.5)));document.querySelector('#gravity-deploy-check')!.addEventListener('click',guard(()=>deploy(undefined)));
 document.querySelector('#gravity-onset')!.addEventListener('click',guard(()=>onset()));document.querySelector('#gravity-step')!.addEventListener('click',guard(advance));document.querySelector('#gravity-variety')!.addEventListener('click',guard(variety));
 document.querySelector('#gravity-play')!.addEventListener('click',guard(play));document.querySelector('#gravity-capture')!.addEventListener('click',guard(capture));document.querySelector('#gravity-shoot')!.addEventListener('click',guard(shootArmor));document.querySelector('#gravity-release')!.addEventListener('click',guard(release));document.querySelector('#gravity-perf')!.addEventListener('click',guard(compare));

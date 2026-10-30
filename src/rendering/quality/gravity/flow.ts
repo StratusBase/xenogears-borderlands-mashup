@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type {EffectVariation} from '../shared/variation';
+import {GRAVITY_TIMING} from './timing';
 
 const SAMPLES=64;
 export interface PressureLane {readonly points:Float32Array;readonly distances:Float32Array;readonly length:number;readonly width:number;readonly duration:number;readonly offset:number;readonly window:number;readonly primary:boolean;readonly roughness:number}
@@ -26,7 +27,7 @@ export function pressureProfile(variation:EffectVariation,normal:THREE.Vector3,c
    const floor=-clearance+.08;if(p.dot(normal)<floor)p.addScaledVector(normal,floor-p.dot(normal));
    points.set([p.x,p.y,p.z],sample*3);if(sample)length+=Math.hypot(p.x-points[(sample-1)*3],p.y-points[(sample-1)*3+1],p.z-points[(sample-1)*3+2]);distances[sample]=length;
   }
-  lanes.push({points,distances,length,width:primary?variation.range(dim+6,.22,.30):variation.range(dim+6,.07,.11),duration:length/variation.range(dim+7,28,36),offset:(lane*.307+variation.range(dim+8,0,.21))%1,window:variation.range(dim+9,primary?.22:.16,primary?.36:.27),primary,roughness:variation.range(dim+10,0,TAU)});
+  lanes.push({points,distances,length,width:primary?variation.range(dim+6,.22,.30):variation.range(dim+6,.07,.11),duration:length/variation.range(dim+7,GRAVITY_TIMING.field.infallMin,GRAVITY_TIMING.field.infallMax),offset:(lane*.307+variation.range(dim+8,0,.21))%1,window:variation.range(dim+9,primary?.22:.16,primary?.36:.27),primary,roughness:variation.range(dim+10,0,TAU)});
  }
  return{seed:variation.seed,variant:variation.variant,lanes};
 }

@@ -1,6 +1,6 @@
 # Gravity well: canonical prototype design
 
-Recorded 30 October 2026. The user has specified the mechanic and asked to prepare implementation with organized, reusable effects. This is the tracked source of truth for that design. A controlled actual-Game prototype now implements this mechanic; normal-main integration remains with the combat lead. See [integration](gravity-integration.md) and [review evidence](gravity-prototype.md). Apply [effects architecture and ownership](../effects-architecture.md).
+Recorded 30 October 2026. The user has specified the mechanic and asked to prepare implementation with organized, reusable effects. This is the tracked source of truth for that design. A controlled actual-Game prototype implements the full field mechanic; that mechanic still requires normal-main integration. The user-approved equipment is now registered in normal Enhanced gameplay. See [production equipment receipt](gravity-production.md), [field integration](gravity-integration.md) and [prototype evidence](gravity-prototype.md). Apply [effects architecture and ownership](../effects-architecture.md).
 
 ## User-defined behavior
 
@@ -18,9 +18,9 @@ The concept combines Tidal Fold's asymmetric inward pressure language with restr
 
 Latest art direction: keep the **dark singularity at the center**. A separate large background-distortion envelope forms after deployment, contracts rapidly into that core and fades. Purple inflow is ethereal, soft and faster than enemy pull, without solid ribbon bodies, ink borders or hard bright edges. The core does not disappear with the envelope. See the [wisps and distortion pass](gravity-wisps.md); this is based on the user's written description, not a verified exact Borderlands video match.
 
-## Equipment alignment: required next phase
+## Equipment alignment: approved production adoption
 
-The user explicitly requires equipment to match this gravity language and collaboration with **Claude Opus 5.5**. The [equipment prototype and evidence](gravity-equipment.md) now provide contained dark cores, soft inward wisps and construction-specific mounts in actual pilot/mech gameplay. Opus 5.5 peer critique is complete; user adoption approval remains open; normal production equipment still uses the older rings until coordinated registration. World-effect captures alone do not establish equipment completion.
+The user explicitly requires equipment to match this gravity language and collaboration with **Claude Opus 5.5**. The [equipment prototype and evidence](gravity-equipment.md) provide contained dark cores, soft inward wisps and construction-specific mounts in actual pilot/mech gameplay. The user approved that direction and requested normal-game adoption. The existing production composition root now registers the equipment-only `gravityEquipmentModule()`; normal Enhanced gameplay uses it without a review query. Legacy and the same-build equipment baseline retain the older generic treatment. The initial Opus 5.5 source/still critique is complete; the subsequent timing/integration review is recorded separately in the [production receipt](gravity-production.md).
 
 - Preserve the weapon's construction, silhouette and aiming space. Place contained dark-core cues, soft inward wisps and restrained local compression at purposeful chambers, feeds or emitters. Do not wrap the whole weapon in the deployed well or add permanent orbiting ribbons.
 - Vary the installation and motion with construction and delivery: compact cartridge/feed accents for conventional guns, a pressure chamber for launchers/sticky delivery, and an exposed focus where an energy/orb emitter supports it. An equipment cue is cosmetic; it does not create another damaging field.
@@ -29,7 +29,21 @@ The user explicitly requires equipment to match this gravity language and collab
 - Verify pilot and mech equipment at idle, firing and reload, plus mixed elements and previews/drops. Retain actual equipment-to-projectile-to-impact gameplay with native sound, screenshots and matched same-build before/current/before-repeat performance.
 - Once actual equipment views are ready, have Opus 5.5 compare them with the agreed gravity direction and world-effect evidence. Record the exact model, findings, changes and remaining gaps, including whether video/audio was assessed. User visual approval remains the adoption gate.
 
-Keep the implementation in small gravity-owned presentation modules, composed through the existing optional equipment contract and lifecycle. Coordinate any production-registry change; normal field integration remains the combat lead's handoff. Follow the common [equipment acceptance requirements](../effects-architecture.md#required-equipment-alignment-and-opus-review).
+Keep the implementation in small gravity-owned presentation modules, composed through the existing optional equipment contract and lifecycle. Equipment registration is coordinated through the one production registry; normal field integration remains a separate combat handoff. Follow the common [equipment acceptance requirements](../effects-architecture.md#required-equipment-alignment-and-opus-review).
+
+## Slower cosmetic timing
+
+The follow-up response to the user's speed feedback is centralized in `rendering/quality/gravity/timing.ts`:
+
+| Presentation | Previous | Current |
+|---|---:|---:|
+| Equipment wisp cycle | 0.22–0.34 s | 0.40–0.62 s |
+| Equipment kick decay / texture rate | 12 / 23 | 8 / 14 |
+| Prototype field wisp inflow | 28–36 m/s | 21–27 m/s |
+| Prototype distortion collapse | 0.34 s | 0.65 s |
+| Prototype distortion fade window | 0.22–0.38 s | 0.44–0.74 s |
+
+These rates affect presentation only. The dark central core remains, and prototype inflow remains faster than the 7 m/s target pull cap even at the smallest source scale. Deployment, activation, pull/hold/crush, projectile behavior and sound recipes keep their existing clocks. The slower field presentation is demonstrated in the separate timing prototype; equipment production adoption does not install that field in normal gameplay.
 
 ## Placement and collision
 
