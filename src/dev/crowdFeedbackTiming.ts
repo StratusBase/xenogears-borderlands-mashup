@@ -15,31 +15,5 @@ export class CrowdCpuScopes {
   return true;
  }
 }
-export interface CrowdGpuFrame {frame:number;gpuMs:number|null;gpuInvalid?:boolean}
-export class CrowdGpuTimer {
- private readonly extension:{TIME_ELAPSED_EXT:number;GPU_DISJOINT_EXT:number}|null;
- private pending:{query:WebGLQuery;frame:CrowdGpuFrame}[]=[];
- private active:{query:WebGLQuery;frame:CrowdGpuFrame}|null=null;
- readonly diagnostics={started:0,resolved:0,skipped:0,disjoint:0};
- constructor(private readonly gl:WebGL2RenderingContext){this.extension=gl.getExtension('EXT_disjoint_timer_query_webgl2');}
- get supported(){return this.extension!==null;}
- get pendingCount(){return this.pending.length;}
- poll(){
-  if(!this.extension)return;
-  const invalid=Boolean(this.gl.getParameter(this.extension.GPU_DISJOINT_EXT));
-  while(this.pending.length&&(invalid||this.gl.getQueryParameter(this.pending[0].query,this.gl.QUERY_RESULT_AVAILABLE))){
-   const entry=this.pending.shift()!;
-   if(invalid){entry.frame.gpuInvalid=true;this.diagnostics.disjoint++;}
-   else{entry.frame.gpuMs=this.gl.getQueryParameter(entry.query,this.gl.QUERY_RESULT)/1e6;this.diagnostics.resolved++;}
-   this.gl.deleteQuery(entry.query);
-  }
- }
- begin(frame:CrowdGpuFrame){
-  this.poll();if(!this.extension)return;
-  if(this.pending.length>=8){this.diagnostics.skipped++;return;}
-  const query=this.gl.createQuery();if(!query){this.diagnostics.skipped++;return;}
-  this.gl.beginQuery(this.extension.TIME_ELAPSED_EXT,query);this.active={query,frame};this.diagnostics.started++;
- }
- end(){if(!this.active||!this.extension)return;this.gl.endQuery(this.extension.TIME_ELAPSED_EXT);this.pending.push(this.active);this.active=null;}
- dispose(){for(const entry of this.pending)this.gl.deleteQuery(entry.query);this.pending=[];}
-}
+export {GpuFrameTimer as CrowdGpuTimer} from '../rendering/quality/gpuTiming';
+export type {GpuFrameSample as CrowdGpuFrame} from '../rendering/quality/gpuTiming';

@@ -31,3 +31,11 @@ test('loading preparation preserves live particle buffers, geometry ownership an
   assert.equal(target,previous);assert.equal(renderer.shadowMap.autoUpdate,true);assert.equal(renderer.autoClear,false);assert.deepEqual(mesh.instanceMatrix.array,positions);assert.equal(mesh.count,count);assert.deepEqual(scene.children,children);assert.equal(geometryDisposed,0);assert.equal(materialDisposed,0);assert.equal(morphDisposed,0);assert.equal(mesh.instanceColor,colors);assert.equal(mesh.morphTexture,morph);ice.dispose();assert.equal(morphDisposed,1);previous.dispose();
  }
 });
+
+test('review loading can prime ordinary scene geometry without advancing or owning it',async()=>{
+ for(const includeSceneGeometry of[false,true]){
+  const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),ice=new IceResponse(scene),world=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshBasicMaterial());world.name='review-world-geometry';world.position.set(4,5,6);scene.add(world);let disposed=0,seen=false,target:THREE.WebGLRenderTarget|null=null;world.geometry.addEventListener('dispose',()=>disposed++);
+  const renderer={getRenderTarget:()=>target,setRenderTarget:(v:THREE.WebGLRenderTarget|null)=>target=v,shadowMap:{autoUpdate:true},autoClear:false,info:{programs:[]},compileAsync:async()=>scene,render:(warm:THREE.Scene)=>{seen=Boolean(warm.getObjectByName(world.name));if(seen)assert.equal((warm.getObjectByName(world.name)as THREE.Mesh).geometry,world.geometry);}}as unknown as THREE.WebGLRenderer;
+  const result=await prepareIceRendering(renderer,scene,camera,ice,()=>{},includeSceneGeometry);assert.equal(seen,includeSceneGeometry);assert.equal(result.includeSceneGeometry,includeSceneGeometry);assert.deepEqual(world.position.toArray(),[4,5,6]);assert.equal(disposed,0);assert.equal(world.parent,scene);ice.dispose();world.geometry.dispose();(world.material as THREE.Material).dispose();
+ }
+});

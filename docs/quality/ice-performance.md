@@ -1,5 +1,7 @@
 # Ice performance remediation
 
+Follow-up: [corrected GPU accounting, equalized scene preparation and parallel-workload pacing evidence](ice-pacing.md). The original GPU distributions below used latched display results; use the follow-up's unique-query receipts for GPU comparisons. Earlier evidence remains preserved.
+
 **Confirmed Ice shader-lifetime stall fixed. Whole-app pacing is NOT signed off; main-game integration remains on hold.**
 
 Approved scope: keep the accepted `159854d` layered plates/frost, sizing, secondary falloff, particle counts, sound and combat unchanged; work with Opus 5.5. Starting checkpoint: `efd29cf`. No normal-game wiring is included.

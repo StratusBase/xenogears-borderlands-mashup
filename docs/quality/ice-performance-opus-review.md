@@ -1,5 +1,7 @@
 # Ice performance / Opus 5.5 review
 
+See the [later pacing and GPU-accounting review](ice-pacing-opus-review.md) for the parallel-workload investigation and remaining native attribution gate. This document preserves the earlier shader-lifetime review.
+
 Three CLI reviews used literal model `claude-opus-5-5`. Every assistant response reported that model and every result reported success. Tools, MCP servers, source inspection and session persistence were disabled. Only aggregate timings and API-level descriptions were supplied; no source files or assets were sent. Opus did not execute the game.
 
 Prompts, assistant text, event receipts and metadata are retained under `artifacts/ice-performance/opus-*`. Hidden reasoning was not used in the handoff.

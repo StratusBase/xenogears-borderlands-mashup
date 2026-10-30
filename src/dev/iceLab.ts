@@ -1,3 +1,4 @@
+import {prepareIceRendering} from '../rendering/quality/ice/prepare';
 import '../style.css';
 import './iceLab.css';
 import * as THREE from 'three';
@@ -16,6 +17,7 @@ import type { EncounterEnemyVisual } from '../rendering/encounterEnemy';
 import type { BallisticHit, BallisticPresentationImpact } from '../rendering/PlayerBallistics';
 import {iceLabOptions} from './iceLabOptions';
 import {IceFrameProfiler} from './iceFrameProfiler';
+import {ReviewRenderDemand} from './effects/shared/reviewRenderDemand';
 
 // Isolated evaluation entry. All shots, reloads, collisions, damage and statuses still run in Game.
 interface Target {
@@ -41,17 +43,22 @@ const audioRequests:unknown[]=[];
 const shots:EvaluationShot[]=[], hits:unknown[]=[], contacts:{phase:string;point:number[];normal:number[];surface?:string;target:number;at:number}[]=[];
 const game=new Game(document.querySelector<HTMLElement>('#app')!,{initialProgression:progression,saveKey:'dust-steel.ice.plates.v1',evaluationDriver:true,manualEvaluation:true,autoEncounters:false,trainingTargets:false,presentation:'legacy',onEvaluationShot:shot=>shots.push(structuredClone(shot))});
 const g=game as unknown as Bridge;
+const renderDemand=new ReviewRenderDemand();
 g.renderer.setPixelRatio(1);g.renderer.setSize(innerWidth,innerHeight);g.comicRenderer.resize(innerWidth,innerHeight,1);
 const perf=new QualityPerformance(g.renderer);
-const profiler=iceLabOptions.profile?new IceFrameProfiler(g.renderer,g.scene):undefined;
-if(profiler){const instrumented=g as unknown as {renderFrame(dt:number,draw?:boolean):void;updateHUD():void};const frame=instrumented.renderFrame.bind(g);instrumented.renderFrame=(dt,draw)=>{profiler.beginFrame();try{frame(dt,draw);}finally{profiler.endFrame();}};profiler.instrument(instrumented,'updateHUD','hud');}
+const profiler=iceLabOptions.profile||iceLabOptions.pacing?new IceFrameProfiler(g.renderer,g.scene,Boolean(iceLabOptions.profile)):undefined;
+if(profiler){const instrumented=g as unknown as {renderFrame(dt:number,draw?:boolean):void;updateHUD():void};const frame=instrumented.renderFrame.bind(g);instrumented.renderFrame=(dt,draw)=>{profiler.beginFrame();try{frame(dt,draw);}finally{profiler.endFrame();}};if(iceLabOptions.profile)profiler.instrument(instrumented,'updateHUD','hud');}
+let evaluationStepping=false;
+const hudOwner=g as unknown as {updateHUD():void},drawHud=hudOwner.updateHUD.bind(g);
+hudOwner.updateHUD=()=>{const native=iceLabOptions.evaluationHud==='native'||iceLabOptions.evaluationHud==='compare-native'&&!before;if(bench&&evaluationStepping&&native)return;drawHud();};
 let layer:ElementalPresentation & {ice?:IceResponse}, targets:Target[]=[], probe:THREE.Mesh|undefined, before=false, busy=false;
 let vantage:THREE.Mesh|undefined,vantageBounds:Bridge['world']['traversalColliders'][number]|undefined;
 let sceneCase:SceneCase='crowd-rifle', surfaceCase:SurfaceCase='raised', bench=false, benchFrame=0, frozen=true;
-let handsOn=false;
+let handsOn=false;let preparing=false;
 let benchmarkResizes=0,benchmarkHidden=0;
 function benchmarkViewport(){g.renderer.setPixelRatio(1);g.renderer.setSize(1440,900);g.camera.aspect=1440/900;g.camera.updateProjectionMatrix();g.comicRenderer.resize(1440,900,1);}
-window.addEventListener('resize',()=>{if(busy){benchmarkResizes++;benchmarkViewport();}});
+g.renderer.domElement.addEventListener('webglcontextrestored',()=>renderDemand.invalidate());
+window.addEventListener('resize',()=>{renderDemand.invalidate();if(busy){benchmarkResizes++;benchmarkViewport();}});
 document.addEventListener('visibilitychange',()=>{if(busy&&document.visibilityState!=='visible')benchmarkHidden++;});
 const simulationCosts:number[]=[], peaks={plates:0,flakes:0,rimes:0,physicalVoices:0,elementalVoices:0};
 let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;requestAt:number;case:SurfaceCase}|undefined;
@@ -74,7 +81,7 @@ const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHT
 document.body.append(ui);
 if(iceLabOptions.beforeLabel){const select=document.querySelector<HTMLSelectElement>('#human-version')!;select.options[0].text=iceLabOptions.afterLabel??'Optimized';select.options[1].text=iceLabOptions.beforeLabel;}
 const caption=document.createElement('div');caption.className='signoff-caption';document.body.append(caption);
-function state(text:string){document.querySelector('#signoff-state')!.textContent=text;}
+function state(text:string){renderDemand.invalidate();document.querySelector('#signoff-state')!.textContent=text;}
 function publish(){document.querySelector('#signoff-results')!.textContent=JSON.stringify({humans:humanResults,surfaces:surfaceResults,performance:performanceResults,errors},null,2);}
 function aim(point:THREE.Vector3){g.camera.lookAt(point);g.yaw=g.camera.rotation.y;g.pitch=g.camera.rotation.x;}
 function removeProbe(){if(!probe)return;g.world.occluders.splice(g.world.occluders.indexOf(probe),1);probe.removeFromParent();probe.geometry.dispose();(probe.material as THREE.Material).dispose();probe=undefined;}
@@ -95,6 +102,7 @@ function response(old:boolean){
  for(const [bus,audio]of [['elemental',(layer as unknown as {audio:{play:(...args:unknown[])=>void}}).audio],['physical',(g.presentation as unknown as {quality?:{audio:{play:(...args:unknown[])=>void}}}).quality?.audio]]as const){if(!audio)continue;const play=audio.play.bind(audio);audio.play=(...args:unknown[])=>{audioRequests.push({bus,args:structuredClone(args),at:g.time});play(...args);};}
 }
 function setup(old:boolean,delivery:ProjectileType,count=6,mode:Mode='pilot'){
+ renderDemand.invalidate();
  handsOn=false;bench=false;frozen=true;pendingSurface=undefined;pendingHuman=undefined;liveScene=undefined;g.manualEvaluation=true;game.resetEvaluation();removeProbe();removeVantage();g.jumpMotion.reset();response(old);targets=[];
  g.mode=mode;g.trainingTargets=true;g.bodies=g.freshBodies();g.respawnUntil=0;g.time=20;g.lastFiredAt=-Infinity;g.lastDryClickAt=-10;g.nextShot=20;g.reloadUntil=0;g.reloadStartedAt=0;g.reloadFoleyStage=0;g.emptyAt=-20;
  g.combatRandom=seededRandom(37391);g.ballistics.shotSequence=0;g.world.parkedMech.position.set(8,0,-5);
@@ -150,9 +158,9 @@ function surfaceAudit(){
  return{case:surfaceCase,contact,ice:layer.ice!.diagnostics,snapshot:snapshot()};
 }
 async function prepareLayer(){
- if(before||!iceLabOptions.prepareAfter)return undefined;
+ if(before?!iceLabOptions.prepareBefore:!iceLabOptions.prepareAfter)return undefined;
  const renderState=()=>({target:g.renderer.getRenderTarget()?.texture.uuid,viewport:g.renderer.getViewport(new THREE.Vector4()).toArray(),scissor:g.renderer.getScissor(new THREE.Vector4()).toArray(),scissorTest:g.renderer.getScissorTest(),clear:g.renderer.getClearColor(new THREE.Color()).toArray(),alpha:g.renderer.getClearAlpha(),auto:g.renderer.autoClear,shadow:g.renderer.shadowMap.autoUpdate,shadowNeeded:g.renderer.shadowMap.needsUpdate,tone:g.renderer.toneMapping,color:g.renderer.outputColorSpace,infoReset:g.renderer.info.autoReset,override:g.scene.overrideMaterial?.uuid,background:g.scene.background instanceof THREE.Color?g.scene.background.toArray():g.scene.background?.uuid,camera:g.camera.layers.mask,time:g.time});
- const initial=renderState();state('Preparing exact Ice render states before firing…');const result=await(layer as IcePresentation).prepare(g.renderer,g.scene,()=>g.comicRenderer.render());
+ const initial=renderState();state('Preparing exact Ice render states before firing…');preparing=true;let result:Awaited<ReturnType<IcePresentation['prepare']>>;try{result=iceLabOptions.primeSceneGeometry?await prepareIceRendering(g.renderer,g.scene,g.camera,(layer as IcePresentation).ice,()=>draw(),true):await(layer as IcePresentation).prepare(g.renderer,g.scene,()=>draw());}finally{preparing=false;renderDemand.invalidate();}
  const final=renderState(),stateEqual=JSON.stringify(initial)===JSON.stringify(final);if(!stateEqual)throw new Error('Preparation changed renderer or Game state');return{...result,stateEqual,initial,final};
 }
 async function unlock(){g.presentation.setSoundEnabled(true);await g.presentation.unlockAudio();const d=g.presentation.diagnostics;if(!d.qualityAudioUnlocked||!d.elementalAudioUnlocked)throw new Error('Both audio buses must be unlocked');}
@@ -160,7 +168,7 @@ async function fireSurface(){
  surfaceFixture((document.querySelector('#surface-case') as HTMLSelectElement).value as SurfaceCase);await unlock();await prepareLayer();
  pendingSurface={phase:'launch',frame:0,requestAt:performance.now(),case:surfaceCase};frozen=false;state('Firing actual sticky projectile…');
 }
-function shotStep(fire:boolean){game.driveEvaluation({fire,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/60);}
+function shotStep(fire:boolean){evaluationStepping=true;try{game.driveEvaluation({fire,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/60);}finally{evaluationStepping=false;}}
 function updateSurface(){
  if(!pendingSurface)return;const p=pendingSurface;
  if(p.phase==='launch'){shotStep(true);p.phase='wait';return;}
@@ -184,21 +192,23 @@ function benchmarkAim(frame:number){
 function collectPeak(){const d=layer.ice?.diagnostics??{plates:0,flakes:0,rimes:0},a=g.presentation.diagnostics;for(const key of ['plates','flakes','rimes'] as const)peaks[key]=Math.max(peaks[key],d[key]);peaks.physicalVoices=Math.max(peaks.physicalVoices,a.physicalVoices);peaks.elementalVoices=Math.max(peaks.elementalVoices,a.elementalVoices);}
 function normalized(s:ReturnType<typeof snapshot>){return{audioRequests:s.audioRequests,time:s.time,body:s.body,shots:s.shots,hits:s.hits,targets:s.targets,contacts:s.contacts};}
 async function compare(){
+ if(recorder)throw new Error('Stop recording before measuring gameplay');
  if(busy)return;busy=true;performanceResults.length=0;sceneCase=(document.querySelector('#perf-scene') as HTMLSelectElement).value as SceneCase;
  benchmarkResizes=0;benchmarkHidden=document.visibilityState==='visible'?0:1;
  const runs:unknown[]=[],frames=iceLabOptions.measuredFrames??720;
  try{
-  for(const [label,old] of [['before',true],['current',false],['before-repeat',true]] as const){
+  const order=iceLabOptions.runOrder==='BAB'?[['current',false],['before',true],['current-repeat',false]]as const:[['before',true],['current',false],['before-repeat',true]]as const;
+  for(const [label,old] of order){
    benchmarkViewport();
    crowdedFixture(old,sceneCase);await unlock();const preparation=await prepareLayer();benchFrame=0;simulationCosts.length=0;for(const key of Object.keys(peaks) as (keyof typeof peaks)[])peaks[key]=0;
    state(`${sceneCase} / ${label}: 120 warm-up + ${frames} measured frames · sound on · capture off`);
-   profiler?.start();const promise=perf.measure(label,frames,120);bench=true;frozen=false;const started=performance.now(),cost=await promise;bench=false;frozen=true;
-   const run={label,preparation,wallMs:performance.now()-started,cost,simulationMs:distribution(simulationCosts.slice(120)),peaks:{...peaks},snapshot:snapshot(),profile:profiler?.stop(),glError:g.renderer.getContext().getError()};runs.push(run);await iceLabOptions.saveRun?.(sceneCase,label,run);
+   const environmentBefore=await iceLabOptions.environment?.();profiler?.start(label);const renderStart=renderDemand.diagnostics;const promise=perf.measure(label,frames,120);bench=true;frozen=false;const started=performance.now(),cost=await promise;bench=false;frozen=true;
+   const run={label,preparation,rendering:{draws:renderDemand.diagnostics.draws-renderStart.draws,idleCallbacks:renderDemand.diagnostics.idleCallbacks-renderStart.idleCallbacks},wallMs:performance.now()-started,clock:{timeOrigin:performance.timeOrigin,started,ended:performance.now()},cost,simulationMs:distribution(simulationCosts.slice(120)),peaks:{...peaks},snapshot:snapshot(),profile:profiler?.stop(),glError:g.renderer.getContext().getError(),environmentBefore,environmentAfter:await iceLabOptions.environment?.()};runs.push(run);await iceLabOptions.saveRun?.(sceneCase,label,run);
   }
   const typed=runs as {label:string;snapshot:ReturnType<typeof snapshot>}[];
   const equal=typed.every(r=>JSON.stringify(normalized(r.snapshot))===JSON.stringify(normalized(typed[0].snapshot)));
   const targetsHit=new Set((typed[1].snapshot.hits as {target:number}[]).map(h=>h.target).filter(i=>i>=0)).size;
-  const result={scene:sceneCase,runs,combatEqual:equal,targetsHit,protocol:{warmup:120,frames,simulationStep:1/60,sound:true,recording:false,visibility:document.visibilityState,benchmarkResizes,benchmarkHidden}};
+  const result={scene:sceneCase,runs,combatEqual:equal,targetsHit,protocol:{order:iceLabOptions.runOrder??'ABA',evaluationHud:iceLabOptions.evaluationHud??'step',warmup:120,frames,simulationStep:1/60,sound:true,recording:false,visibility:document.visibilityState,window:[innerWidth,innerHeight],benchmarkResizes,benchmarkHidden}};
   performanceResults.push(result);publish();state(`${benchmarkResizes||benchmarkHidden?'INVALID / window changed':equal&&targetsHit>=3?'PASS':'FAIL'} / ${sceneCase}: three matched runs complete · ${targetsHit} targets hit · combat ${equal?'identical':'DIFFERENT'}`);
  }finally{busy=false;bench=false;frozen=true;}
 }
@@ -238,15 +248,15 @@ g.comicRenderer.render=()=>{
  const now=performance.now(),dt=Math.min(.05,(now-previous)/1000);previous=now;
  const updateStart=performance.now();
  if(handsOn){/* Game.run owns ordinary native input and simulation. */}
- else if(bench){benchmarkAim(benchFrame++);shotStep(true);simulationCosts.push(performance.now()-updateStart);collectPeak();}
+ else if(bench){benchmarkAim(benchFrame++);shotStep(true);const simulationMs=performance.now()-updateStart;simulationCosts.push(simulationMs);profiler?.add('simulation',simulationMs);collectPeak();}
  else if(pendingSurface)updateSurface();
  else if(pendingHuman)updateHuman();
  else if(liveScene&&!frozen){
   if(liveScene==='crowd')benchmarkAim(Math.floor(liveFrame/1.5));
   game.driveEvaluation({fire:liveScene==='crowd'||liveScene==='human'||liveFrame===0,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(Math.max(1/240,dt));liveFrame++;
  }
- const start=perf.begin();draw();perf.end(start);
- if(++diagnosticTick%30===0){let matrixHash=2166136261;if(layer.ice)for(const mesh of layer.ice.group.children)if(mesh instanceof THREE.InstancedMesh){const words=new Uint32Array(mesh.instanceMatrix.array.buffer);for(const word of words)matrixHash=Math.imul(matrixHash^word,16777619);}document.querySelector('#live-diagnostics')!.textContent=JSON.stringify({screen:g.screen,time:g.time,handsOn,position:g.camera.position.toArray(),ammo:g.bodies[g.mode].ammo,ice:layer.ice?.diagnostics??null,matrixHash:matrixHash>>>0,audio:g.presentation.diagnostics});}
+ if(renderDemand.admit(preparing||bench||handsOn||!frozen||Boolean(recorder))){const start=perf.begin();draw();perf.end(start);}
+ if(++diagnosticTick%30===0){let matrixHash=2166136261;if(layer.ice)for(const mesh of layer.ice.group.children)if(mesh instanceof THREE.InstancedMesh){const words=new Uint32Array(mesh.instanceMatrix.array.buffer);for(const word of words)matrixHash=Math.imul(matrixHash^word,16777619);}document.querySelector('#live-diagnostics')!.textContent=JSON.stringify({screen:g.screen,time:g.time,handsOn,position:g.camera.position.toArray(),ammo:g.bodies[g.mode].ammo,ice:layer.ice?.diagnostics??null,matrixHash:matrixHash>>>0,renderDemand:renderDemand.diagnostics,audio:g.presentation.diagnostics});}
 };
 g.start(false);surfaceFixture('raised');publish();
 const gl=g.renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');

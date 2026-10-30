@@ -63,7 +63,7 @@ All nine complete replay snapshots match exactly. Rifle fires 58 shots and regis
 
 ## Integration interface and review gate
 
-Construct `new IcePresentation(scene,camera)` through `GamePresentation.setElementalFactory` while presentation is disabled, then use the normal Game-owned enable/disable and status/equipment lifecycle. The adapter extends ElementalPresentation, preserves its equipment/projectile construction and borrows the shared surface helpers. Do not apply damage or status changes from its callbacks. No edits to combat-owned files are needed for this presentation integration.
+For the isolated review, construct `new IcePresentation(scene,camera)` through `GamePresentation.setElementalFactory` while presentation is disabled. The adapter extends ElementalPresentation and retains Game-owned equipment/projectile/status lifecycles. Do not apply damage or status changes from its callbacks. **This factory replacement is not the production integration interface:** normal gameplay now composes approved modules through `gameElements.ts`. Future Ice registration must use the existing `ElementModule` contract and preserve Fire/Radiation/Shock; see the [current performance handoff](ice-pacing.md).
 
 This is **opt-in prototype review**, not normal-game adoption. The normal Enhanced factory remains on the existing ice style until the user approves actual motion/sound. After approval, wire the approved adapter into normal Enhanced gameplay, then verify the normal entry and complete the outstanding performance sign-off. Existing renderer and prototype comparison remain usable.
 
