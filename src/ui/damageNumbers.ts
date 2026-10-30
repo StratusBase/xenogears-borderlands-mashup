@@ -37,10 +37,6 @@ function canonical(effect?: DamageEffect): DamageEffect | undefined {
 }
 const cues: Record<DamageEffect, string> = { fire: 'FIRE', ice: 'ICE', frost: 'ICE', shock: 'SHOCK',
   corrosive: 'ACID', corrosion: 'ACID', radiation: 'RAD', gravity: 'GRAV', adhesive: 'STICK', bleed: 'BLEED' };
-function recordCue(record: DamageNumberRecord): string {
-  const cue = record.critical ? 'CRIT' : record.effect ? cues[record.effect] : record.kind === 'status' ? 'STATUS' : '';
-  return record.overflow ? `MORE${cue ? ` ${cue}` : ''}` : cue;
-}
 function lifetime(record: DamageNumberRecord): number {
   return record.critical ? DAMAGE_NUMBER_LIMITS.criticalLifetime
     : record.kind === 'status' ? DAMAGE_NUMBER_LIMITS.statusLifetime : DAMAGE_NUMBER_LIMITS.directLifetime;
@@ -55,7 +51,7 @@ export function formatDamageAmount(amount: number, kind: 'status' | 'direct' = '
 /** A finite presentation queue. Combat events are never delayed or changed.
  * Ordinary hits remain individual; status windows retain each target's exact
  * elemental breakdown in one compact row rather than four competing labels.
- * Reserved, explicitly labelled overflow tallies conserve every accepted amount
+ * Reserved overflow tallies conserve every accepted amount
  * even if an artificial burst exhausts the ordinary queue. */
 export class DamageNumberModel {
   readonly records: DamageNumberRecord[] = [];
@@ -270,9 +266,8 @@ export class DamageNumberLayout {
         Object.assign(placement, pinned, { record });
         placed++; continue;
       }
-      const cue = recordCue(record);
       let labelWidth = Math.min(260, Math.max(72, formatDamageAmount(record.amount, record.kind).length * (record.critical ? 13 : record.kind === 'direct' ? 10 : 8)
-        + cue.length * 5 + (record.events > 1 ? 26 : 0) + 16));
+        + (record.events > 1 ? 26 : 0) + 16));
       const labelHeight = record.critical ? 27 : record.kind === 'direct' ? 23 : 19;
       let found = false;
       const anchor = record.head ?? record.position;
@@ -341,7 +336,7 @@ export class DamageNumberPresentation {
     for (let i = 0; i < DAMAGE_NUMBER_LIMITS.nodes; i++) {
       const root = document.createElement('span'), cue = document.createElement('span'), value = document.createElement('strong'), count = document.createElement('span');
       root.className = 'crowd-damage-number'; cue.className = 'damage-cue'; count.className = 'damage-count';
-      root.hidden = true; root.append(cue, value, count); fragment.append(root);
+      root.hidden = true; root.append(value, count, cue); fragment.append(root);
       this.nodes.push({ root, cue, value, count, id: -1, signature: '' });
     }
     layer.append(fragment);
@@ -389,14 +384,16 @@ export class DamageNumberPresentation {
         node.root.dataset.feedbackPlacement = placement.edge ? 'edge' : 'nearby';
         node.root.className = `crowd-damage-number ${record.critical ? 'critical' : record.kind}`;
         node.root.style.setProperty('--damage-color', getDamageColor(record));
-        node.cue.textContent = `${recordCue(record)}${placement.edge ? ` ${placement.direction}` : ''}`.trim();
+        node.cue.textContent = placement.direction;
+        node.cue.hidden = true;
         const elements = Object.keys(record.breakdown) as DamageEffect[];
-        node.cue.style.backgroundImage = elements.length > 1 ? `linear-gradient(to right,${elements.map((element, i) => {
+        node.value.style.backgroundImage = elements.length > 1 ? `linear-gradient(to right,${elements.map((element, i) => {
           const color = getDamageColor({ critical: false, effect: element });
           return `${color} ${i / elements.length * 100}%,${color} ${(i + 1) / elements.length * 100}%`;
         }).join(',')})` : '';
-        node.value.textContent = `${formatDamageAmount(record.amount, record.kind)}${record.critical ? '!' : ''}`;
-        node.count.textContent = record.events > 1 ? `×${record.events}` : '';
+        node.value.textContent = formatDamageAmount(record.amount, record.kind);
+        node.count.textContent = '';
+        node.count.hidden = true;
         node.root.title = `${record.amount} damage · ${record.events} ${record.critical ? 'critical hits' : record.kind === 'status' ? 'status ticks' : 'hits'}${record.overflow ? ' · overflow tally' : ''}`
           + elements.map(element => ` · ${cues[element]} ${record.breakdown[element]!.amount} (${record.breakdown[element]!.events})`).join('')
           + (placement.edge ? ` · nearest safe edge ${placement.direction}, same target` : '');

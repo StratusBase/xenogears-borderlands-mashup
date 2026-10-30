@@ -14,7 +14,7 @@ import type { TestDummySnapshot } from './core/testDummy';
 import './ui/encounter.css';
 import type { EncounterPhase } from './encounter/contracts';
 import { DEFAULT_WEAPON_BALANCE, type WeaponBalanceRules } from './core/weaponBalance';
-import { DamageNumberPresentation, type DamageFeedbackContext, type DamageFeedbackQuality, type DamageHead } from './ui/damageNumbers';
+import { DamageNumberPresentation, formatDamageAmount, type DamageFeedbackContext, type DamageFeedbackQuality, type DamageHead } from './ui/damageNumbers';
 import './ui/damageNumbers.css';
 
 export type SupplyKind = 'repair' | 'pilot-cache' | 'mech-cache';
@@ -126,11 +126,6 @@ function button(label: string, action: () => void, className = ''): HTMLButtonEl
 function keycap(key: string): HTMLElement { return el('kbd', '', key); }
 function fmt(value: number): string { return Number.isInteger(value) ? String(value) : value.toFixed(value >= 10 ? 1 : 2).replace(/\.?0+$/, ''); }
 function ratio(value: number, maximum: number): string { return `${Math.min(100, Math.max(0, maximum > 0 ? value / maximum * 100 : 0))}%`; }
-const damageEffectIcons: Record<DamageEffect, ItemIconName> = {
-  fire: 'fire', shock: 'shock', corrosion: 'corrosive', corrosive: 'corrosive', frost: 'ice', ice: 'ice',
-  bleed: 'bleed', radiation: 'radiation', gravity: 'gravity', adhesive: 'adhesive',
-};
-
 const metricIcons: Record<CardMetric['key'], ItemIconName> = {
   damage: 'damage', spread: 'spread', reload: 'reload', fireRate: 'fireRate', magazine: 'magazine',
   maxHealth: 'health', maxShield: 'shield', moveSpeed: 'moveSpeed', heatCapacity: 'heatCapacity', cooling: 'cooling',
@@ -1269,11 +1264,7 @@ export class GameUI {
     clearTimeout(this.hitTimeout);
     this.hitTimeout = setTimeout(() => this.fields.crosshair.classList.remove('hit'), 120);
     const number = el('span', `damage-number${critical ? ' critical' : ''}${effect ? ' status-damage-number' : ''}`);
-    if (effect) {
-      number.append(createItemIcon(damageEffectIcons[effect], `${effect} damage`), el('strong', '', compactCardNumber(damage)));
-    } else {
-      number.textContent = `${Math.round(damage)}${critical ? '!' : ''}`;
-    }
+    number.textContent = formatDamageAmount(damage, context?.kind ?? 'direct');
     number.style.setProperty('--damage-color', getDamageColor({ critical, effect }));
     number.dataset.damageKind = effect ?? (critical ? 'critical' : 'normal');
     number.style.setProperty('--offset', `${effect ? 38 + Math.random() * 42 : (Math.random() - 0.5) * 70}px`);
