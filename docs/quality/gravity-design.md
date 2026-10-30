@@ -18,6 +18,19 @@ The concept combines Tidal Fold's asymmetric inward pressure language with restr
 
 Latest art direction: keep the **dark singularity at the center**. A separate large background-distortion envelope forms after deployment, contracts rapidly into that core and fades. Purple inflow is ethereal, soft and faster than enemy pull, without solid ribbon bodies, ink borders or hard bright edges. The core does not disappear with the envelope. See the [wisps and distortion pass](gravity-wisps.md); this is based on the user's written description, not a verified exact Borderlands video match.
 
+## Equipment alignment: required next phase
+
+The user explicitly requires equipment to match this gravity language and collaboration with **Claude Opus 5.5** when that phase is reached. Equipment alignment is **pending**; the current generic gravity equipment still uses the older rotating rings. The world-effect captures do not establish equipment completion.
+
+- Preserve the weapon's construction, silhouette and aiming space. Place contained dark-core cues, soft inward wisps and restrained local compression at purposeful chambers, feeds or emitters. Do not wrap the whole weapon in the deployed well or add permanent orbiting ribbons.
+- Vary the installation and motion with construction and delivery: compact cartridge/feed accents for conventional guns, a pressure chamber for launchers/sticky delivery, and an exposed focus where an energy/orb emitter supports it. An equipment cue is cosmetic; it does not create another damaging field.
+- Use subdued idle treatment and brief shot-driven intake/contraction. Accents follow the existing recoil and reload assemblies; do not move muzzles, change projectile spawning, or infer extra charge/reload mechanics from the art.
+- Keep primary/secondary hierarchy and each weapon/armor/reactor/leg slot independent, including the mech's separate guns. Preserve original parts and borrowed resources through release, replacement and Enhanced/Legacy switching.
+- Verify pilot and mech equipment at idle, firing and reload, plus mixed elements and previews/drops. Retain actual equipment-to-projectile-to-impact gameplay with native sound, screenshots and matched same-build before/current/before-repeat performance.
+- Once actual equipment views are ready, have Opus 5.5 compare them with the agreed gravity direction and world-effect evidence. Record the exact model, findings, changes and remaining gaps, including whether video/audio was assessed. User visual approval remains the adoption gate.
+
+Keep the implementation in small gravity-owned presentation modules, composed through the existing optional equipment contract and lifecycle. Coordinate any production-registry change; normal field integration remains the combat lead's handoff. Follow the common [equipment acceptance requirements](../effects-architecture.md#required-equipment-alignment-and-opus-review).
+
 ## Placement and collision
 
 ```text
