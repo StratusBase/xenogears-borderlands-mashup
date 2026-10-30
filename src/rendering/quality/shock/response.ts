@@ -5,6 +5,7 @@ import { nearestVisibleSurface,targetSurfaceSpan,type SurfaceKind } from '../sha
 import { EffectVariationSequence } from '../shared/variation';
 import { surfaceContactFrame } from '../shared/contactFrame';
 import { LightningSegments,lightningPathPoint,lightningNoise,createLightningCorona,animateLightningCorona } from './lightning';
+import { CapacitorDirectionSequence } from './directions';
 import { CapacitorBurst } from './capacitor';
 import { ShockSurface } from './surface';
 import { shockSizing,type ShockSize,type ShockRole } from './sizing';
@@ -12,18 +13,21 @@ import { ShockSegments,shockPathPoint,createShockFan,animateShockFan } from './p
 
 export interface ShockChainEvent {start:THREE.Vector3;end:THREE.Vector3;target:THREE.Group;spec:Readonly<WeaponSpec>;energy:number;exposure:number}
 interface Contact {point:THREE.Vector3;normal:THREE.Vector3;radius:number;source?:THREE.Mesh;seed:number;secondary:boolean}
+export interface ShockResponseOptions {capacitorDirection?:'balanced'|'legacy';cosmeticSeed?:number}
+export interface ShockDirectionEvent {sector:number;angle:number;point:number[]}
 export type ShockVisualProfile='prototype'|'lightning'|'capacitor';
 interface Bolt {capacitor?:CapacitorBurst;active:boolean;age:number;size:ShockSize;seed:number;point:THREE.Vector3;frame:THREE.Quaternion;fan:ReturnType<typeof createShockFan>;connection?:{start:THREE.Vector3;end:THREE.Vector3}}
 export const SHOCK_CAPACITY=Object.freeze({bolts:12,segments:1600,worldSurfaces:16,contactsPerTarget:3,eventHistory:192});
 export interface ShockEvent {role:ShockRole;phase:'contact'|'detonate';point:number[];surface:SurfaceKind;source?:string;size:ShockSize;energy?:number;exposure:number}
 /** A+B read-only response. C is strictly gated by the existing event's explosive energy/phase. */
 export class ShockResponse{
- readonly group=new THREE.Group();readonly events:ShockEvent[]=[];readonly segments:ShockSegments|LightningSegments;
+ readonly group=new THREE.Group();readonly events:ShockEvent[]=[];readonly directions:ShockDirectionEvent[]=[];private capacitorDirections:CapacitorDirectionSequence;readonly segments:ShockSegments|LightningSegments;
  private bolts:Bolt[]=[];private next=0;private secondaryNext=0;private serial=0;private disposed=false;private variation=new EffectVariationSequence(0x53484f43);
  private contacts=new WeakMap<THREE.Group,Contact[]>();private statuses=new Map<THREE.Group,ShockSurface>();
  private worlds=new Map<THREE.Mesh,{visual:ShockSurface;root:THREE.Group;age:number}>();
  private a=new THREE.Vector3();private b=new THREE.Vector3();private p=new THREE.Vector3();private localA=new THREE.Vector3();private localB=new THREE.Vector3();private branchDelta=new THREE.Vector3();
- constructor(scene:THREE.Scene,private camera:THREE.Camera,readonly profile:ShockVisualProfile='capacitor'){
+ constructor(scene:THREE.Scene,private camera:THREE.Camera,readonly profile:ShockVisualProfile='capacitor',private options:ShockResponseOptions={}){
+  this.capacitorDirections=new CapacitorDirectionSequence(options.cosmeticSeed);
   this.segments=profile==='prototype'?new ShockSegments(SHOCK_CAPACITY.segments):new LightningSegments(SHOCK_CAPACITY.segments);
   this.group.name='shock-ab-response';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;scene.add(this.group);this.group.add(this.segments.group);
   for(let i=0;i<SHOCK_CAPACITY.bolts;i++){const fan=profile==='prototype'?createShockFan():createLightningCorona();this.group.add(fan);const capacitor=profile==='capacitor'&&i<4?new CapacitorBurst():undefined;if(capacitor)this.group.add(capacitor.group);this.bolts.push({capacitor,active:false,age:1,size:shockSizing({projectile:'bullet',phase:'contact',radius:.3}),seed:0,point:new THREE.Vector3(),frame:new THREE.Quaternion(),fan});}
@@ -40,7 +44,13 @@ export class ShockResponse{
   // The approved boards have a long dominant primary leader and torso-scale charge.
   // Only cosmetic primary coverage grows; existing secondary energy/size curves stay exact.
   if(this.profile!=='prototype'&&!secondary){size.reach*=size.heavy?1.30:1.48;size.patch=Math.min(targetSurfaceSpan(event.target)*.55,size.patch*1.6);}
-  const bolt=this.slot(secondary);bolt.active=true;bolt.age=0;bolt.size=size;bolt.seed=seed;bolt.point.copy(contact.point).addScaledVector(normal,.014);bolt.frame.copy(surfaceContactFrame(normal,contact.point,seed,this.camera).rotation);bolt.connection=undefined;bolt.fan.visible=this.profile!=='prototype'||size.heavy;bolt.fan.position.copy(bolt.point);bolt.fan.quaternion.copy(bolt.frame);
+  const bolt=this.slot(secondary);bolt.active=true;bolt.age=0;bolt.size=size;bolt.seed=seed;bolt.point.copy(contact.point).addScaledVector(normal,.014);bolt.frame.copy(surfaceContactFrame(normal,contact.point,seed,this.camera).rotation);bolt.connection=undefined;
+  if(bolt.capacitor&&size.heavy){
+   const direction=this.options.capacitorDirection==='legacy'?{sector:0,angle:0}:this.capacitorDirections.next();
+   bolt.frame.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),direction.angle));
+   this.directions.push({...direction,point:contact.point.toArray()});if(this.directions.length>SHOCK_CAPACITY.eventHistory)this.directions.shift();
+  }
+  bolt.fan.visible=this.profile!=='prototype'||size.heavy;bolt.fan.position.copy(bolt.point);bolt.fan.quaternion.copy(bolt.frame);
   if(bolt.capacitor){
    bolt.capacitor.group.position.copy(bolt.point);bolt.capacitor.group.quaternion.copy(bolt.frame);
    if(size.heavy){const view=this.camera.getWorldPosition(new THREE.Vector3()).sub(bolt.point).applyQuaternion(bolt.frame.clone().invert());bolt.capacitor.start(seed,size.reach,view);}else bolt.capacitor.hide();
@@ -145,7 +155,8 @@ export class ShockResponse{
   }
   this.segments.upload();
  }
+ get directionSeed(){return this.capacitorDirections.seed;}
  get diagnostics(){return{bolts:this.bolts.filter(b=>b.active).length,heavyFans:this.bolts.filter(b=>b.active&&b.size.heavy).length,segments:this.segments.activeCount,capacitorBlades:this.bolts.reduce((n,b)=>n+(b.capacitor?.diagnostics.blades??0),0),capacitorShards:this.bolts.reduce((n,b)=>n+(b.capacitor?.diagnostics.shards??0),0),capacitorVertices:this.bolts.reduce((n,b)=>n+(b.capacitor?.diagnostics.vertices??0),0),statuses:this.statuses.size,worldSurfaces:this.worlds.size};}
- clear():void{for(const bolt of this.bolts){bolt.active=false;bolt.fan.visible=false;bolt.capacitor?.hide();}for(const visual of[...this.statuses.values()])visual.dispose();for(const world of this.worlds.values()){world.visual.dispose();world.root.removeFromParent();}this.worlds.clear();this.contacts=new WeakMap();this.next=0;this.secondaryNext=0;this.serial=0;this.variation.reset();this.events.length=0;this.segments.begin();this.segments.upload();}
+ clear():void{for(const bolt of this.bolts){bolt.active=false;bolt.fan.visible=false;bolt.capacitor?.hide();}for(const visual of[...this.statuses.values()])visual.dispose();for(const world of this.worlds.values()){world.visual.dispose();world.root.removeFromParent();}this.worlds.clear();this.contacts=new WeakMap();this.next=0;this.secondaryNext=0;this.serial=0;this.variation.reset();this.capacitorDirections.reset();this.directions.length=0;this.events.length=0;this.segments.begin();this.segments.upload();}
  dispose():void{if(this.disposed)return;this.clear();this.disposed=true;this.segments.dispose();for(const bolt of this.bolts){bolt.fan.geometry.dispose();bolt.fan.material.dispose();bolt.capacitor?.dispose();}this.group.removeFromParent();}
 }

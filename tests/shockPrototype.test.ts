@@ -180,3 +180,41 @@ test('dense C geometry is finite, varied, bounded and outside every support plan
  }
  for(let i=0;i<120;i++)layer.impact({point,normal:new THREE.Vector3(0,1,0),spec,phase:'detonate',radius:2.5,energy:70});assert.equal(layer.diagnostics.capacitorBlades,32);assert.equal(layer.diagnostics.capacitorVertices,4800);layer.dispose();assert.equal(layer.group.parent,null);
 });
+
+test('C directions cover all eight sectors per bag, avoid repeats and reproduce a review seed',async()=>{
+ const {CapacitorDirectionSequence}=await import('../src/rendering/quality/shock/directions.ts');
+ const a=new CapacitorDirectionSequence(37391),b=new CapacitorDirectionSequence(37391),sequence=Array.from({length:128},()=>a.next());
+ assert.deepEqual(sequence,Array.from({length:128},()=>b.next()));
+ for(let i=0;i<sequence.length;i+=8)assert.equal(new Set(sequence.slice(i,i+8).map(d=>d.sector)).size,8);
+ for(let i=1;i<sequence.length;i++)assert.notEqual(sequence[i].sector,sequence[i-1].sector);
+ assert.ok(sequence.every(d=>Number.isFinite(d.angle)&&Math.abs(d.angle-d.sector*Math.PI/4)<=.12));
+ a.reset();assert.deepEqual(Array.from({length:8},()=>a.next()),sequence.slice(0,8));
+});
+test('real C geometry points both ways across repeated hits and leaves secondary shapes and sizes exact',()=>{
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera();camera.position.set(0,1.5,4);const {root}=target(scene),spec=createWeaponSpec('sticky','shock'),point=new THREE.Vector3(0,1.5,-2.8),normal=new THREE.Vector3(0,0,1);
+ const current=new ShockResponse(scene,camera,'capacitor',{cosmeticSeed:37391}),legacy=new ShockResponse(scene,camera,'capacitor',{capacitorDirection:'legacy',cosmeticSeed:37391});
+ const event={target:root,point,normal,spec,phase:'detonate' as const,radius:2.5,energy:70},vectors:THREE.Vector3[]=[];
+ for(let shot=0;shot<8;shot++){
+  current.impact(event);current.update(.10);current.group.updateMatrixWorld(true);let mesh:THREE.Mesh|undefined;
+  current.group.traverse(o=>{if(o instanceof THREE.Mesh&&o.name==='shock-capacitor-blades-and-shards'&&o.parent?.visible){const age=(o.material as THREE.ShaderMaterial).uniforms.age.value;if(Math.abs(age-.1)<1e-5)mesh=o;}});
+  assert.ok(mesh);const p=mesh.geometry.attributes.position,center=new THREE.Vector3().fromBufferAttribute(p,66).add(new THREE.Vector3().fromBufferAttribute(p,71)).multiplyScalar(.5).applyMatrix4(mesh.matrixWorld).sub(point).normalize();vectors.push(center);
+  for(let i=0;i<30;i++)current.update(1/60);
+ }
+ assert.equal(new Set(current.directions.map(d=>d.sector)).size,8);assert.ok(vectors.some(v=>v.x>.5)&&vectors.some(v=>v.x<-.5)&&vectors.some(v=>v.y>.5)&&vectors.some(v=>v.y<-.5));
+ current.clear();legacy.clear();current.impact(event);legacy.impact(event);
+ const splash={...event,phase:'contact' as const,origin:point,primary:false,energy:7,exposure:.1};current.splash(splash);legacy.splash(splash);current.update(.1);legacy.update(.1);
+ assert.deepEqual(current.events,legacy.events);assert.equal(current.segments.activeCount,legacy.segments.activeCount);
+ assert.deepEqual(Array.from(current.segments.meshes[0].instanceMatrix.array.slice(16*16)),Array.from(legacy.segments.meshes[0].instanceMatrix.array.slice(16*16)));
+ current.dispose();legacy.dispose();
+});
+
+test('all eight C directions preserve outward clearance on floors, walls, slopes and undersides',()=>{
+ const camera=new THREE.PerspectiveCamera();camera.position.set(1,3,4);const point=new THREE.Vector3(0,2,0),spec=createWeaponSpec('rocket','shock');
+ for(const normal of [new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(1,0,0),new THREE.Vector3(0,.65,.76).normalize()]){
+  const layer=new ShockResponse(new THREE.Scene(),camera,'capacitor',{cosmeticSeed:37391});
+  for(let i=0;i<8;i++){
+   layer.impact({point,normal,spec,phase:'detonate',radius:2.5,energy:70});layer.update(.1);layer.group.updateMatrixWorld(true);
+   layer.group.traverse(mesh=>{if(!(mesh instanceof THREE.Mesh)||mesh.name!=='shock-capacitor-blades-and-shards'||!mesh.parent?.visible)return;const p=mesh.geometry.attributes.position;for(let j=0;j<p.count;j++){const v=new THREE.Vector3().fromBufferAttribute(p,j).applyMatrix4(mesh.matrixWorld).sub(point);assert.ok(v.toArray().every(Number.isFinite)&&v.dot(normal)>.02);}});
+  }assert.equal(new Set(layer.directions.map(d=>d.sector)).size,8);layer.dispose();
+ }
+});
