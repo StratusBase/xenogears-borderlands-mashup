@@ -87,6 +87,15 @@ No new cross-element deep imports after that extraction. An element imports its 
 
 Every new or revised effect must vary between events. Choose a stable cosmetic profile once per event: silhouette, direction, particle distribution and timing should change within the element's art direction and size envelope. Avoid a signature spike or a fixed shape merely rotated each time. Use `shared/variation.ts` for independent cosmetic seeds, reproducible review seeds and nonrepeating shape families; never consume gameplay randomness or reroll the shape every frame. Keep collision, damage, exposure and primary/secondary hierarchy authoritative. Verify repeated real shots at native speed with sound. Existing element owners should adopt this rule when revising their effects; adding the helper alone does not retrofit them.
 
+## Required equipment alignment and Opus review
+
+The user requires equipment alignment and **Claude Opus 5.5** review for each element when its equipment phase is reached. Include this step in each element's design, verification and integration handoff. Track it as pending until its equipment evidence and review are complete.
+
+- Align equipment with the approved elemental mockup and the implemented projectile, impact and lingering materials. Preserve the weapon's construction and silhouette; localize the elemental treatment to purposeful reservoirs, feeds, coils, vents, applicators or other appropriate parts. Vary the treatment with construction and delivery.
+- Verify pilot and mech equipment in actual gameplay at idle, firing and reload. Include primary/secondary and mixed-element cases; preserve slot isolation, original parts, muzzles, collision, projectile behavior and combat. Assess the complete equipment-to-projectile-to-impact sequence with native sound and matched performance measurements, accounting for concurrent work.
+- Once the equipment visuals are ready, have Opus 5.5 compare the approved mockup with actual equipment views and gameplay captures, with relevant source available. Record the model, findings, changes and remaining differences in the element's verification receipt. Explicitly retain gaps in the reviewed evidence, including whether video or audio was assessed.
+- Opus review is peer critique; user visual approval remains the adoption gate. Impact-only captures do not establish that equipment is aligned.
+
 ## Composition and open/closed extension
 
 - Prefer injected element definitions/factories and a typed handler map at one composition root. A new element registers its own response and recipes; existing element internals should not need edits.
@@ -113,6 +122,7 @@ Coordinate changes to shared seams and files being edited by other element works
 3. Relevant meaningful regressions cover simulation/presentation separation, slot isolation, collisions, lifecycle and mixed elements. Existing renderers still work.
 4. Verify real moving targets, surfaces and actual runtime sound. For gravity include elevated/underside placement, lift/hold, airborne hitboxes, crush plus other-gun damage, release/landing, late entrants and overlap policy.
 5. Measure matched before/current/repeated-before sustained fire on multiple targets in the same scene and compiled build, with sound on and recording off. Report median/p95 and CPU/GPU costs with hardware/coverage limits.
-6. After visual approval, integrate in normal Enhanced gameplay; a review-lab-only feature is not complete. Preserve Legacy for comparison.
+6. Complete the required equipment alignment and Opus 5.5 review above, retaining actual equipment/gameplay evidence and unresolved findings in the element's handoff.
+7. After visual approval, integrate in normal Enhanced gameplay; a review-lab-only feature is not complete. Preserve Legacy for comparison.
 
 The gravity implementation and ownership handoff are documented in [gravity-integration.md](quality/gravity-integration.md). It establishes plain gameplay modules, neutral shared helpers, a generic composition layer and an actual-Game review fixture. It does not perform the proposed workspace migration or claim normal-main gravity integration.
