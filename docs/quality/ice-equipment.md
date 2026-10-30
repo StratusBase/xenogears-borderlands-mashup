@@ -1,8 +1,8 @@
 # Ice equipment alignment
 
-**Status: mockups ready; awaiting user selection. Runtime alignment remains pending. Required before Ice adoption, alongside the open performance gate.** The plate/impact/frost screenshots and performance reviews do not establish equipment alignment or equipment approval.
+**Status: revision 2 mockups ready; C is the preferred starting point, with material feedback still open. User implementation selection and runtime alignment remain pending. Required before Ice adoption, alongside the open performance gate.** The plate/impact/frost screenshots and performance reviews do not establish equipment alignment or equipment approval.
 
-See the [equipment mockup review](ice-equipment-mockups.md) for the three actual-mesh directions, Opus 5.5 critique and explicit selection gate. No new equipment treatment is implemented in gameplay.
+See the [equipment mockup review](ice-equipment-mockups.md) for the current C-led revision, preserved previous C, supporting A/B revisions, Opus 5.5 critique and explicit selection gate. No new equipment treatment is implemented in gameplay.
 
 User requirement: align equipment effects with the approved Ice direction and work with **Claude Opus 5.5** when this phase is reached. Follow the [shared equipment alignment requirement](../effects-architecture.md#required-equipment-alignment-and-opus-review).
 
