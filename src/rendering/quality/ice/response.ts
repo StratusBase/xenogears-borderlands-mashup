@@ -5,7 +5,7 @@ import { surfaceContactFrame as surfaceFrame,settleSurfaceParticle as settle,typ
 import { EffectVariationSequence } from '../shared/variation';
 import { icePlateArrangement,icePlateGeometry,layeredIceFragment,layeredIceVertex,previousIceFragment,previousIceVertex,type IcePlateStyle } from './plates';
 import { iceSizing } from './sizing';
-import { IceRime } from './rime';
+import { IceRime,IceRimeMaterials } from './rime';
 
 export const ICE_CAPACITY=Object.freeze({plates:80,flakes:192,rimeTargets:32,events:128});
 const Z=new THREE.Vector3(0,0,1);
@@ -19,6 +19,7 @@ export class IceResponse {
  readonly group=new THREE.Group();readonly events:{phase:string;role:'direct'|'detonation'|'splash';surface:Surface;point:number[];normal:number[];reach:number;rime:number;plates:number;flakes:number;exposure:number;energy?:number}[]=[];
  private plates:Pool;private flakes:Pool;private rimes=new Map<THREE.Object3D,RimeEntry>();private randomState=731;private serial=0;private disposed=false;private dummy=new THREE.Object3D();
  private variation:EffectVariationSequence;
+ readonly rimeMaterials=new IceRimeMaterials();
  constructor(scene:THREE.Scene,private camera?:THREE.Camera,private options:IceResponseOptions={}){
   this.variation=new EffectVariationSequence(options.variationSeed);
   this.group.name='ice-plate-rime-response';this.group.userData.presentationOnly=true;this.group.userData.comicOverlay=true;scene.add(this.group);
@@ -40,14 +41,14 @@ export class IceResponse {
   let entry=this.rimes.get(root);if(entry){entry.remaining=2.2;return entry;}
   // Never evict a Game-owned live status; cosmetic ground marks may be reclaimed.
   if(this.rimes.size>=ICE_CAPACITY.rimeTargets){const oldest=[...this.rimes].find(([,e])=>!e.bound);if(!oldest)return;oldest[1].visual.dispose();}
-  const visual=new IceRime(root,source?[source]:undefined);entry={visual,bound:false,remaining:2.2};this.rimes.set(root,entry);
+  const visual=new IceRime(root,source?[source]:undefined,this.rimeMaterials);entry={visual,bound:false,remaining:2.2};this.rimes.set(root,entry);
   const dispose=visual.dispose.bind(visual);visual.dispose=()=>{dispose();this.rimes.delete(root);};return entry;
  }
  status(root:THREE.Group):IceRime{
   let entry=this.rimes.get(root);
   if(!entry)entry=this.rime(root);
   // Status ownership may exceed the cosmetic budget; do not drop a real condition's visual.
-  if(!entry){const visual=new IceRime(root);entry={visual,bound:true,remaining:0};this.rimes.set(root,entry);const dispose=visual.dispose.bind(visual);visual.dispose=()=>{dispose();this.rimes.delete(root);};}
+  if(!entry){const visual=new IceRime(root,undefined,this.rimeMaterials);entry={visual,bound:true,remaining:0};this.rimes.set(root,entry);const dispose=visual.dispose.bind(visual);visual.dispose=()=>{dispose();this.rimes.delete(root);};}
   entry.bound=true;return entry.visual;
  }
  impact(event:BallisticPresentationImpact){return this.present(event,false);}
@@ -112,5 +113,5 @@ export class IceResponse {
  get diagnostics(){return{plates:this.plates.items.filter(p=>p.active).length,flakes:this.flakes.items.filter(p=>p.active).length,rimes:this.rimes.size};}
  release(root:THREE.Object3D){this.rimes.get(root)?.visual.dispose();}
  clear(){for(const pool of[this.plates,this.flakes]){for(const p of pool.items){p.active=false;p.anchor=undefined;p.support=undefined;}pool.next=0;pool.mesh.count=0;pool.mesh.visible=false;}for(const entry of[...this.rimes.values()])entry.visual.dispose();this.events.length=0;this.serial=0;this.randomState=731;this.variation.reset();}
- dispose(){if(this.disposed)return;this.clear();this.disposed=true;for(const pool of[this.plates,this.flakes]){pool.mesh.geometry.dispose();(pool.mesh.material as THREE.Material).dispose();pool.mesh.dispose();}this.group.removeFromParent();}
+ dispose(){if(this.disposed)return;this.clear();this.disposed=true;for(const pool of[this.plates,this.flakes]){pool.mesh.geometry.dispose();(pool.mesh.material as THREE.Material).dispose();pool.mesh.dispose();}this.rimeMaterials.dispose();this.group.removeFromParent();}
 }

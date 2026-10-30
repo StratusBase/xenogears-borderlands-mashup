@@ -6,6 +6,7 @@ import { ElementalPresentation } from '../elementalPresentation';
 import { corrosiveABAudioRecipe } from '../../../audio/corrosiveAudio';
 import { icePlateAudioRecipe } from '../../../audio/iceAudio';
 import { IceResponse,type IceResponseOptions } from './response';
+import {prepareIceRendering} from './prepare';
 
 /** Opt-in adapter. The inherited equipment/projectile/status ownership stays intact. */
 export class IcePresentation extends ElementalPresentation {
@@ -15,6 +16,7 @@ export class IcePresentation extends ElementalPresentation {
   super(scene,iceCamera,{corrosiveAB:true,audioRecipe:(element,event,options)=>element==='ice'?icePlateAudioRecipe(element,event,options):corrosiveABAudioRecipe(element,event,options)});
   this.ice=new IceResponse(scene,iceCamera,options);
  }
+ prepare(renderer:THREE.WebGLRenderer,scene:THREE.Scene,drawScene:()=>void){return prepareIceRendering(renderer,scene,this.iceCamera,this.ice,drawScene);}
  override impact(event:BallisticPresentationImpact){
   const elements=getWeaponElements(event.spec);if(!elements.includes('ice')){super.impact(event);return;}
   const surface=this.ice.impact(event);this.audio.impact('ice',{mode:this.iceMode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.iceCamera.getWorldPosition(new THREE.Vector3())),strength:event.phase==='detonate'?1:.72});
