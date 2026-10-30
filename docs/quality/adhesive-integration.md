@@ -1,6 +1,6 @@
 # Adhesive A integration handoff
 
-The approved direction is [Tack Resin](adhesive-design.md). The playable prototype remains opt-in pending gameplay/material approval. Normal Enhanced has not adopted this adapter. Legacy and the previous adhesive renderer remain available. No changes to combat-lead-owned `src/game.ts`, `src/world.ts` or `src/ui.ts` belong to this pass.
+The approved direction is [Tack Resin](adhesive-design.md). **User visual approval received on 30 October 2026:** “Looks good,” accepting the equipment/gameplay review delivered with commit `2cc5799`. The equipment visual gate is complete and normal Enhanced integration is cleared to proceed. The adapter remains opt-in until the production integration owner registers adhesive through the shared composition contract and verifies the combined game. The current normal registry does not yet register adhesive; do not describe this handoff as completed normal-game adoption. Legacy and the previous adhesive renderer remain available. No changes to combat-lead-owned `src/game.ts`, `src/world.ts` or `src/ui.ts` belong to this pass.
 
 The subsequent [honey-material pass](adhesive-honey-material.md) adds `material:'honey'|'previous'` to the adapter options; honey is the current opt-in default. Its separate build/report preserves the original verification receipt below. It compares against the previous Tack Resin material, with identical animation and audio in both modes.
 
@@ -8,7 +8,7 @@ The [varied-stain pass](adhesive-stains.md) adds `stains:'varied'|'fixed'`. The 
 
 The [stain performance correction](adhesive-stain-performance.md) makes the optimized varied shader the default and retains `stainKernel:'reference'` for exact same-build comparison against `ef0eeb8`. Honey and profile generation remain unchanged.
 
-The [equipment alignment pass](adhesive-equipment.md) adds `equipment:'aligned'|'previous'`. The opt-in default uses a caged longitudinal honey feed, connected ribbed hose and hollow applicator collar, with pressure response and sampling of the existing reload pose. The previous receiver canister remains available. This pass includes the required Opus 5.5 visual review and actual pilot/mech equipment evidence; ordinary Enhanced adoption remains the explicit integration gate.
+The [equipment alignment pass](adhesive-equipment.md) adds `equipment:'aligned'|'previous'`. The opt-in default uses a caged longitudinal honey feed, connected ribbed hose and hollow applicator collar, with pressure response and sampling of the existing reload pose. The previous receiver canister remains available. The required Opus 5.5 review, actual pilot/mech equipment evidence and user visual approval are complete. The remaining integration step is ordinary Enhanced adoption and its combined-game verification.
 
 ## Review entry
 
@@ -49,6 +49,6 @@ The variation standard is now recorded in [the effects architecture guide](../ef
 
 ## Fidelity and review limits
 
-The concept is a generated paintover. Runtime resin uses bounded procedural geometry, surface overlays and authored glints; it does not simulate optical refraction, fluid volume or armor/material destruction. No gore. Human fixtures preserve the game style but are review models, not a claim that the normal enemy roster has been replaced. Current material and motion remain subject to visual review against the board. A separate Claude review is read-only and must not be described as visual approval or proof of performance.
+The concept is a generated paintover. Runtime resin uses bounded procedural geometry, surface overlays and authored glints; it does not simulate optical refraction, fluid volume or armor/material destruction. No gore. Human fixtures preserve the game style but are review models, not a claim that the normal enemy roster has been replaced. The user approved the current runtime review, including its documented material approximation and performance limits. The separate Claude reviews are read-only peer critiques, not the user's approval or proof of performance.
 
-Validation and current performance receipts are recorded in [adhesive-verification.md](adhesive-verification.md). Adoption in normal Enhanced gameplay remains the next integration gate after the user's visual approval.
+Validation and performance receipts are recorded in [adhesive-verification.md](adhesive-verification.md) and the later [equipment pass](adhesive-equipment.md). User visual approval is complete. Next: the production integration owner registers adhesive without replacing other elements, preserves the shared audio/equipment/status lifecycle, and verifies actual normal Enhanced gameplay with sound and matched measurements. The isolated equipment lab's timings do not establish the cost of that combined production composition.
