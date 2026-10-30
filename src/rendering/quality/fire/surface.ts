@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { corrosiveSources as visibleBodySources,corrosiveSurfaceOf as materialKind,type CorrosiveSurface as SurfaceKind } from '../corrosive/surfaces';
 
-export interface FireContact {source:THREE.Mesh;point:THREE.Vector3;normal:THREE.Vector3;radius:number;secondary:boolean}
+export interface FireContact {root?:THREE.Group;source:THREE.Mesh;point:THREE.Vector3;normal:THREE.Vector3;radius:number;secondary:boolean}
 const vertex=/* glsl */`varying vec3 vP,vN;void main(){vP=position;vN=normal;gl_Position=projectionMatrix*modelViewMatrix*vec4(position+normal*.007,1.);}`;
 const fragment=/* glsl */`
  uniform float time,presence,skin;uniform vec3 metric,centers[4],normals[4];uniform float radii[4],ages[4];varying vec3 vP,vN;
@@ -48,7 +48,7 @@ export class FireStatus {
    let mask=this.bindings.get(source);if(!mask){if(this.bindings.size>=5){const [oldSource,old]=this.bindings.entries().next().value!;old.dispose();this.bindings.delete(oldSource);}mask=new FireMask(source,kind);this.bindings.set(source,mask);}
    mask.contact(contact.point,contact.radius,contact.normal);
   }
-  this.contacts.push({...contact,point:contact.source.worldToLocal(contact.point.clone()),normal:contact.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(contact.source.matrixWorld).invert()).normalize()});while(this.contacts.length>3)this.contacts.shift();
+  this.contacts.push({...contact,root:this.root,point:contact.source.worldToLocal(contact.point.clone()),normal:contact.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(contact.source.matrixWorld).invert()).normalize()});while(this.contacts.length>3)this.contacts.shift();
  }
  update(dt:number,time?:number){
   if(this.disposed||!Number.isFinite(dt)||dt<=0)return;this.time+=Math.min(.1,dt);const displayTime=Number.isFinite(time)?time!:this.time;

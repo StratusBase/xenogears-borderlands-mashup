@@ -31,12 +31,12 @@ The proof exposes `FireResponse.prepare(renderer, scene)`: it waits for the atla
 
 Capture controls freeze at 50, 100 or 250 ms after the actual contact/detonation, then optionally advance by 50 ms. Video starts with one second of quiet encoder lead-in and records the actual physical and elemental sound buses at30fps using VP8 to reduce encoder cost. The first candidate had first-use shader/capture stalls in A; it is archived separately and is not the final motion proof. Recorded contact/detonation timestamps identify the correct burst frames for external review; still sequences do not establish perceived motion or subjective sound quality.
 
-The first Opus proof review found a viable direction but required a continuous hot spine, warmer fringe, asymmetric C arms, attached tip-first fade, and a fresh A recording. Those focused changes were applied, with C path adaptations by Codex to the Claude-authored source. The revised proof is being checked separately; the previous critique is retained, not represented as final approval.
+The first Opus proof review found a viable direction but required a continuous hot spine, warmer fringe, asymmetric C arms, attached tip-first fade, and a fresh A recording. Those focused changes were applied, with C path adaptations by Codex to the Claude-authored source. The revised proof passed the separate small-proof check recorded below; the previous critique is retained as history.
 
 Verification and final review results are recorded below. No full Fire rollout, push, or deployment is part of this proof.
 
 
-## Final proof verification
+## A+C verification before the targeted root correction
 
 - Runtime build passed. The final workspace test checkpoint passed 812/812. The two Fire suites pass39/39, including exact replay for13 deliveries, all slot/material/geometry checks, primary/secondary separation, bounded resources, source following, pause behavior and shader-preparation isolation.
 - A clean source snapshot at `54cd19c` plus only these Fire changes passes TypeScript, the39 Fire checks, and the normal production build. The shared working tree's current TypeScript check is blocked by concurrent Ice performance/profiler imports and types (`src/dev/iceFrameProfiler.ts`, `src/dev/icePerformanceLab.ts`, and their reference artifact imports). These files were not edited for Fire. See `artifacts/fire-hybrid/final-typecheck.log`.
@@ -56,3 +56,32 @@ Times below are median / p95 milliseconds. Frame timing varies with shared machi
 The [Opus5.5 final check](fire-hybrid-opus-review.md) finds no blockers to showing this **small proof**: A and C distinguish, faces stay readable in the supplied frames, A's live frame sequence changes, and fade remains attached. The review does not certify native motion, audio, combat or performance. Codex performed those runtime checks separately.
 
 Remaining visible caveats: C can tighten into a letter-like curl, and the upper arm passes close to the chin at some moments. Broader head-hit/camera-angle safety is unverified. A remains cleaner/vector-like and less hot than the concept paintover. This is not final Fire rollout approval. Review the actual moving A+C proof before extending B, equipment, projectiles or environment treatment.
+
+
+## Targeted lingering-root correction after user feedback
+
+Checkpoint `004ded4` preserves the A+C proof before this correction. The user then identified a straight flat base in the lingering body flames. This is a small additional correction, not the deferred full B material/soot pass.
+
+- The visible lower contour is now a curved, seeded, moving boundary inside the quad. Its physical quad edge is transparent; the root is offset to sit into the contact rather than floating above it.
+- Flamelets use different surface heights, independent tilt and staggered starts. Their candidate roots are projected back onto real visible surfaces of the same material kind; equipment-slot surfaces remain excluded.
+- Existing authoritative status duration/intensity, damage, collision and muzzle/projectile behavior remain unchanged. Both the previous-volume and hybrid comparison modes share the corrected lingering roots.
+- 41 Fire checks pass, including new clothing/armor cases that verify distinct root heights, staggered births, visible-surface attachment, and untouched source and equipment geometry/materials.
+- Actual clothing and armor screenshots, native-speed cropped aftermath videos with original sound, and a multi-target live freeze are included in the review. The user's original screenshot is retained as the observation, not presented as a matched camera comparison.
+- Final clips were re-recorded after this correction: both have five distinct event-aligned release frames, no frame gaps above90ms, decoded48kHz stereo audio, and zero clipped samples. Audio starts20ms after video. The earlier94ms sticky-contact gap belongs to the archived pre-correction clip.
+
+## Root-corrected build measurements and final checks
+
+Both comparisons use the root-corrected build whose hashes are in `proof/build.json`. The primary A+C comparison remains previous volume versus hybrid; both share the body-root correction. Times are median / p95 milliseconds.
+
+| Scene | Volume frame | Hybrid frame | Volume repeat frame | Volume GPU | Hybrid GPU | Repeat GPU |
+| --- | --- | --- | --- | --- | --- | --- |
+| six-rifle | 10.60 / 13.00 | 10.60 / 12.80 | 10.50 / 12.60 | 2.67 / 3.92 | 2.07 / 3.12 | 2.69 / 3.91 |
+| six-sticky | 10.50 / 12.50 | 10.20 / 12.70 | 9.80 / 12.80 | 2.30 / 3.58 | 2.14 / 3.29 | 2.20 / 3.57 |
+
+The rifle comparison reaches3 targets and sticky reaches6; all authoritative state compares exactly across before/current/repeated-before. No build, test or encoding work ran alongside these final measurements. Prior investigative and pre-root-fix runs remain archived separately. These are local-device measurements, not a universal performance claim.
+
+The 41 Fire checks and TypeScript pass in the isolated Fire snapshot. The latest full-workspace run passes825/825, and the shared TypeScript check passes. Earlier concurrent Gravity and Ice failures were resolved by their owners; their investigative logs are retained. These unrelated files were not modified for Fire. See `root-final-workspace-tests.log` and `root-typecheck.log`.
+
+Native gameplay input also passes: one click changes ammunition30→29, R reload restores30 and reduces reserve500→499, Escape pauses, sound is ON, and browser error logs are empty. Pointer lock may be denied by Chrome; the existing right-drag fallback remains available.
+
+A+C artwork and its final Opus proof review are unchanged by the root-only correction. The targeted root correction was verified separately in actual single-target and sustained multi-target gameplay. No game/world/UI owner files were edited, and no rollout/push/deployment was performed.

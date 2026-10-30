@@ -85,7 +85,7 @@ export const fireParticleVertex=/* glsl */`
  attribute float fxAlpha,fxAge,fxSeed;uniform float kind;
  varying vec2 vUv;varying float vAlpha,vAge,vSeed;
  void main(){vUv=uv;vAlpha=fxAlpha;vAge=fxAge;vSeed=fxSeed;vec3 p=position;
- if(kind>.5){p.y+=.5;float q=p.y;p.x+=sin(q*7.-fxAge*14.+fxSeed*13.)*.18*q*q;p.z+=cos(q*5.-fxAge*9.+fxSeed*7.)*.12*q*q;}
+ if(kind>.5){p.y+=.5;float q=p.y;p.x+=sin(q*7.-fxAge*14.+fxSeed*13.)*.18*q*q;p.z+=cos(q*5.-fxAge*9.+fxSeed*7.)*.12*q*q;if(kind<1.5)p.y-=.15;}
  gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(p,1.);}`;
 export const fireParticleFragment=/* glsl */`
  uniform float kind,hybrid;varying vec2 vUv;varying float vAlpha,vAge,vSeed;
@@ -99,7 +99,10 @@ export const fireParticleFragment=/* glsl */`
  float center=sin(q*7.-vAge*13.+vSeed*9.)*.30*q;
  float width=(1.-q)*(.68+.22*sin(q*9.-vAge*16.+vSeed*7.));
  float field=(width-abs(p.x-center))+(n-.5)*(.45+q*.3);
- float a=smoothstep(.0,.18,field)*smoothstep(0.,.08,q)*(1.-smoothstep(.86,1.,q))*vAlpha;
+ float rootNoise=noise(vec2(p.x*4.7-vAge*2.,vSeed*11.));
+ float root=.10+.23*pow(clamp(abs(p.x-center)/.85,0.,1.),1.4)+(rootNoise-.5)*.045;
+ float foot=kind>1.5?smoothstep(0.,.08,q):smoothstep(root-.035,root+.060,q);
+ float a=smoothstep(.0,.18,field)*foot*(1.-smoothstep(.86,1.,q))*vAlpha;
  if(kind>1.5){a*=sin(q*3.14159)*.13;gl_FragColor=vec4(.13,.11,.10,a);return;}
  if(a<.02)discard;float heat=clamp(field*.9+(1.-q)*.25,0.,1.);
  vec3 c=mix(vec3(.9,.025,.001),vec3(1.7,.34,.005),smoothstep(.10,.38,heat));c=mix(c,vec3(2.,.95,.08),smoothstep(.45,.8,heat));gl_FragColor=vec4(c,a*.86);

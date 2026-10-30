@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { BallisticPresentationImpact,BallisticPresentationSplash } from '../../PlayerBallistics';
-import { nearestCorrosiveSurface as visibleContact,corrosiveSources as visibleSources,corrosiveTargetSpan as targetSpan,type CorrosiveSurface as SurfaceKind } from '../corrosive/surfaces';
+import { corrosiveSurfaceOf as materialKind,nearestCorrosiveSurface as visibleContact,corrosiveSources as visibleSources,corrosiveTargetSpan as targetSpan,type CorrosiveSurface as SurfaceKind } from '../corrosive/surfaces';
 import { fireSizing } from './sizing';
 import { FireHybrid } from './hybrid';
 import { FIRE_LOBES,fireLobes,createFireVolumeGeometry,fireVolumeVertex,fireVolumeFragment,fireParticleVertex,fireParticleFragment } from './flame';
@@ -69,7 +69,7 @@ export class FireResponse {
   }
   for(let i=0;i<sizes.smokeCount;i++){const p=this.emit('smoke',point,sizes.explosive?.50:.24,.55+this.random()*.30);p.velocity.copy(normal).multiplyScalar(.15);p.velocity.y+=.38;p.position.addScaledVector(right,(i-1)*.12);}
   if(contact.source&&event.target){
-   const c:FireContact={source:contact.source,point:contact.point.clone(),normal:normal.clone(),radius:sizes.coatingRadius,secondary};
+   const c:FireContact={root:event.target,source:contact.source,point:contact.point.clone(),normal:normal.clone(),radius:sizes.coatingRadius,secondary};
    const list=this.contacts.get(event.target)??[];list.push(c);while(list.length>3)list.shift();this.contacts.set(event.target,list);this.statuses.get(event.target)?.contact(c);
   }else if(event.hitSurface instanceof THREE.Mesh&&!secondary){
    let scorch=this.scorches.get(event.hitSurface);
@@ -82,16 +82,24 @@ export class FireResponse {
   const existing=this.statuses.get(root);if(existing)return existing;
   const status=new FireStatus(root,(contact,intensity)=>this.linger(contact,intensity),()=>this.statuses.delete(root));this.statuses.set(root,status);
   const contacts=this.contacts.get(root)??[];for(const contact of contacts)status.contact(contact);
-  if(!contacts.length){const sources=visibleSources(root),source=sources.find(s=>/breastplate|shirt-torso|front-breastplate|torso/.test(s.name))??sources[0];if(source){source.updateWorldMatrix(true,false);const bounds=new THREE.Box3().setFromBufferAttribute(source.geometry.attributes.position as THREE.BufferAttribute),point=bounds.getCenter(new THREE.Vector3());point.z=bounds.max.z;point.applyMatrix4(source.matrixWorld);const normal=Z.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(source.matrixWorld)).normalize();status.contact({source,point,normal,radius:.12,secondary:true});}}
+  if(!contacts.length){const sources=visibleSources(root),source=sources.find(s=>/breastplate|shirt-torso|front-breastplate|torso/.test(s.name))??sources[0];if(source){source.updateWorldMatrix(true,false);const bounds=new THREE.Box3().setFromBufferAttribute(source.geometry.attributes.position as THREE.BufferAttribute),point=bounds.getCenter(new THREE.Vector3());point.z=bounds.max.z;point.applyMatrix4(source.matrixWorld);const normal=Z.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(source.matrixWorld)).normalize();status.contact({root,source,point,normal,radius:.12,secondary:true});}}
   return status;
  }
  private linger(contact:FireContact,intensity:number){
-  const count=contact.secondary?1:2;
+  const count=contact.secondary?1:2,normal=contact.normal.clone().normalize();
+  let sideways=new THREE.Vector3(1,0,0).applyQuaternion(contact.source.getWorldQuaternion(new THREE.Quaternion()));sideways.addScaledVector(normal,-sideways.dot(normal));if(sideways.lengthSq()<.01)sideways=UP.clone().cross(normal);sideways.normalize();
+  const climb=normal.clone().cross(sideways).normalize();if(climb.dot(UP)<0)climb.negate();
   for(let i=0;i<count;i++){
-   const point=contact.point.clone().addScaledVector(contact.normal,.026);const sideways=new THREE.Vector3(1,0,0).applyQuaternion(contact.source.getWorldQuaternion(new THREE.Quaternion()));point.addScaledVector(sideways,(this.random()-.5)*contact.radius*.85);
-   const p=this.emit('tongues',point,(contact.secondary?.075:.18)*(.75+this.random()*.6),.28+this.random()*.22);p.anchor=contact.source;p.local=contact.source.worldToLocal(point.clone());p.normal.copy(contact.normal);p.localNormal=contact.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(contact.source.matrixWorld).invert()).normalize();p.intensity=intensity;p.velocity.copy(contact.normal).multiplyScalar(.06);p.velocity.y+=.06;
+   // Scatter over a disk on the real visible material, rather than along one horizontal line.
+   const angle=this.random()*Math.PI*2,radius=Math.sqrt(this.random())*contact.radius*.68;
+   const candidate=contact.point.clone().addScaledVector(sideways,Math.cos(angle)*radius).addScaledVector(climb,Math.sin(angle)*radius);
+   const projected=contact.root?visibleContact(contact.root,candidate,normal):undefined;
+   const sameMaterial=projected?.source&&materialKind(projected.source)===materialKind(contact.source);
+   const source=sameMaterial?projected!.source!:contact.source,surfacePoint=sameMaterial?projected!.point:contact.point,surfaceNormal=sameMaterial?projected!.normal:normal;
+   const point=surfacePoint.clone().addScaledVector(surfaceNormal,.026);
+   const p=this.emit('tongues',point,(contact.secondary?.075:.18)*(.75+this.random()*.6),.28+this.random()*.22);p.age=i===0?0:-(.025+this.random()*.05);p.anchor=source;p.local=source.worldToLocal(point.clone());p.normal.copy(surfaceNormal);p.localNormal=surfaceNormal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(source.matrixWorld).invert()).normalize();p.intensity=intensity;p.velocity.copy(surfaceNormal).multiplyScalar(.06);p.velocity.y+=.06;
   }
-  if(this.random()<.55){const p=this.emit('embers',contact.point,.009,.40);p.velocity.copy(contact.normal).multiplyScalar(.20);p.velocity.y=.4;}
+  if(this.random()<.55){const p=this.emit('embers',contact.point,.009,.40);p.velocity.copy(normal).multiplyScalar(.20);p.velocity.y=.4;}
  }
  update(dt:number){
   if(this.disposed||!Number.isFinite(dt)||dt<=0)return;const step=Math.min(.1,dt);this.time+=step;this.hybrid?.update(step);
@@ -102,13 +110,13 @@ export class FireResponse {
  private upload(dt:number){
   for(const [name,pool] of this.pools){let index=0;
    for(const p of pool.items){
-    if(!p.active)continue;p.age+=dt;if(p.age>=p.life||p.anchor&&!p.anchor.parent){p.active=false;p.anchor=undefined;p.local=undefined;continue;}
+    if(!p.active)continue;p.age+=dt;if(p.age>=p.life||p.anchor&&!p.anchor.parent){p.active=false;p.anchor=undefined;p.local=undefined;continue;}if(p.age<0)continue;
     p.drift.addScaledVector(p.velocity,dt);
     if(p.anchor&&p.local){p.anchor.updateWorldMatrix(true,false);p.position.copy(p.local).applyMatrix4(p.anchor.matrixWorld);if(p.localNormal)p.normal.copy(p.localNormal).applyMatrix3(new THREE.Matrix3().getNormalMatrix(p.anchor.matrixWorld)).normalize();this.dummy.position.copy(p.position).add(p.drift);const clearance=this.dummy.position.clone().sub(p.position).dot(p.normal);if(clearance<0)this.dummy.position.addScaledVector(p.normal,-clearance);}
     else this.dummy.position.copy(p.position).add(p.drift);
     if(name==='embers'){p.velocity.x+=Math.sin(p.age*13+p.seed*19)*dt*.35;p.velocity.z+=Math.cos(p.age*11+p.seed*17)*dt*.35;p.velocity.y-=dt*1.4;p.velocity.multiplyScalar(Math.exp(-dt*.8));this.dummy.quaternion.setFromUnitVectors(UP,p.velocity.clone().normalize());this.dummy.scale.set(p.size,p.size*(2+Math.min(3,p.velocity.length())),p.size);}
     else if(name==='smoke'){this.dummy.quaternion.copy(this.camera.getWorldQuaternion(new THREE.Quaternion()));this.dummy.scale.set(p.size*(1+p.age),p.size*1.5,1);}
-    else{const direction=UP.clone().multiplyScalar(1-Math.abs(p.normal.y)).addScaledVector(p.normal,.55+.45*Math.abs(p.normal.y)).normalize();const toward=this.camera.getWorldPosition(new THREE.Vector3()).sub(this.dummy.position);toward.addScaledVector(direction,-toward.dot(direction)).normalize();const side=direction.clone().cross(toward).normalize();this.dummy.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side,direction,toward));this.dummy.scale.set(p.size*.95,p.size*(1.5+Math.sin(p.age*12+p.seed)*.18),p.size);}
+    else{const direction=UP.clone().multiplyScalar(1-Math.abs(p.normal.y)).addScaledVector(p.normal,.55+.45*Math.abs(p.normal.y)).normalize();const toward=this.camera.getWorldPosition(new THREE.Vector3()).sub(this.dummy.position);toward.addScaledVector(direction,-toward.dot(direction)).normalize();const side=direction.clone().cross(toward).normalize();this.dummy.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side,direction,toward));this.dummy.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(Z,Math.sin(p.seed*17+p.age*8)*.20));this.dummy.scale.set(p.size*.95,p.size*(1.5+Math.sin(p.age*12+p.seed)*.18),p.size);}
     this.dummy.updateMatrix();pool.mesh.setMatrixAt(index,this.dummy.matrix);pool.alpha.setX(index,Math.min(1,(1-p.age/p.life)*3)*p.intensity);pool.age.setX(index,p.age);pool.seed.setX(index,p.seed);index++;
    }
    pool.mesh.count=index;pool.mesh.visible=index>0;pool.mesh.instanceMatrix.needsUpdate=true;pool.alpha.needsUpdate=true;pool.age.needsUpdate=true;pool.seed.needsUpdate=true;
