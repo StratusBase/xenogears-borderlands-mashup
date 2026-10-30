@@ -1,9 +1,13 @@
 import * as THREE from 'three';
-import {getWeaponElements,type ElementType,type WeaponSpec} from '../../../core/arsenal';
+import {getWeaponElements,type ElementType,type WeaponSpec,type BrandId} from '../../../core/arsenal';
+import type {EquipmentAppearance} from '../../../core/appearance';
 import type {Mode} from '../../../core/index';
 import type {BallisticPresentationImpact,BallisticPresentationSplash} from '../../PlayerBallistics';
+import type {EquipmentEffectPresentation} from '../../equipmentEffects';
+import {createElementalProjectile,createElementalTrail,createElementalBeam} from '../elementalFlight';
 import {ElementalPresentation} from '../elementalPresentation';
 import type {SurfaceStatusVisual} from './surfaces';
+import type {ConfirmedElementPulse} from './confirmedPulse';
 import {ElementalAudio,type elementalAudioRecipe} from '../../../audio/elementalAudio';
 import {corrosiveABAudioRecipe} from '../../../audio/corrosiveAudio';
 import {composeElementRecipes} from '../../../audio/composeElementRecipes';
@@ -12,7 +16,14 @@ export interface ElementResponse {
  impact(event:BallisticPresentationImpact):void;
  splash?(event:BallisticPresentationSplash):void;
  status?(root:THREE.Group):SurfaceStatusVisual;
- update?(dt:number,time:number):void;
+ update?(dt:number,time:number,spec?:WeaponSpec,mode?:Mode):void;
+ shot?(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void;
+ decorateProjectile?(root:THREE.Group,spec:WeaponSpec,brand:BrandId):void;
+ updateProjectile?(root:THREE.Group,dt:number,age:number):boolean|void;
+ trail?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId):THREE.Group;
+ beam?(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group;
+ equipment?(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation;
+ confirmedPulse?(event:ConfirmedElementPulse):void;
  release?(root:THREE.Object3D):void;
  clear():void;dispose():void;
  readonly diagnostics?:Record<string,unknown>;
@@ -20,30 +31,59 @@ export interface ElementResponse {
 export interface ElementModule {
  create(context:{scene:THREE.Scene;camera:THREE.Camera;audio:ElementalAudio}):ElementResponse;
  recipe?:typeof elementalAudioRecipe;
+ /** Additive is the compatibility default. Replacements own their visual and impact audio once. */
+ replaceImpact?:boolean;
+ replaceFlight?:boolean;
+ replaceEquipment?:boolean;
 }
-/** Composes long-lived element responses alongside the existing per-shot carrier presentation. */
+/** One coordinator and lifecycle for additive modules and approved complete replacements. */
 export class ComposedElementalPresentation extends ElementalPresentation {
  readonly responses=new Map<ElementType,ElementResponse>();
- private activeMode:Mode='pilot';
- override readonly splash=(event:BallisticPresentationSplash)=>{
-  const own=getWeaponElements(event.spec).filter(element=>this.responses.has(element));
-  for(const element of own)this.responses.get(element)!.splash?.({...event,spec:{...event.spec,element,secondaryElement:undefined}});
-  if(!event.primary&&getWeaponElements(event.spec).includes('corrosive')){const surface=this.corrosive?.splash(event);this.audio.impact('corrosive',{surface,mode:this.activeMode,delivery:event.spec.projectile,splash:true,distance:event.point.distanceTo(this.view.getWorldPosition(new THREE.Vector3())),strength:Math.min(.28,.08+event.exposure*.24)});}
- };
- constructor(scene:THREE.Scene,private view:THREE.Camera,modules:Readonly<Partial<Record<ElementType,ElementModule>>>){
+ private ownsFlight(element:ElementType){return!!this.modules[element]?.replaceFlight&&this.responses.has(element);}
+ constructor(scene:THREE.Scene,private view:THREE.Camera,private modules:Readonly<Partial<Record<ElementType,ElementModule>>>){
   super(scene,view,{corrosiveAB:true});
   const recipes:Partial<Record<ElementType,typeof elementalAudioRecipe>>={};
   for(const [element,module]of Object.entries(modules)as [ElementType,ElementModule][]){this.responses.set(element,module.create({scene,camera:view,audio:this.audio}));if(module.recipe)recipes[element]=module.recipe;}
   this.audio.setRecipe(composeElementRecipes(recipes,corrosiveABAudioRecipe));
  }
  override impact(event:BallisticPresentationImpact):void{
-  // Preserve original delivery, channel weights, contact effects and one audio cue per channel.
-  super.impact(event);
-  for(const element of getWeaponElements(event.spec))this.responses.get(element)?.impact(event);
+  this.impacts.delivery(event);
+  const elements=getWeaponElements(event.spec);
+  this.impactChannels(event,elements.filter(e=>!this.modules[e]?.replaceImpact));
+  for(const element of elements)this.responses.get(element)?.impact(event);
  }
- override shot(spec:WeaponSpec,mode:Mode):void{this.activeMode=mode;super.shot(spec,mode);}
- override status(root:THREE.Group,element:ElementType):ReturnType<ElementalPresentation['status']>{return this.responses.get(element)?.status?.(root)??super.status(root,element);}
- override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{super.update(dt,time,paused,spec,mode);if(!paused)for(const response of this.responses.values())response.update?.(dt,time);}
+ protected override splashImpact(event:BallisticPresentationSplash):void{
+  for(const element of getWeaponElements(event.spec))this.responses.get(element)?.splash?.(event);
+  if(!this.modules.corrosive?.replaceImpact)super.splashImpact(event);
+ }
+ protected override createStatus(root:THREE.Group,element:ElementType):ReturnType<ElementalPresentation['status']>{return this.responses.get(element)?.status?.(root)??super.createStatus(root,element);}
+ override projectile(spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e)));
+  const root=omitPayloads.size?createElementalProjectile(spec,brand,{omitPayloads,role}):super.projectile(spec,brand,role);
+  for(const element of elements)this.responses.get(element)?.decorateProjectile?.(root,spec,brand);return root;
+ }
+ override updateProjectile(root:THREE.Group,dt:number,age:number):void{let handled=false;for(const r of this.responses.values())if(r.updateProjectile?.(root,dt,age))handled=true;if(!handled)super.updateProjectile(root,dt,age);}
+ override trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{
+  if(spec.projectile==='cluster'&&role==='bomblet')return super.trail(start,end,spec,brand,role);
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e)));if(!omitPayloads.size)return super.trail(start,end,spec,brand,role);
+  const root=createElementalTrail(start,end,spec,brand,{omitPayloads,role});
+  for(const element of elements){const response=this.responses.get(element),own=response?.trail;if(own)root.add(own.call(response,start,end,spec,brand));}return root;
+ }
+ override beam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group{
+  const elements=getWeaponElements(spec),omitPayloads=new Set(elements.filter(e=>this.ownsFlight(e)));if(!omitPayloads.size)return super.beam(start,end,spec,jagged,brand);
+  const root=createElementalBeam(start,end,spec,jagged,brand,{omitPayloads});
+  for(const element of elements){const response=this.responses.get(element),own=response?.beam;if(own)root.add(own.call(response,start,end,spec,jagged,brand));}return root;
+ }
+ protected override createEquipment(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation{
+  const elements=[appearance.element,appearance.secondaryElement].filter((e):e is ElementType=>!!e),modules=this.modules??{};
+  const fallback=super.createEquipment(root,{...appearance,element:appearance.element&&modules[appearance.element]?.replaceEquipment?'kinetic':appearance.element,secondaryElement:appearance.secondaryElement&&modules[appearance.secondaryElement]?.replaceEquipment?undefined:appearance.secondaryElement});
+  const visuals=[fallback];for(const element of elements){const own=this.responses?.get(element)?.equipment?.(root,appearance);if(own)visuals.push(own);}
+  return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
+ }
+ override shot(spec:WeaponSpec,mode:Mode,root?:THREE.Object3D):void{super.shot(spec,mode,root);for(const e of getWeaponElements(spec))this.responses.get(e)?.shot?.(spec,mode,root);}
+ override update(dt:number,time:number,paused:boolean,spec:WeaponSpec,mode:Mode):void{super.update(dt,time,paused,spec,mode);if(!paused)for(const response of this.responses.values())response.update?.(dt,time,spec,mode);}
+ handlesPulse(element:ElementType):boolean{return!!this.responses.get(element)?.confirmedPulse;}
+ confirmedPulse(event:ConfirmedElementPulse):boolean{const handler=this.responses.get(event.element)?.confirmedPulse;if(!handler)return false;handler.call(this.responses.get(event.element),event);return true;}
  override release(root:THREE.Object3D):void{super.release(root);for(const response of this.responses.values())response.release?.(root);}
  override clear():void{super.clear();for(const response of this.responses?.values()??[])response.clear();}
  override dispose():void{super.dispose();for(const response of this.responses.values())response.dispose();this.responses.clear();}

@@ -5,7 +5,7 @@ export function isWeaponPreviewMesh(object: THREE.Object3D): object is THREE.Mes
   if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh) return false;
   let owner: unknown;
   for (let ancestor: THREE.Object3D | null = object; ancestor; ancestor = ancestor.parent) {
-    if (ancestor.userData.comicOverlay === true) return false;
+    if (ancestor.userData.comicOverlay === true || ancestor.userData.presentationOnly === true) return false;
     if (owner === undefined && ancestor.userData.visualOwner !== undefined) owner = ancestor.userData.visualOwner;
   }
   return owner === 'weapon';

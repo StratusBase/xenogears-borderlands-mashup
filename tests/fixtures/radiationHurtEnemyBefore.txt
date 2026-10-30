@@ -1,0 +1,48 @@
+  private hurtEnemy(enemy: Enemy, damage: number, cause?: DamageEffect, critical = false, source: 'direct' | 'status' | 'ability' = cause ? 'status' : 'direct'): EnemyDamageResult {
+    const result = applyEnemyDamage(enemy, damage);
+    this.measure({ type: 'damage', targetId: String(enemy.id), target: 'enemy', health: result.healthDamage, shield: result.shieldDamage, source, critical });
+    if (result.healthDamage + result.shieldDamage > 0) {
+      this.presentation?.enemyHit(enemy.mesh);
+      staggerEnemy(enemy.brain, critical || result.shieldDamage > 0 && enemy.shield === 0);
+      this.emitEncounter({ type: 'enemy-hit', id: enemy.id, role: enemy.role, weakPoint: critical, shieldBroken: result.shieldDamage > 0 && enemy.shield === 0 });
+    }
+    enemy.bars.update(enemy.health, enemy.maxHealth, enemy.shield, enemy.maxShield);
+    if (!result.killed) return result;
+    const irradiated = cause === 'radiation' || getStatusModifiers(enemy.statuses, this.time).radiationPulse;
+    const at = enemy.mesh.position.clone();
+    this.burst(at.clone().add(new THREE.Vector3(0, 1.4, 0)), 0xffb054, 7);
+    enemy.bars.dispose();
+    for (const effect of enemy.statusEffects.values()) effect.dispose();
+    enemy.statusEffects.clear();
+    for (const coating of enemy.statusCoatings.values()) coating.dispose();
+    enemy.statusCoatings.clear();
+    this.presentation?.release(enemy.mesh);
+    enemy.visual.dispose();
+    this.enemies.splice(this.enemies.indexOf(enemy), 1);
+    this.progression.kills++;
+    this.emitEncounter({ type: 'enemy-killed', id: enemy.id, role: enemy.role, boss: enemy.boss });
+    this.measure({ type: 'target-killed', targetId: String(enemy.id) });
+    if (enemy.spawnId) this.encounter.enemyKilled(enemy.spawnId);
+    const supplies = rollEnemySupplies(this.combatRandom);
+    if (supplies.cash) this.addCashDrop(rollCashValue(this.progression.wave, enemy.heavy, this.combatRandom), at.clone().add(new THREE.Vector3(0.8, 0, 0.5)));
+    if (supplies.health) this.addHealthDrop(at.clone().add(new THREE.Vector3(-0.8, 0, 0.5)));
+    const target: Mode = enemy.heavy || this.progression.kills % 2 === 0 ? 'mech' : 'pilot';
+    this.addDrop(rollItem(target, Math.min(100, this.progression.wave), this.combatRandom), at);
+    if (irradiated) {
+      const center = at.clone().setY(enemy.heavy ? 2.6 : 1.5);
+      this.burst(center, Number.parseInt(elementColors.radiation.slice(1), 16), 14);
+      for (const other of this.combatTargets) {
+        if (other.mesh.position.distanceTo(at) > 5) continue;
+        if (!this.clearLine(center, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5))) continue;
+        const pulse = this.hurtTarget(other, enemy.maxHealth * 0.18, other === this.testDummy ? 'radiation' : undefined, false, 'status');
+        this.showEnemyDamage(other, pulse.healthDamage + pulse.shieldDamage, false, 'radiation');
+      }
+    }
+    if (this.waveActive && !this.enemies.length) {
+      this.waveActive = false;
+      this.progression.wave++;
+      this.ui.toast('ENCOUNTER CLEAR · Collect your drops. Press N for the next encounter.', '#79d3be');
+    }
+    this.save();
+    return result;
+  }

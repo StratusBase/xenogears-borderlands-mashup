@@ -6,6 +6,8 @@ import type { EnemyRole } from '../../encounter/contracts';
 import type { WeaponRig } from '../equipmentModels';
 import type { PlayerBallistics } from '../PlayerBallistics';
 import { QualityPresentation } from './presentation';
+import {createGameElements} from './gameElements';
+import type {ConfirmedElementPulse} from './shared/confirmedPulse';
 import { ElementalPresentation } from './elementalPresentation';
 import { applyQualityInk } from './target';
 import type { ShockChainEvent } from './shock/response';
@@ -46,13 +48,14 @@ export class GamePresentation {
  private audioWasUnlocked=false;
  private frameTime=0;
  private audioError:string|null=null;
- private elementalFactory=(scene:THREE.Scene,camera:THREE.Camera)=>new ElementalPresentation(scene,camera,{corrosiveAB:true});
+ private elementalFactory:(scene:THREE.Scene,camera:THREE.Camera)=>ElementalPresentation=createGameElements;
  constructor(private readonly context:GamePresentationContext){}
  /** Optional review/integration seam. Change only while disabled; Game owns the lifecycle transition. */
  setElementalFactory(factory:(scene:THREE.Scene,camera:THREE.Camera)=>ElementalPresentation):void{
   if(this.enabled)throw new Error('Disable presentation before replacing its elemental factory.');
   this.elementalFactory=factory;
  }
+ resetElementalFactory():void{this.setElementalFactory(createGameElements);}
  /** Local review capture taps the identical final buses heard in gameplay. */
  recordingStreams():MediaStream[]{return[this.quality?.audio.captureStream(),this.elements?.audio.captureStream()].filter((stream):stream is MediaStream=>!!stream);}
  get enabled():boolean{return this.quality!==null;}
@@ -119,6 +122,8 @@ export class GamePresentation {
   const layer=this.elements as (ElementalPresentation&{confirmedChain?:(event:ShockChainEvent)=>void})|null;
   if(!layer?.confirmedChain)return false;layer.confirmedChain(event);return true;
  }
+ handlesPulse(element:ElementType):boolean{const layer=this.elements as (ElementalPresentation&{handlesPulse?:(element:ElementType)=>boolean})|null;return layer?.handlesPulse?.(element)??false;}
+ confirmedPulse(event:ConfirmedElementPulse):boolean{const layer=this.elements as (ElementalPresentation&{confirmedPulse?:(event:ConfirmedElementPulse)=>boolean})|null;return layer?.confirmedPulse?.(event)??false;}
  release(root:THREE.Object3D):void{
   this.elements?.release(root);this.quality?.release(root);this.enemies.delete(root as THREE.Group);
   const binding=this.equipmentBinding;
@@ -129,7 +134,7 @@ export class GamePresentation {
  }
  shot(event:PresentationShot):void{
   this.quality?.fire({mode:event.mode,rig:event.rig,muzzleIndex:event.muzzleIndex,element:event.spec.element});
-  this.elements?.shot(event.spec,event.mode);
+  this.elements?.shot(event.spec,event.mode,event.rig.group);
  }
  reload(mode:Mode,stage:'out'|'in'|'bolt'):void{this.quality?.reload(mode,stage);}
  dry(mode:Mode):void{this.quality?.audio.play('dry',{mode});}

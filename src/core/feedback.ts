@@ -1,20 +1,20 @@
 /** Damage feedback is independent of equipment, rendering, and narrative state. */
-import type { ElementType } from './arsenal';
+import { elementColors, type ElementType } from './arsenal';
 export type DamageEffect = Exclude<ElementType, 'kinetic'> | 'corrosion' | 'frost' | 'bleed';
 
 export const damagePalette = Object.freeze({
   normal: '#fff',
   critical: '#ff3b3b',
-  fire: '#ff8a24',
-  shock: '#4ca3ff',
-  corrosion: '#67e04b',
-  frost: '#58e5f2',
+  fire: elementColors.fire,
+  shock: elementColors.shock,
+  corrosion: elementColors.corrosive,
+  frost: elementColors.ice,
   bleed: '#9b1433',
-  ice: '#58e5f2',
-  corrosive: '#67e04b',
-  radiation: '#b7f34a',
-  gravity: '#ad86ff',
-  adhesive: '#ffc94f',
+  ice: elementColors.ice,
+  corrosive: elementColors.corrosive,
+  radiation: elementColors.radiation,
+  gravity: elementColors.gravity,
+  adhesive: elementColors.adhesive,
 });
 
 /** Status ticks keep their effect identity; direct critical hits are red. */

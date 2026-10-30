@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { brands, getWeaponElements, type BrandId, type ElementType, type WeaponSpec } from '../../core/arsenal';
+import { brands, elementColors, getWeaponElements, type BrandId, type ElementType, type WeaponSpec } from '../../core/arsenal';
 
 const UP = new THREE.Vector3(0, 1, 0), FORWARD = new THREE.Vector3(0, 0, 1);
 const noRaycast: THREE.Mesh['raycast'] = () => {};
+
+export interface ElementalFlightOptions {omitPayloads?:ReadonlySet<ElementType>;role?:'carrier'|'bomblet'}
 
 type Finish = 'metal' | 'dark' | 'body' | 'core' | 'glaze' | 'highlight';
 export interface ElementalFlightStyle {
@@ -15,9 +17,9 @@ export const ELEMENTAL_FLIGHT_STYLES: Readonly<Record<ElementType, ElementalFlig
   kinetic: Object.freeze({ body: 0xd3ad69, core: 0xffedbf, dark: 0x4f4640, opacity: .72, wake: 'thin brass tracer' }),
   fire: Object.freeze({ body: 0xf96a25, core: 0xffe9b8, dark: 0x6f251f, opacity: .76, wake: 'incandescent tapered ember' }),
   ice: Object.freeze({ body: 0x69d6ed, core: 0xe0fdff, dark: 0x254c6c, opacity: .48, wake: 'faceted crystal and fine condensation' }),
-  corrosive: Object.freeze({ body: 0x75d948, core: 0xc9ed7c, dark: 0x345a27, opacity: .53, wake: 'wet capsule and detached droplets' }),
+  corrosive: Object.freeze({ body: Number.parseInt(elementColors.corrosive.slice(1),16), core: 0xe2ff9a, dark: 0x345a27, opacity: .53, wake: 'wet capsule and detached droplets' }),
   shock: Object.freeze({ body: 0x4a98e8, core: 0xdcf6ff, dark: 0x2a3d71, opacity: .80, wake: 'forked conductor discharge' }),
-  radiation: Object.freeze({ body: 0xc7eb51, core: 0xf6ffd3, dark: 0x687133, opacity: .64, wake: 'ringed isotope and sparse decay motes' }),
+  radiation: Object.freeze({ body: Number.parseInt(elementColors.radiation.slice(1),16), core: 0xfff4be, dark: 0x76641f, opacity: .64, wake: 'ringed isotope and sparse decay motes' }),
   gravity: Object.freeze({ body: 0x9867dc, core: 0xe3d4ff, dark: 0x251d41, opacity: .42, wake: 'dark compressed core and distorted orbits' }),
   adhesive: Object.freeze({ body: 0xd9a13e, core: 0xffe2a2, dark: 0x684b28, opacity: .63, wake: 'viscous amber globule and connective thread' }),
 });
@@ -146,7 +148,8 @@ function payload(parent: THREE.Group, element: ElementType, brand: BrandId, radi
 }
 
 /** Presentation only: original simulation owns every velocity, collision and fuse. */
-export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ironvale', role?: 'carrier' | 'bomblet'): THREE.Group {
+export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ironvale', roleOrOptions?: 'carrier'|'bomblet'|ElementalFlightOptions): THREE.Group {
+  const options=typeof roleOrOptions==='string'?{role:roleOrOptions}:roleOrOptions??{},role=options.role;
   const root=rootGroup(`quality-projectile-${spec.projectile}`,spec,brand),carrier=new THREE.Group();carrier.name='quality-physical-carrier';root.add(carrier);
   const variant=variantOf(spec),type=spec.projectile, p=new Parts('kinetic',brand), scale=familyScale(spec);
   root.scale.setScalar(scale);
@@ -210,8 +213,8 @@ export function createElementalProjectile(spec: WeaponSpec, brand: BrandId = 'ir
   p.finish(carrier,'quality-carrier');
   const elements=getWeaponElements(spec);
   const payloadRoot=type==='cluster'&&role==='bomblet'?carrier:root;
-  payload(payloadRoot,elements[0],brand,radius,z,variant,root,false);
-  if(elements[1])payload(payloadRoot,elements[1],brand,radius*.60,z-radius*.30,variant,root,true);
+  if(!options.omitPayloads?.has(elements[0]))payload(payloadRoot,elements[0],brand,radius,z,variant,root,false);
+  if(elements[1]&&!options.omitPayloads?.has(elements[1]))payload(payloadRoot,elements[1],brand,radius*.60,z-radius*.30,variant,root,true);
   root.userData.flightRadius=radius;root.userData.maxVisualParts=16;
   return root;
 }
@@ -227,7 +230,8 @@ function pathPoint(start:THREE.Vector3,delta:THREE.Vector3,side:THREE.Vector3,up
 }
 
 /** Exact world endpoints with small element-specific disturbances between them. */
-export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId='ironvale',role?:'carrier'|'bomblet'):THREE.Group{
+export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId='ironvale',roleOrOptions?:'carrier'|'bomblet'|ElementalFlightOptions):THREE.Group{
+ const options=typeof roleOrOptions==='string'?{role:roleOrOptions}:roleOrOptions??{},role=options.role;
  const root=rootGroup('quality-elemental-trail',spec,brand),basis=axes(start,end);root.userData.start=start.toArray();root.userData.end=end.toArray();if(!basis)return root;
  const {delta,distance,direction,side,up}=basis,type=spec.projectile,style=spec.trail??'tracer',variant=variantOf(spec);
  if(type==='cluster'&&role==='bomblet'){
@@ -241,6 +245,7 @@ export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:
  const width=(type==='scatter'?.0034:energy?.013:.0055)*scale;
  const elements=getWeaponElements(spec);
  for(const[channel,element]of elements.entries()){
+  if(options.omitPayloads?.has(element))continue;
   const p=new Parts(element,brand,(style==='clean'?.32:1)*(channel?.65:1));
   const alpha=channel?-.014:.014;
   const points:THREE.Vector3[]=[];
@@ -287,11 +292,12 @@ export function createElementalTrail(start:THREE.Vector3,end:THREE.Vector3,spec:
 }
 
 /** A controlled luminous core and authored energy structure, with converging endpoints. */
-export function createElementalBeam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId='ironvale'):THREE.Group{
+export function createElementalBeam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId='ironvale',options:ElementalFlightOptions={}):THREE.Group{
  const root=rootGroup(jagged?'quality-elemental-arc':'quality-elemental-beam',spec,brand),basis=axes(start,end);root.userData.start=start.toArray();root.userData.end=end.toArray();if(!basis)return root;
  const{delta,distance,direction,side,up}=basis,variant=variantOf(spec),elements=getWeaponElements(spec),style=spec.trail??'tracer';
  const width=(jagged?.009:.012)*familyScale(spec);
  for(const[channel,element]of elements.entries()){
+  if(options.omitPayloads?.has(element))continue;
   const p=new Parts(element,brand,channel?.76:1);
   const segments=jagged||element==='shock'?9:element==='gravity'?12:element==='adhesive'?7:style==='helix'||style==='ribbon'?10:4;
   const points:THREE.Vector3[]=[];

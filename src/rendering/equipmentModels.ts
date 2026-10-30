@@ -215,6 +215,9 @@ function barrel(parent: THREE.Object3D, appearance: EquipmentAppearance, p: Pale
   if (appearance.element && appearance.element !== 'kinetic') muzzle.userData.equipmentElement = appearance.element;
   muzzle.userData.equipmentVariant = appearance.visualVariant ?? appearance.variant;
   muzzle.userData.equipmentProjectile = appearance.projectile ?? 'bullet';
+  // Presentation metadata only: keep construction identity across equipped, preview and dropped views.
+  muzzle.userData.equipmentWeaponType = appearance.weaponType ?? 'rifle';
+  muzzle.userData.equipmentForm = appearance.form;
   muzzle.position.z = muzzleZ;
   muzzleParent.add(muzzle);
   const delivery = group(`delivery-${appearance.projectile ?? 'bullet'}`, assembly);

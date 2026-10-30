@@ -11,13 +11,13 @@ test('direct hit feedback is pure white and critical feedback is red', () => {
 
 test('status damage keeps its effect color even when critical is true', () => {
   const effects: [DamageEffect, string][] = [
-    ['fire', '#ff8a24'], ['shock', '#4ca3ff'], ['corrosion', '#67e04b'], ['frost', '#58e5f2'], ['bleed', '#9b1433'],
+    ['fire', '#ff8a24'], ['shock', '#4ca3ff'], ['corrosion', '#b7f34a'], ['radiation', '#f5df3d'], ['frost', '#58e5f2'], ['bleed', '#9b1433'],
   ];
   for (const [effect, color] of effects) {
     assert.equal(getDamageColor({ critical: false, effect }), color);
     assert.equal(getDamageColor({ critical: true, effect }), color);
   }
-  assert.equal(new Set(effects.map(([, color]) => color)).size, 5);
+  assert.equal(new Set(effects.map(([, color]) => color)).size, 6);
 });
 
 test('enemy health drains left-to-right inside an unchanged container', () => {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { EquipmentAppearance } from '../../core/appearance';
-import type { ElementType } from '../../core/arsenal';
+import { elementColors, type ElementType } from '../../core/arsenal';
 import { createBandTexture } from '../materials';
 import { getCrowdFeedbackMode } from './crowdFeedbackPolicy';
 import { sampleSurfaceRoot, sampleSurfaceSource, type SurfaceSourcePose } from './surfacePoseCache';
@@ -14,9 +14,9 @@ export interface ElementalSurfaceRecipe {
 export const ELEMENTAL_SURFACE_RECIPES: Readonly<Record<SurfaceElement,Readonly<ElementalSurfaceRecipe>>> = Object.freeze({
   fire:Object.freeze({index:0,base:0x4d261c,color:0xff7832,highlight:0xffd58a,equipmentCount:6,statusCount:9,response:'heat cracks, rising flame tongues and cooling char'}),
   ice:Object.freeze({index:1,base:0x315761,color:0x90d9ef,highlight:0xe1faff,equipmentCount:8,statusCount:10,response:'frost filigree, rim facets and crystalline growth'}),
-  corrosive:Object.freeze({index:2,base:0x30491d,color:0x80b939,highlight:0xc4e95b,equipmentCount:7,statusCount:9,response:'wet meniscus, descending runnels and viscous drops'}),
+  corrosive:Object.freeze({index:2,base:0x30491d,color:0x80b939,highlight:Number.parseInt(elementColors.corrosive.slice(1),16),equipmentCount:7,statusCount:9,response:'wet meniscus, descending runnels and viscous drops'}),
   shock:Object.freeze({index:3,base:0x243f55,color:0x61b9ed,highlight:0xd4f4ff,equipmentCount:8,statusCount:9,response:'branching conductor arcs and travelling charge'}),
-  radiation:Object.freeze({index:4,base:0x54501e,color:0xd6cf48,highlight:0xffefa3,equipmentCount:6,statusCount:8,response:'contained particulate decay and slow dosimeter pulses'}),
+  radiation:Object.freeze({index:4,base:0x54501e,color:Number.parseInt(elementColors.radiation.slice(1),16),highlight:0xffefa3,equipmentCount:6,statusCount:8,response:'contained particulate decay and slow dosimeter pulses'}),
   gravity:Object.freeze({index:5,base:0x392b54,color:0xa78bd9,highlight:0xe0c5ff,equipmentCount:3,statusCount:3,response:'orbital arcs, compression bands and inward lensing'}),
   adhesive:Object.freeze({index:6,base:0x674321,color:0xc48b43,highlight:0xf3cf8a,equipmentCount:6,statusCount:7,response:'honeyed wet patches, elastic filaments and stretching beads'}),
 });

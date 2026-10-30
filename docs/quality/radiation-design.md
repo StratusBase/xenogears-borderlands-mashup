@@ -4,7 +4,7 @@ Approved 30 October 2026 after the consistent-model `artifacts/concepts/radiatio
 
 ## Visual and audio target
 
-One short directional scintillation flash marks contact. Three unequal dust lobes release after it: a dominant outward/upward lobe, a shorter counter-lobe and a delayed thin fringe. The release disperses into sparse fluorescent dust and quiet decay ticks. These are separate beats, not two full bursts stacked at the same instant. Faces, cloth, armor and silhouettes remain intact. Warm ivory/sulfur/ochre distinguish it from fire, corrosive liquid, shock and gravity.
+One short directional scintillation flash marks contact. Three unequal dust lobes release after it: a dominant outward/upward lobe, a shorter counter-lobe and a delayed thin fringe. The release disperses into sparse fluorescent dust and quiet decay ticks. These are separate beats, not two full bursts stacked at the same instant. Faces, cloth, armor and silhouettes remain intact. Warm ivory/sulfur/ochre distinguish it from fire, corrosive liquid, shock and gravity. The canonical radiation feedback color is warm yellow `#f5df3d`; corrosive owns the former radiation lime `#b7f34a`, per the subsequent palette correction.
 
 Equipment styling stays on a small shielded isotope insert/chamber with short yellow viewing slits. The normal receiver, muzzle sockets and other slots remain unchanged. A compact bright-core carrier gets a short dash/granular wake while retaining the existing delivery construction and trajectory.
 
@@ -14,7 +14,7 @@ The same clothed and open-face armored human fixtures used for corrosive remain 
 
 Radiation's existing damage-over-time and irradiated-death pulse stay authoritative. Do not apply damage, change membership/range, add propagation, alter status/fuse clocks, move targets or change collision in a renderer. Bullet/scatter/beam contact stays compact. Existing explosive/delayed detonations earn the largest brief bloom. Secondary element weight, actual shot energy, recipient exposure, radius and target scale drive bounded visual sizes. Secondary recipients receive a few grains and a small deposit, never another full flash/fallout bloom.
 
-The current irradiated-death pulse is applied inside the combat-owned death path. New presentation must receive a notification of its existing selected source/recipients through a handoff; do not rediscover recipients or reapply damage in art code. A prototype can demonstrate that callback against the real death outcome without changing production combat files.
+The irradiated-death pulse stays inside the combat-owned death path. On the user's subsequent explicit integration approval, its existing selected source/recipients now notify `GamePresentation.confirmedPulse`. Art never rediscovers recipients or reapplies damage. The normal production registry composes Radiation and Fire with corrosive; see [normal-game integration verification](radiation-main-verification.md).
 
 ## Architecture and ownership
 
@@ -31,3 +31,11 @@ Combat lead retains `src/game.ts`, `src/world.ts` and `src/ui.ts`. Shared compos
 - Preserve source fingerprints, screenshots, live-sound recordings and an integration handoff. Generated paintovers are targets, not proof of runtime parity or performance.
 
 The scope begins with a playable prototype for review. No push or deployment is authorized.
+
+## Finished visual/audio revision
+
+The 30 October finish pass adds a held 240 ms contact core, bolder tapered onset rays, relit ivory/sulfur volume, larger finite scintillation, and a slow 1.45-second fringe. Local residue can cross adjacent visible meshes of the same material within its original footprint; this prevents a center rib from hiding the affected armor. Rocket contact presentation is subsumed by immediate detonation, and splash audio is bounded independently of combat. See `radiation-opus-review.md` and `radiation-verification.md` for actual captures, final review and matched results. Optional cosmetic seed injection supports reproducible comparisons without consuming gameplay randomness.
+
+## Equipment alignment
+
+The subsequent [equipment alignment and Opus 5.5 review](radiation-equipment.md) completes primary/secondary chamber fitting, shot-driven yellow/ivory charging and delivery-specific decay across pilot, mech, world, drop and preview paths. That report includes actual native-time sound clips, matching shot-phase screenshots and equipment-only matched performance results.

@@ -6,6 +6,7 @@ import { GamepadInput, type GamepadFrame } from './input/gamepad';
 import { MouseLook } from './input/mouse';
 import { ComicRenderer } from './rendering/ComicRenderer';
 import { GamePresentation } from './rendering/quality/GamePresentation';
+import type {ConfirmedElementPulse} from './rendering/quality/shared/confirmedPulse';
 import type { DamageFeedbackQuality, DamageHead } from './ui/damageNumbers';
 import { cacheDamageAnchors, primaryDamageAnchor, sampleDamageAnchor, type DamageAnchors } from './ui/damageAnchors';
 import { createComicMaterial } from './rendering/materials';
@@ -1323,13 +1324,18 @@ export class Game {
     this.addDrop(rollItem(target, Math.min(100, this.progression.wave), this.combatRandom), at);
     if (irradiated) {
       const center = at.clone().setY(enemy.heavy ? 2.6 : 1.5);
-      this.burst(center, Number.parseInt(elementColors.radiation.slice(1), 16), 14);
+      const presented = this.presentation?.handlesPulse('radiation') ?? false;
+      if (!presented) this.burst(center, Number.parseInt(elementColors.radiation.slice(1), 16), 14);
+      const recipients: ConfirmedElementPulse['recipients'][number][] = [];
       for (const other of this.combatTargets) {
         if (other.mesh.position.distanceTo(at) > 5) continue;
-        if (!this.clearLine(center, other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5))) continue;
+        const point = other.mesh.position.clone().setY(other.heavy ? 2.6 : 1.5);
+        if (!this.clearLine(center, point)) continue;
         const pulse = this.hurtTarget(other, enemy.maxHealth * 0.18, other === this.testDummy ? 'radiation' : undefined, false, 'status');
         this.showEnemyDamage(other, pulse.healthDamage + pulse.shieldDamage, false, 'radiation');
+        if (presented && pulse.healthDamage + pulse.shieldDamage > 0) recipients.push({ target: other.mesh, point, normal: center.clone().sub(point).normalize(), exposure: 1 });
       }
+      if (presented) this.presentation?.confirmedPulse({ element: 'radiation', point: center, energy: enemy.maxHealth * 0.18, radius: 5, recipients });
     }
     if (this.waveActive && !this.enemies.length) {
       this.waveActive = false;

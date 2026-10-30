@@ -1,0 +1,7 @@
+/** Captures the actual canvas and final sound buses without microphone access or replacement audio. */
+export class GameCapture {
+ private recorder?:MediaRecorder;private stream?:MediaStream;private mix?:AudioContext;private chunks:BlobPart[]=[];
+ constructor(private canvas:HTMLCanvasElement,private buses:()=>MediaStream[]){}
+ async start(){if(this.recorder)throw new Error('Already recording');this.mix=new AudioContext();await this.mix.resume();const audio=this.mix.createMediaStreamDestination();for(const bus of this.buses())this.mix.createMediaStreamSource(bus).connect(audio);this.stream=this.canvas.captureStream(60);for(const t of audio.stream.getAudioTracks())this.stream.addTrack(t);const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':'video/webm;codecs=vp8,opus';this.chunks=[];this.recorder=new MediaRecorder(this.stream,{mimeType:mime,videoBitsPerSecond:9_000_000});this.recorder.ondataavailable=e=>{if(e.data.size)this.chunks.push(e.data);};this.recorder.start(100);}
+ async stop(){const recorder=this.recorder;if(!recorder)throw new Error('No recording');await new Promise<void>(resolve=>{recorder.onstop=()=>resolve();recorder.stop();});const blob=new Blob(this.chunks,{type:recorder.mimeType});const result=await new Promise<string>(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.readAsDataURL(blob);});this.stream?.getTracks().forEach(t=>t.stop());await this.mix?.close();this.recorder=undefined;return result;}
+}

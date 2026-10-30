@@ -49,7 +49,7 @@ export const elementLabels: Readonly<Record<ElementType, string>> = Object.freez
   kinetic: 'Kinetic', fire: 'Fire', ice: 'Ice', radiation: 'Radiation', gravity: 'Gravity', corrosive: 'Corrosive', shock: 'Shock', adhesive: 'Adhesive',
 });
 export const elementColors: Readonly<Record<ElementType, string>> = Object.freeze({
-  kinetic: '#ffe7a4', fire: '#ff8a24', ice: '#58e5f2', radiation: '#b7f34a', gravity: '#ad86ff', corrosive: '#67e04b', shock: '#4ca3ff', adhesive: '#ffc94f',
+  kinetic: '#ffe7a4', fire: '#ff8a24', ice: '#58e5f2', radiation: '#f5df3d', gravity: '#ad86ff', corrosive: '#b7f34a', shock: '#4ca3ff', adhesive: '#ffc94f',
 });
 export const projectileLabels: Readonly<Record<ProjectileType, string>> = Object.freeze({
   bullet: 'Bullet', slug: 'Slug', spike: 'Spike', ricochet: 'Ricochet', homing: 'Homing round', sticky: 'Sticky charge', orb: 'Orb', beam: 'Beam', scatter: 'Scatter', rocket: 'Rocket', disc: 'Disc', arc: 'Arc', cluster: 'Cluster',

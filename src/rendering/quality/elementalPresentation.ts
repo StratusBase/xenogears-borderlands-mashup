@@ -3,7 +3,7 @@ import type { EquipmentAppearance } from '../../core/appearance';
 import { getWeaponElements, type ElementType, type WeaponSpec, type BrandId } from '../../core/arsenal';
 import type { Mode } from '../../core/index';
 import type { BallisticPresentation, BallisticPresentationImpact,BallisticPresentationSplash } from '../PlayerBallistics';
-import { setEquipmentEffectPresentation, setEquipmentEffectFactory } from '../equipmentEffects';
+import { setEquipmentEffectPresentation, setEquipmentEffectFactory, type EquipmentEffectPresentation } from '../equipmentEffects';
 import { ElementalEquipment, ElementalStatus } from './elementalSurfaces';
 import { createElementalProjectile, createElementalTrail, createElementalBeam, updateElementalProjectile } from './elementalFlight';
 import { ElementalImpacts } from './elementalImpacts';
@@ -19,7 +19,7 @@ type StatusPresentation=ElementalStatus|CorrosiveStatusVisual;
 export class ElementalPresentation implements BallisticPresentation{
  readonly splash?: (event:BallisticPresentationSplash)=>void;
  readonly impacts:ElementalImpacts;readonly audio:ElementalAudio;readonly corrosive:CorrosiveResponse|null;
- private equipment=new Map<THREE.Object3D,{key:string;visual:ElementalEquipment}>();
+ private equipment=new Map<THREE.Object3D,{key:string;visual:EquipmentEffectPresentation}>();
  private statuses=new Map<THREE.Group,Map<ElementType,StatusPresentation>>();
  private restoreFactory:()=>void;
  private activeEquipment=new Set<ElementType>();private mode:Mode='pilot';
@@ -38,7 +38,7 @@ export class ElementalPresentation implements BallisticPresentation{
    if(!owners.size)return;
    const visuals=[...owners].map(([owner,elements])=>{
     let delivery:unknown='bullet',variant=0;owner.traverse(object=>{if(object.userData.equipmentProjectile){delivery=object.userData.equipmentProjectile;variant=Number(object.userData.equipmentVariant)||0;}});
-    return new ElementalEquipment(owner,{key:`bound:${owner.uuid}`,equipped:true,target:'pilot',slot:'weapon',form:'standard',variant,primary:0,secondary:0,accent:0,metal:0,element:elements[0],secondaryElement:elements[1],projectile:delivery as EquipmentAppearance['projectile']});
+    return this.createEquipment(owner,{key:`bound:${owner.uuid}`,equipped:true,target:'pilot',slot:'weapon',form:'standard',variant,primary:0,secondary:0,accent:0,metal:0,element:elements[0],secondaryElement:elements[1],projectile:delivery as EquipmentAppearance['projectile']});
    });
    return{update:(dt,time)=>visuals.forEach(v=>v.update(dt,time)),dispose:()=>visuals.forEach(v=>v.dispose())};
   });
@@ -47,12 +47,13 @@ export class ElementalPresentation implements BallisticPresentation{
  trail(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,brand:BrandId,role?:'carrier'|'bomblet'):THREE.Group{return createElementalTrail(start,end,spec,brand,role);}
  beam(start:THREE.Vector3,end:THREE.Vector3,spec:WeaponSpec,jagged:boolean,brand:BrandId):THREE.Group{return createElementalBeam(start,end,spec,jagged,brand);}
  updateProjectile(root:THREE.Group,dt:number,age:number):void{updateElementalProjectile(root,dt,age);}
- impact(event:BallisticPresentationImpact):void{
-  this.impacts.delivery(event);
-  const elements=getWeaponElements(event.spec),special=this.corrosive&&elements.includes('corrosive');
+ impact(event:BallisticPresentationImpact):void{this.impacts.delivery(event);this.impactChannels(event,getWeaponElements(event.spec));}
+ /** Route selected channels while retaining original energy, delivery and secondary-channel identity. */
+ protected impactChannels(event:BallisticPresentationImpact,elements:readonly ElementType[]):void{
+  if(!elements.length)return;const special=this.corrosive&&elements.includes('corrosive');
   const surface=special?this.corrosive!.impact(event):undefined;
-  if(!special)this.impacts.impact(event);
-  else for(const element of elements.filter(e=>e!=='corrosive'))this.impacts.impact({...event,spec:{...event.spec,element,secondaryElement:undefined}});
+  const excluded=new Set(getWeaponElements(event.spec).filter(e=>!elements.includes(e)||!!special&&e==='corrosive'));
+  this.impacts.impact(event,excluded);
   for(const element of elements)this.audio.impact(element,{mode:this.mode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.camera.getWorldPosition(new THREE.Vector3())),strength:event.stage==='bomblet'?.55:event.phase==='detonate'?1:.72});
  }
  protected splashImpact(event:BallisticPresentationSplash):void{
@@ -64,8 +65,10 @@ export class ElementalPresentation implements BallisticPresentation{
   const existing=this.equipment.get(root);if(existing?.key===appearance.key)return;
   if(existing)this.release(root);
   setEquipmentEffectPresentation(root,undefined);
-  const visual=new ElementalEquipment(root,appearance);setEquipmentEffectPresentation(root,visual);this.equipment.set(root,{key:appearance.key,visual});
+  const visual=this.createEquipment(root,appearance);setEquipmentEffectPresentation(root,visual);this.equipment.set(root,{key:appearance.key,visual});
  }
+ /** One lifecycle for equipped, parked, dropped and preview equipment; elements may specialize their own surfaces. */
+ protected createEquipment(root:THREE.Object3D,appearance:EquipmentAppearance):EquipmentEffectPresentation{return new ElementalEquipment(root,appearance);}
  status(root:THREE.Group,element:ElementType):StatusPresentation{
   let map=this.statuses.get(root);if(!map){map=new Map();this.statuses.set(root,map);}
   const existing=map.get(element);if(existing)return existing;
@@ -76,7 +79,7 @@ export class ElementalPresentation implements BallisticPresentation{
  protected createStatus(root:THREE.Group,element:ElementType):StatusPresentation{
   return element==='corrosive'&&this.corrosive?this.corrosive.status(root):new ElementalStatus(root,element as Exclude<ElementType,'kinetic'>);
  }
- shot(spec:WeaponSpec,mode:Mode):void{
+ shot(spec:WeaponSpec,mode:Mode,_weaponRoot?:THREE.Object3D):void{
   this.mode=mode;
   for(const element of getWeaponElements(spec)){this.audio.shot(element,{mode,delivery:spec.projectile});this.audio.flight(element,{mode,delivery:spec.projectile,strength:.45});}
  }
