@@ -1,5 +1,7 @@
 # Visual and audio reference
 
+For new effects work, follow [effects architecture and organization](../effects-architecture.md). The [gravity well design](gravity-design.md) records the requested omnidirectional pull, 3D lift/hold, crush damage and surface clearance; these are prototype requirements, not an implemented feature.
+
 The normal **`/`** entry now uses the reference assets and complete elemental presentation. Pause → **Visuals** switches Enhanced/Legacy; **Sound** controls both audio layers. `/quality-lab.html` and `/elemental-lab.html` remain isolated comparison tools using the actual Game, combat and collision. No story or faction canon is introduced.
 
 See [main-game integration and validation](main-integration.md) for the full combat/loot/equip loop, compatibility checks, screenshots and crowded-scene measurements.
