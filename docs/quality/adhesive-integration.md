@@ -8,6 +8,8 @@ The [varied-stain pass](adhesive-stains.md) adds `stains:'varied'|'fixed'`. The 
 
 The [stain performance correction](adhesive-stain-performance.md) makes the optimized varied shader the default and retains `stainKernel:'reference'` for exact same-build comparison against `ef0eeb8`. Honey and profile generation remain unchanged.
 
+The [equipment alignment pass](adhesive-equipment.md) adds `equipment:'aligned'|'previous'`. The opt-in default uses a caged longitudinal honey feed, connected ribbed hose and hollow applicator collar, with pressure response and sampling of the existing reload pose. The previous receiver canister remains available. This pass includes the required Opus 5.5 visual review and actual pilot/mech equipment evidence; ordinary Enhanced adoption remains the explicit integration gate.
+
 ## Review entry
 
 `npx vite --host 127.0.0.1 --port 5186 --strictPort` serves `/adhesive-lab.html`. For a frozen comparison, build with `npx vite build --config vite.adhesive.config.ts`, then preview that config on a free port. The review build contains both prior adhesive and Tack Resin, plus transformed-source SHA-256 provenance. The lab locks the renderer/camera to 1440 × 900, DPR 1.
@@ -39,7 +41,7 @@ This is a single opt-in adapter over the current lifecycle, not a proposed chain
 - `adhesive/response.ts`: actual outer-surface resolution, anchors, finite-support drops and bounded pools: 10 folds, 192 drops, 96 pads, 16 environment masks and 32 statuses.
 - `adhesive/sizing.ts`: cosmetic energy/delivery/exposure curves; secondary response has no full fold, smaller deposits and fewer beads. Variation stays within these size envelopes.
 - `adhesive/surfaces.ts`: source-local coats/drips and authoritative intensity/expiry. Cloth remains visible; armor selection uses the outer plate. Ground residue is cosmetic and adds no hazard.
-- `adhesive/equipment.ts`: owned weapon-slot cartridge/feed/collar, short projectile neck and trail. It preserves the carrier transform, original construction and muzzles.
+- `adhesive/alignedEquipment.ts`: current owned weapon-slot feed/cage/hose/collar and pressure presentation. `adhesive/equipment.ts` retains the previous attachment and unchanged projectile neck/trail. Both preserve original construction and muzzles.
 - `audio/adhesiveAudio.ts`: wet contact/tear/release/drips via the existing audio engine and budgets. Other recipes pass through unchanged.
 - `shared/variation.ts`: independent cosmetic seed sequence and nonrepeating variant families per named event track. A profile is chosen once per event, never rerolled per frame. Default instances obtain independent seeds; explicit seeds/reset support exact review. Contact/secondary events cannot force repeated detonation families. No `Math.random` or gameplay RNG is consumed.
 
