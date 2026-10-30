@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {bodySurfaceSources,surfaceKindOf,type SurfaceStatusVisual} from '../shared/surfaces';
 import {honeyLight,HONEY_PALETTE,type ResinMaterialStyle} from './material';
 import {createStainProfile,type StainProfile,type ResinStainStyle} from './stains';
-import {variedStainFragment} from './stainShader';
+import {variedStainFragment,referenceVariedStainFragment,type ResinStainKernel} from './stainShader';
 
 export interface ResinContact {source:THREE.Mesh;point:THREE.Vector3;normal:THREE.Vector3;radius:number;secondary:boolean;stain?:StainProfile;right?:THREE.Vector3}
 const vertex=/* glsl */`varying vec3 vP,vN,vShadeN,vV;void main(){vP=position;vN=normal;vShadeN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position+normal*.006,1.);vV=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
@@ -40,26 +40,29 @@ void main(){float field=0.,opticalDepth=0.,edgeInk=0.;vec3 coatNormal=normalize(
 
 /** Owns only the borrowed source's overlay material, never its geometry or original material. */
 export class ResinMask {
- readonly mesh:THREE.Mesh;readonly material:THREE.ShaderMaterial;private next=0;private disposed=false;
+ readonly mesh:THREE.Mesh;readonly material:THREE.ShaderMaterial;private next=0;private disposed=false;private optimizeKernel=false;
  readonly centers=Array.from({length:4},()=>new THREE.Vector3(1e4,1e4,1e4));readonly normals=Array.from({length:4},()=>new THREE.Vector3(0,0,1));readonly radii=[.001,.001,.001,.001];readonly ages=[10,10,10,10];
  readonly tangents=Array.from({length:4},()=>new THREE.Vector3(1,0,0));readonly stainFrames=Array.from({length:4},()=>new THREE.Vector4(1,0,0,0));readonly stainLobes=Array.from({length:16},()=>new THREE.Vector4(1e4,1e4,1,1));readonly profiles:(StainProfile|undefined)[]=Array(4);
- constructor(readonly source:THREE.Mesh,materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied'){
-  this.material=new THREE.ShaderMaterial({name:'adhesive-source-bound-resin',vertexShader:materialStyle==='honey'?honeyVertex:vertex,fragmentShader:materialStyle==='honey'?(stainStyle==='varied'?variedStainFragment:honeyFragment):fragment,uniforms:{centers:{value:this.centers},normals:{value:this.normals},radii:{value:this.radii},ages:{value:this.ages},metric:{value:new THREE.Vector3(1,1,1)},tangents:{value:this.tangents},stainFrames:{value:this.stainFrames},stainLobes:{value:this.stainLobes},presence:{value:1},skin:{value:surfaceKindOf(source)==='skin'?1:0}},transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
+ constructor(readonly source:THREE.Mesh,materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied',private stainKernel:ResinStainKernel='optimized'){
+  this.optimizeKernel=materialStyle==='honey'&&stainStyle==='varied'&&stainKernel==='optimized';
+  this.material=new THREE.ShaderMaterial({name:'adhesive-source-bound-resin',vertexShader:materialStyle==='honey'?honeyVertex:vertex,fragmentShader:materialStyle==='honey'?(stainStyle==='varied'?(stainKernel==='reference'?referenceVariedStainFragment:variedStainFragment):honeyFragment):fragment,uniforms:{centers:{value:this.centers},normals:{value:this.normals},radii:{value:this.radii},ages:{value:this.ages},metric:{value:new THREE.Vector3(1,1,1)},tangents:{value:this.tangents},stainFrames:{value:this.stainFrames},stainLobes:{value:this.stainLobes},presence:{value:1},skin:{value:surfaceKindOf(source)==='skin'?1:0}},transparent:true,depthTest:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
   this.mesh=new THREE.Mesh(source.geometry,this.material);this.mesh.name='adhesive-local-resin-mask';this.mesh.visible=false;this.mesh.userData.comicOverlay=true;this.mesh.userData.presentationOnly=true;this.mesh.raycast=()=>{};this.mesh.renderOrder=2;source.add(this.mesh);
  }
  contact(point:THREE.Vector3,radius:number,normal:THREE.Vector3,profile?:StainProfile,right?:THREE.Vector3){
   if(this.disposed||!Number.isFinite(point.lengthSq())||!Number.isFinite(radius)||radius<=0)return;this.source.updateWorldMatrix(true,false);const local=this.source.worldToLocal(point.clone()),metric=this.stainStyle==='varied'?this.source.getWorldScale(new THREE.Vector3()):undefined;
   // Refresh overlapping coats instead of averaging many differently rotated stamps into a circle.
   // A small direct/secondary deposit must never clear a larger primary deposit.
-  let inheritedAge=0;if(this.stainStyle==='varied')for(let i=0;i<4;i++)if(radius>=this.radii[i]*.75&&local.clone().sub(this.centers[i]).multiply(metric!).length()<Math.min(radius,this.radii[i])*.55){inheritedAge=Math.max(inheritedAge,Math.min(.18,this.ages[i]));this.centers[i].set(1e4,1e4,1e4);this.radii[i]=.001;this.profiles[i]=undefined;}
+  let inheritedAge=0;if(this.stainStyle==='varied')for(let i=0;i<4;i++)if(radius>=this.radii[i]*.75&&local.clone().sub(this.centers[i]).multiply(metric!).length()<Math.min(radius,this.radii[i])*.55){inheritedAge=Math.max(inheritedAge,Math.min(.18,this.ages[i]));this.centers[i].set(1e4,1e4,1e4);this.radii[i]=.001;this.profiles[i]=undefined;this.stainFrames[i].z=0;}
   let slot=this.next++%4;if(this.stainStyle==='varied'){
    const empty=this.radii.findIndex(r=>r<=.001);if(empty>=0)slot=empty;
    else{const eligible=this.radii.map((r,i)=>({r,i})).filter(s=>radius>=s.r*.75).sort((a,b)=>this.ages[b.i]-this.ages[a.i]);if(!eligible.length)return;slot=eligible[0].i;}
   }
   this.centers[slot].copy(local);this.normals[slot].copy(normal).applyMatrix3(new THREE.Matrix3().getNormalMatrix(this.source.matrixWorld).invert()).normalize();this.radii[slot]=Math.min(1.1,radius);this.ages[slot]=inheritedAge;if(this.stainStyle==='fixed'){this.update(0,1);return;}const p=profile??createStainProfile(0,0);this.profiles[slot]=p;
-  const tangent=right?.clone()??new THREE.Vector3(0,Math.abs(normal.y)<.85?1:0,Math.abs(normal.y)<.85?0:1).cross(normal).normalize();this.tangents[slot].copy(tangent).transformDirection(this.source.matrixWorld.clone().invert());this.stainFrames[slot].set(Math.cos(p.angle),Math.sin(p.angle),0,0);
-  for(let j=0;j<4;j++){const l=p.lobes[j];this.stainLobes[slot*4+j].set(l?l.x:1e4,l?l.y:1e4,l?1/l.rx:1,l?1/l.ry:1);}this.update(0,1);
+  const tangent=right?.clone()??new THREE.Vector3(0,Math.abs(normal.y)<.85?1:0,Math.abs(normal.y)<.85?0:1).cross(normal).normalize();this.tangents[slot].copy(tangent).transformDirection(this.source.matrixWorld.clone().invert());this.stainFrames[slot].set(Math.cos(p.angle),Math.sin(p.angle),p.lobes.length,0);
+  for(let j=0;j<4;j++){const l=p.lobes[j];this.stainLobes[slot*4+j].set(l?l.x:1e4,l?l.y:1e4,l?1/l.rx:1,l?1/l.ry:1);}this.selectKernel();this.update(0,1);
  }
+ // Uniform branches can cost more on dense masks. Keep their exact frozen kernel.
+ private selectKernel(){if(!this.optimizeKernel)return;let active=0;for(const frame of this.stainFrames)if(frame.z>0)active++;const shader=active===1?variedStainFragment:referenceVariedStainFragment;if(this.material.fragmentShader!==shader){this.material.fragmentShader=shader;this.material.needsUpdate=true;}}
  update(dt:number,presence:number){if(this.disposed)return;for(let i=0;i<4;i++)this.ages[i]+=Math.max(0,dt);this.source.getWorldScale(this.material.uniforms.metric.value as THREE.Vector3);this.material.uniforms.presence.value=presence;this.mesh.visible=presence>0&&!!this.source.parent;}
  dispose(){if(this.disposed)return;this.disposed=true;this.mesh.removeFromParent();this.material.dispose();}
 }
@@ -67,7 +70,7 @@ interface AnchoredContact {contact:ResinContact;local:THREE.Vector3;normal:THREE
 /** Game owns status duration and expiry. This class only presents its supplied intensity. */
 export class AdhesiveStatus implements SurfaceStatusVisual {
  readonly group=new THREE.Group();readonly bindings=new Map<THREE.Mesh,ResinMask>();private contacts:AnchoredContact[]=[];private intensity=1;private clock=0;private nextDrip=.65;private disposed=false;
- constructor(readonly root:THREE.Group,private drip:(contact:ResinContact,intensity:number)=>void,private released:()=>void,private materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied'){this.group.name='adhesive-tack-resin-status';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;root.add(this.group);}
+ constructor(readonly root:THREE.Group,private drip:(contact:ResinContact,intensity:number)=>void,private released:()=>void,private materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied',private stainKernel:ResinStainKernel='optimized'){this.group.name='adhesive-tack-resin-status';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;root.add(this.group);}
  get presence(){return this.disposed?0:this.intensity;}
  contact(c:ResinContact){
   if(this.disposed||!bodySurfaceSources(this.root).includes(c.source))return;const kind=surfaceKindOf(c.source)??'armor';c.source.updateWorldMatrix(true,false);
@@ -75,7 +78,7 @@ export class AdhesiveStatus implements SurfaceStatusVisual {
   const bounds=new THREE.Box3(),close=new THREE.Vector3();let added=0;
   const sources=bodySurfaceSources(this.root).sort((a,b)=>a===c.source?-1:b===c.source?1:0);
   for(const source of sources){if((surfaceKindOf(source)??'armor')!==kind)continue;source.updateWorldMatrix(true,false);bounds.setFromBufferAttribute(source.geometry.attributes.position as THREE.BufferAttribute).applyMatrix4(source.matrixWorld);if(bounds.clampPoint(c.point,close).distanceToSquared(c.point)>c.radius*c.radius)continue;
-   let mask=this.bindings.get(source);if(!mask){if(this.bindings.size>=8)continue;mask=new ResinMask(source,this.materialStyle,this.stainStyle);this.bindings.set(source,mask);}mask.contact(c.point,c.radius,c.normal,c.stain,c.right);if(++added>=6)break;
+   let mask=this.bindings.get(source);if(!mask){if(this.bindings.size>=8)continue;mask=new ResinMask(source,this.materialStyle,this.stainStyle,this.stainKernel);this.bindings.set(source,mask);}mask.contact(c.point,c.radius,c.normal,c.stain,c.right);if(++added>=6)break;
   }
  }
  update(dt:number,_time?:number){if(this.disposed||!Number.isFinite(dt)||dt<=0)return;const step=Math.min(.1,dt);this.clock+=step;for(const mask of this.bindings.values())mask.update(step,this.intensity);

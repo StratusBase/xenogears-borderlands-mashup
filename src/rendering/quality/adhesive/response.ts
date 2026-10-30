@@ -8,6 +8,7 @@ import {resinShaders,type ResinMaterialStyle} from './material';
 import {EffectVariationSequence} from '../shared/variation';
 import {AdhesiveStatus,ResinMask,type ResinContact} from './surfaces';
 import {createStainProfile,STAIN_VARIANTS,type ResinStainStyle} from './stains';
+import type {ResinStainKernel} from './stainShader';
 
 export const ADHESIVE_CAPACITY=Object.freeze({folds:10,drops:192,pads:96,surfaceMasks:16,statuses:32});
 const Z=new THREE.Vector3(0,0,1),UP=new THREE.Vector3(0,1,0);
@@ -22,7 +23,7 @@ export class AdhesiveResponse {
  private folds:Fold[]=[];private pools=new Map<string,Pool>();private statuses=new Map<THREE.Group,AdhesiveStatus>();private contacts=new WeakMap<THREE.Group,ResinContact[]>();private surfaces=new Map<THREE.Mesh,{mask:ResinMask;age:number}>();
  private serial=0;private nextFold=0;private randomState=513;private disposed=false;private dummy=new THREE.Object3D();private variations:EffectVariationSequence;
  private stainVariations:EffectVariationSequence;
- constructor(scene:THREE.Scene,private camera:THREE.Camera,visualSeed?:number,private materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied'){
+ constructor(scene:THREE.Scene,private camera:THREE.Camera,visualSeed?:number,private materialStyle:ResinMaterialStyle='honey',private stainStyle:ResinStainStyle='varied',private stainKernel:ResinStainKernel='optimized'){
   this.variations=new EffectVariationSequence(visualSeed);
   this.stainVariations=new EffectVariationSequence(this.variations.seed^0x7da315bf);
   this.group.name='adhesive-a-resin-response';this.group.userData.comicOverlay=true;this.group.userData.presentationOnly=true;scene.add(this.group);
@@ -68,13 +69,13 @@ export class AdhesiveResponse {
    p.rotation.copy(basis);this.anchor(p,source,at,basis,event.target);p.owner=event.target?this.statuses.get(event.target):undefined;
   }
   if(contact.source&&event.target){const c:ResinContact={source:contact.source,point:contact.point.clone(),normal:normal.clone(),radius:size.pad,secondary,stain,right};const list=this.contacts.get(event.target)??[];list.push(c);while(list.length>3)list.shift();this.contacts.set(event.target,list);this.statuses.get(event.target)?.contact(c);}
-  else if(source&&!secondary){let record=this.surfaces.get(source);if(!record){if(this.surfaces.size>=ADHESIVE_CAPACITY.surfaceMasks){const[key,old]=this.surfaces.entries().next().value!;old.mask.dispose();this.surfaces.delete(key);}record={mask:new ResinMask(source,this.materialStyle,this.stainStyle),age:0};this.surfaces.set(source,record);}record.age=0;record.mask.contact(contact.point,size.pad,normal,stain,right);}
+  else if(source&&!secondary){let record=this.surfaces.get(source);if(!record){if(this.surfaces.size>=ADHESIVE_CAPACITY.surfaceMasks){const[key,old]=this.surfaces.entries().next().value!;old.mask.dispose();this.surfaces.delete(key);}record={mask:new ResinMask(source,this.materialStyle,this.stainStyle,this.stainKernel),age:0};this.surfaces.set(source,record);}record.age=0;record.mask.contact(contact.point,size.pad,normal,stain,right);}
   this.upload(0);return contact.surface;
  }
  status(root:THREE.Group){
   const previous=this.statuses.get(root);if(previous)return previous;
   if(this.statuses.size>=ADHESIVE_CAPACITY.statuses)this.statuses.values().next().value!.dispose();
-  const status=new AdhesiveStatus(root,(c,intensity)=>this.drip(c,intensity),()=>this.statuses.delete(root),this.materialStyle,this.stainStyle);this.statuses.set(root,status);
+  const status=new AdhesiveStatus(root,(c,intensity)=>this.drip(c,intensity),()=>this.statuses.delete(root),this.materialStyle,this.stainStyle,this.stainKernel);this.statuses.set(root,status);
   const contacts=this.contacts.get(root)??[];for(const c of contacts)status.contact(c);
   if(!contacts.length){const source=bodySurfaceSources(root).find(s=>/breastplate|shirt-torso|front-breastplate|torso/.test(s.name));if(source){source.updateWorldMatrix(true,false);const bounds=new THREE.Box3().setFromBufferAttribute(source.geometry.attributes.position as THREE.BufferAttribute),p=bounds.getCenter(new THREE.Vector3());p.z=bounds.max.z;p.applyMatrix4(source.matrixWorld);status.contact({source,point:p,normal:Z.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(source.matrixWorld)).normalize(),radius:.075,secondary:true});}}
   for(const p of this.pools.get('pads')!.items)if(p.active&&p.root===root)p.owner=status;

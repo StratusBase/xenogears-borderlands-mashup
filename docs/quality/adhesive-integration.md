@@ -6,6 +6,8 @@ The subsequent [honey-material pass](adhesive-honey-material.md) adds `material:
 
 The [varied-stain pass](adhesive-stains.md) adds `stains:'varied'|'fixed'`. The opt-in default now varies the lingering footprint; `material:'honey',stains:'fixed'` retains the previous honey coat for same-build comparison. Honey material, combat and burst behavior remain unchanged.
 
+The [stain performance correction](adhesive-stain-performance.md) makes the optimized varied shader the default and retains `stainKernel:'reference'` for exact same-build comparison against `ef0eeb8`. Honey and profile generation remain unchanged.
+
 ## Review entry
 
 `npx vite --host 127.0.0.1 --port 5186 --strictPort` serves `/adhesive-lab.html`. For a frozen comparison, build with `npx vite build --config vite.adhesive.config.ts`, then preview that config on a free port. The review build contains both prior adhesive and Tack Resin, plus transformed-source SHA-256 provenance. The lab locks the renderer/camera to 1440 × 900, DPR 1.

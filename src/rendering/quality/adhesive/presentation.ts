@@ -7,6 +7,7 @@ import {ElementalPresentation} from '../elementalPresentation';
 import {adhesiveResinAudioRecipe} from '../../../audio/adhesiveAudio';
 import {AdhesiveResponse} from './response';
 import type {ResinStainStyle} from './stains';
+import type {ResinStainKernel} from './stainShader';
 import type {ResinMaterialStyle} from './material';
 import {ResinEquipment,decorateResinProjectile,updateResinProjectile,resinTrail} from './equipment';
 
@@ -14,7 +15,7 @@ import {ResinEquipment,decorateResinProjectile,updateResinProjectile,resinTrail}
 export class AdhesivePresentation extends ElementalPresentation {
  readonly adhesive:AdhesiveResponse;private resinMode:Mode='pilot';private feeds=new Map<THREE.Object3D,{key:string;visual:ResinEquipment}>();private resinDisposed=false;
  private materialStyle:ResinMaterialStyle;
- constructor(scene:THREE.Scene,private resinCamera:THREE.Camera,options:{visualSeed?:number;material?:ResinMaterialStyle;stains?:ResinStainStyle}={}){super(scene,resinCamera,{corrosiveAB:true,audioRecipe:adhesiveResinAudioRecipe});this.materialStyle=options.material??'honey';this.adhesive=new AdhesiveResponse(scene,resinCamera,options.visualSeed,this.materialStyle,options.stains);}
+ constructor(scene:THREE.Scene,private resinCamera:THREE.Camera,options:{visualSeed?:number;material?:ResinMaterialStyle;stains?:ResinStainStyle;stainKernel?:ResinStainKernel}={}){super(scene,resinCamera,{corrosiveAB:true,audioRecipe:adhesiveResinAudioRecipe});this.materialStyle=options.material??'honey';this.adhesive=new AdhesiveResponse(scene,resinCamera,options.visualSeed,this.materialStyle,options.stains,options.stainKernel);}
  override impact(event:BallisticPresentationImpact){const elements=getWeaponElements(event.spec);if(!elements.includes('adhesive')){super.impact(event);return;}
   if(elements.length===1)this.impacts.delivery(event);const surface=this.adhesive.impact(event);for(const other of elements.filter(e=>e!=='adhesive'))super.impact({...event,spec:{...event.spec,element:other,secondaryElement:undefined}});this.audio.impact('adhesive',{mode:this.resinMode,delivery:event.spec.projectile,surface,distance:event.point.distanceTo(this.resinCamera.getWorldPosition(new THREE.Vector3())),strength:event.stage==='bomblet'?.55:event.phase==='detonate'?1:.72});}
  protected override splashImpact(event:BallisticPresentationSplash){super.splashImpact(event);if(event.primary||!getWeaponElements(event.spec).includes('adhesive'))return;const surface=this.adhesive.splash(event);this.audio.impact('adhesive',{mode:this.resinMode,delivery:event.spec.projectile,surface,splash:true,distance:event.point.distanceTo(this.resinCamera.getWorldPosition(new THREE.Vector3())),strength:Math.min(.24,.06+event.exposure*.20)});}
