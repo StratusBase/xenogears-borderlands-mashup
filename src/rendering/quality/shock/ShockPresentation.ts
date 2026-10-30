@@ -4,14 +4,14 @@ import type { Mode } from '../../../core/index';
 import type { WeaponSpec } from '../../../core/arsenal';
 import type { BallisticPresentationImpact,BallisticPresentationSplash } from '../../PlayerBallistics';
 import { ElementalPresentation } from '../elementalPresentation';
-import { ShockResponse,type ShockChainEvent } from './response';
+import { ShockResponse,type ShockChainEvent,type ShockVisualProfile } from './response';
 import { shockABAudioRecipe } from '../../../audio/shockAudio';
 
 /** Opt-in A+B adapter. Existing presentation remains the default until moving-prototype approval. */
 export class ShockPresentation extends ElementalPresentation{
  readonly shock:ShockResponse;
  private shockMode:Mode='pilot';
- constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:'prototype'|'lightning'='lightning'){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile);}
+ constructor(scene:THREE.Scene,private listener:THREE.Camera,profile:ShockVisualProfile='capacitor'){super(scene,listener,{corrosiveAB:true,audioRecipe:shockABAudioRecipe});this.shock=new ShockResponse(scene,listener,profile);}
  override impact(event:BallisticPresentationImpact):void{
   const elements=getWeaponElements(event.spec);if(!elements.includes('shock')){super.impact(event);return;}
   const surface=this.shock.impact(event),corrosive=elements.includes('corrosive')&&this.corrosive;

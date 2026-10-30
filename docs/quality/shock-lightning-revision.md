@@ -7,6 +7,10 @@
 - [Opus findings, corrections and remaining limits](shock-opus-review.md).
 - [Raw final evidence](../../artifacts/shock-lightning/verification.json).
 
+## C follow-up
+
+The heavy-density gap recorded below is addressed by the [dense C follow-up](shock-capacitor.md), with new same-build measurements and native-sound footage. This document and its artifacts remain the previous frozen receipt.
+
 ## Final rendering
 
 - Thin tapered leaders and parent-attached forks replace opaque cylindrical rods. Two camera-facing, depth-tested layers share one instance buffer: a normal-blended cobalt separation/ion envelope, then a narrow luminous core. Soft glow stays local; there is no fullscreen bloom or added dynamic light.

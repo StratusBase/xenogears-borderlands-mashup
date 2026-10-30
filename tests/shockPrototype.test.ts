@@ -152,3 +152,31 @@ test('confirmed chain filaments vary per event while retaining exactly the confi
  function connector(){const mesh=layer.segments.meshes[0],matrices:number[][]=[];for(let i=mesh.count-16;i<mesh.count;i++){const matrix=new THREE.Matrix4();mesh.getMatrixAt(i,matrix);matrices.push(matrix.toArray());}return matrices;}
  layer.chain(event);layer.update(.01);const first=connector();layer.chain(event);layer.update(.01);const second=connector();assert.notDeepEqual(second,first);assert.deepEqual(event.start.toArray(),[-2,1.5,-2.8]);assert.deepEqual(event.end.toArray(),[0,1.5,-2.8]);assert.ok(first.flat().every(Number.isFinite)&&second.flat().every(Number.isFinite));layer.dispose();
 });
+
+test('dense C exists only on confirmed heavy primaries; ordinary and secondary sizing stay exact',()=>{
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(),{root}=target(scene);
+ const old=new ShockResponse(scene,camera,'lightning'),dense=new ShockResponse(scene,camera,'capacitor');
+ for(const delivery of ['bullet','beam','scatter','slug','arc','sticky','rocket'] as const){
+  const event={target:root,point:new THREE.Vector3(0,1.5,-2.8),normal:new THREE.Vector3(0,0,1),spec:createWeaponSpec(delivery,'shock'),phase:'contact' as const,radius:2.5,energy:70};
+  old.clear();dense.clear();old.impact(event);dense.impact(event);old.update(.1);dense.update(.1);
+  assert.equal(dense.diagnostics.capacitorBlades,0);assert.deepEqual(dense.events,old.events);
+  assert.deepEqual(Array.from(dense.segments.meshes[0].instanceMatrix.array),Array.from(old.segments.meshes[0].instanceMatrix.array));
+ }
+ const primary={target:root,point:new THREE.Vector3(0,1.5,-2.8),normal:new THREE.Vector3(0,0,1),spec:createWeaponSpec('sticky','shock'),phase:'detonate' as const,radius:2.5,energy:70};
+ old.clear();dense.clear();old.impact(primary);dense.impact(primary);dense.update(.1);assert.equal(dense.diagnostics.capacitorBlades,8);assert.equal(dense.diagnostics.capacitorShards,56);assert.deepEqual(dense.events,old.events);
+ for(const exposure of [.01,.10,.35,.75,1]){const splash={...primary,phase:'contact' as const,origin:primary.point,primary:false,energy:70*exposure,exposure};old.splash(splash);dense.splash(splash);assert.deepEqual(dense.events.at(-1),old.events.at(-1));assert.equal(dense.diagnostics.capacitorBlades,8);}
+ dense.clear();assert.equal(dense.diagnostics.capacitorBlades,0);assert.equal(dense.diagnostics.capacitorShards,0);old.dispose();dense.dispose();
+});
+test('dense C geometry is finite, varied, bounded and outside every support plane; pause/expiry/disposal work',()=>{
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera();camera.position.set(0,3,4);const layer=new ShockResponse(scene,camera,'capacitor'),point=new THREE.Vector3(0,2,0),spec=createWeaponSpec('rocket','shock');
+ let previous:number[]|undefined;
+ for(const normal of [new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(1,0,0),new THREE.Vector3(0,.65,.76).normalize()]){
+  layer.impact({point,normal,spec,phase:'detonate',radius:2.5,energy:70});layer.update(.1);layer.group.updateMatrixWorld(true);
+  const meshes:THREE.Mesh[]=[];layer.group.traverse(m=>{if(m instanceof THREE.Mesh&&m.name==='shock-capacitor-blades-and-shards'&&m.parent?.visible)meshes.push(m);});
+  for(const mesh of meshes){const position=mesh.geometry.attributes.position;assert.equal(position.count,1200);for(let i=0;i<position.count;i++){const p=new THREE.Vector3().fromBufferAttribute(position,i);assert.ok(p.toArray().every(Number.isFinite));p.applyMatrix4(mesh.matrixWorld);}}
+  const last=meshes.at(-1)!;for(let i=0;i<last.geometry.attributes.position.count;i++){const p=new THREE.Vector3().fromBufferAttribute(last.geometry.attributes.position,i).applyMatrix4(last.matrixWorld);assert.ok(p.sub(point).dot(normal)>.02);}
+  const current=Array.from(last.geometry.attributes.position.array);if(previous)assert.notDeepEqual(current,previous);previous=current;layer.update(0);assert.deepEqual(Array.from(last.geometry.attributes.position.array),current);
+  for(let i=0;i<40;i++)layer.update(1/60);assert.equal(layer.diagnostics.capacitorBlades,0);
+ }
+ for(let i=0;i<120;i++)layer.impact({point,normal:new THREE.Vector3(0,1,0),spec,phase:'detonate',radius:2.5,energy:70});assert.equal(layer.diagnostics.capacitorBlades,32);assert.equal(layer.diagnostics.capacitorVertices,4800);layer.dispose();assert.equal(layer.group.parent,null);
+});
