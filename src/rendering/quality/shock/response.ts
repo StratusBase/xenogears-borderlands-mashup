@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { WeaponSpec } from '../../../core/arsenal';
 import type { BallisticPresentationImpact, BallisticPresentationSplash } from '../../PlayerBallistics';
 import { nearestVisibleSurface,targetSurfaceSpan,type SurfaceKind } from '../shared/surfaces';
+import { EffectVariationSequence } from '../shared/variation';
 import { surfaceContactFrame } from '../shared/contactFrame';
 import { LightningSegments,lightningPathPoint,lightningNoise,createLightningCorona,animateLightningCorona } from './lightning';
 import { ShockSurface } from './surface';
@@ -16,7 +17,7 @@ export interface ShockEvent {role:ShockRole;phase:'contact'|'detonate';point:num
 /** A+B read-only response. C is strictly gated by the existing event's explosive energy/phase. */
 export class ShockResponse{
  readonly group=new THREE.Group();readonly events:ShockEvent[]=[];readonly segments:ShockSegments|LightningSegments;
- private bolts:Bolt[]=[];private next=0;private secondaryNext=0;private serial=0;private disposed=false;
+ private bolts:Bolt[]=[];private next=0;private secondaryNext=0;private serial=0;private disposed=false;private variation=new EffectVariationSequence(0x53484f43);
  private contacts=new WeakMap<THREE.Group,Contact[]>();private statuses=new Map<THREE.Group,ShockSurface>();
  private worlds=new Map<THREE.Mesh,{visual:ShockSurface;root:THREE.Group;age:number}>();
  private a=new THREE.Vector3();private b=new THREE.Vector3();private p=new THREE.Vector3();private localA=new THREE.Vector3();private localB=new THREE.Vector3();private branchDelta=new THREE.Vector3();
@@ -30,7 +31,7 @@ export class ShockResponse{
  splash(event:BallisticPresentationSplash):SurfaceKind|undefined{if(event.primary)return;return this.present(event,'splash');}
  private present(event:BallisticPresentationImpact,role:ShockRole):SurfaceKind{
   if(this.disposed||!Number.isFinite(event.point.lengthSq()))return'ground';
-  const contact=nearestVisibleSurface(event.target,event.point,event.normal),normal=contact.normal.clone().normalize(),seed=(this.serial++%97)*.731;
+  const contact=nearestVisibleSurface(event.target,event.point,event.normal),normal=contact.normal.clone().normalize(),seed=this.profile==='prototype'?(this.serial++%97)*.731:this.variation.next(7,'strike').range(1,0,97);
   const size=shockSizing({projectile:event.spec.projectile,phase:event.phase,radius:event.radius,energy:event.energy,exposure:event.exposure,channelWeight:event.spec.element==='shock'?1:.62,targetSpan:targetSurfaceSpan(event.target),role});
   if(size.strength<=0)return contact.surface;
   const secondary=role==='splash'||role==='chain';
@@ -59,7 +60,7 @@ export class ShockResponse{
   if(this.disposed||!Number.isFinite(event.start.lengthSq())||!Number.isFinite(event.end.lengthSq()))return;
   const normal=event.start.clone().sub(event.end).normalize(),contact=nearestVisibleSurface(event.target,event.end,normal);
   this.present({point:event.end,normal,spec:event.spec,phase:'contact',radius:.15,target:event.target,energy:event.energy,exposure:event.exposure},'chain');
-  const bolt=this.slot(true);bolt.active=true;bolt.age=0;bolt.seed=this.serial*.7;bolt.size=shockSizing({projectile:event.spec.projectile,phase:'contact',radius:.1,energy:event.energy,exposure:event.exposure,role:'chain'});bolt.size.paths=1;bolt.size.life=.13;bolt.connection={start:event.start.clone(),end:contact.point.clone().addScaledVector(contact.normal,.014)};bolt.fan.visible=false;
+  const bolt=this.slot(true);bolt.active=true;bolt.age=0;bolt.seed=this.profile==='prototype'?this.serial*.7:this.variation.next(7,'connection').range(2,0,97);bolt.size=shockSizing({projectile:event.spec.projectile,phase:'contact',radius:.1,energy:event.energy,exposure:event.exposure,role:'chain'});bolt.size.paths=1;bolt.size.life=.13;bolt.connection={start:event.start.clone(),end:contact.point.clone().addScaledVector(contact.normal,.014)};bolt.fan.visible=false;
  }
  status(root:THREE.Group):ShockSurface{
   const old=this.statuses.get(root);if(old)return old;const visual=new ShockSurface(root,undefined,this.profile);
@@ -91,7 +92,7 @@ export class ShockResponse{
    if(secondary)continue;
    // Parent-attached irregular forks: secondary VFX never inherit these large branches.
    for(let fork=0;fork<(lane===0?3:2);fork++){
-    const rootQ=.24+fork*.21;lightningPathPoint(this.p,lane,rootQ,age,seed,size.reach,size.width);this.localA.copy(this.p);
+    const rootQ=.19+fork*.21+.075*Math.sin(seed+fork*4.1);lightningPathPoint(this.p,lane,rootQ,age,seed,size.reach,size.width);this.localA.copy(this.p);
     const angle=lane*.91+fork*1.87+seed*.23,extent=size.reach*(.16+.04*fork)*(lane===0?1:.65),head=THREE.MathUtils.smoothstep(age,.018+rootQ*.02,.060+rootQ*.02);
     for(let i=1;i<=6;i++){
      const q=Math.min(i/6,head),kink=lightningNoise(q,seed+fork*71+lane,Math.floor(age*25))*extent;
@@ -101,10 +102,13 @@ export class ShockResponse{
    }
   }
   for(let i=0;i<size.sparks;i++){
-   const angle=i*2.399+seed,t=age*2.2,q=.10+(i%7)*.065;
-   this.localA.set(Math.cos(angle)*(q+t*.55)*size.reach,Math.sin(angle)*(q+t*.55)*size.reach*.75,.06+size.width*3+age*size.reach*.6);
-   this.localB.copy(this.localA).add(this.branchDelta.set(Math.cos(angle),Math.sin(angle),.25).multiplyScalar(size.reach*(.016+.025*(i%3))));
-   place(this.a,this.localA);place(this.b,this.localB);this.segments.add(this.a,this.b,size.width*.15,alpha*.8);
+   const heavy=size.heavy,angle=heavy?.36+Math.sin(i*13.17+seed)*.85:i*2.399+seed,t=age*(heavy?3.8:2.2),q=.10+(i%7)*.065;
+   this.localA.set(Math.cos(angle)*(q+t*.55)*size.reach,Math.sin(angle)*(q+t*.55)*size.reach*.75,.06+size.width*3+age*size.reach*.35);
+   const streak=size.reach*(heavy?.065+.03*(i%3):.016+.025*(i%3)),segments=heavy?3:1;
+   for(let j=1;j<=segments;j++){
+    this.localB.copy(this.localA).add(this.branchDelta.set(Math.cos(angle)*streak/segments,Math.sin(angle)*streak/segments+Math.sin(seed+i+j*3.8)*streak*.20,.006));
+    place(this.a,this.localA);place(this.b,this.localB);this.segments.add(this.a,this.b,size.width*(heavy?.32:.15)*(1-.45*j/segments),alpha*.8);this.localA.copy(this.localB);
+   }
   }
  }
  private draw():void{
@@ -112,7 +116,13 @@ export class ShockResponse{
   for(const bolt of this.bolts){if(!bolt.active)continue;const{age,size,seed}=bolt,alpha=1-THREE.MathUtils.smoothstep(age,size.life*.35,size.life);
    if(bolt.connection){
     const {start,end}=bolt.connection;this.a.copy(start);
-    for(let i=1;i<=10;i++){const q=i/10;this.b.copy(start).lerp(end,q);this.b.y+=Math.sin(i*2.4+seed+Math.floor(age*40))*.025*Math.sin(q*Math.PI);this.segments.add(this.a,this.b,size.width*.60,alpha*.72);this.a.copy(this.b);}continue;
+    const count=this.profile==='prototype'?10:16;
+    this.localA.copy(end).sub(start);this.localB.set(0,1,0).cross(this.localA).normalize();if(this.localB.lengthSq()<.1)this.localB.set(1,0,0);
+    for(let i=1;i<=count;i++){const q=i/count;this.b.copy(start).lerp(end,q);
+     if(this.profile==='prototype')this.b.y+=Math.sin(i*2.4+seed+Math.floor(age*40))*.025*Math.sin(q*Math.PI);
+     else this.b.addScaledVector(this.localB,lightningNoise(q,seed,Math.floor(age*24))*Math.min(.22,this.localA.length()*.09));
+     this.segments.add(this.a,this.b,size.width*.60,alpha*.72);this.a.copy(this.b);
+    }continue;
    }
    this.animateFlash(bolt);if(this.profile==='lightning'){this.drawLightning(bolt,alpha);continue;}
    for(let lane=0;lane<size.paths;lane++){
@@ -128,6 +138,6 @@ export class ShockResponse{
   this.segments.upload();
  }
  get diagnostics(){return{bolts:this.bolts.filter(b=>b.active).length,heavyFans:this.bolts.filter(b=>b.active&&b.size.heavy).length,segments:this.segments.activeCount,statuses:this.statuses.size,worldSurfaces:this.worlds.size};}
- clear():void{for(const bolt of this.bolts){bolt.active=false;bolt.fan.visible=false;}for(const visual of[...this.statuses.values()])visual.dispose();for(const world of this.worlds.values()){world.visual.dispose();world.root.removeFromParent();}this.worlds.clear();this.contacts=new WeakMap();this.next=0;this.secondaryNext=0;this.serial=0;this.events.length=0;this.segments.begin();this.segments.upload();}
+ clear():void{for(const bolt of this.bolts){bolt.active=false;bolt.fan.visible=false;}for(const visual of[...this.statuses.values()])visual.dispose();for(const world of this.worlds.values()){world.visual.dispose();world.root.removeFromParent();}this.worlds.clear();this.contacts=new WeakMap();this.next=0;this.secondaryNext=0;this.serial=0;this.variation.reset();this.events.length=0;this.segments.begin();this.segments.upload();}
  dispose():void{if(this.disposed)return;this.clear();this.disposed=true;this.segments.dispose();for(const bolt of this.bolts){bolt.fan.geometry.dispose();bolt.fan.material.dispose();}this.group.removeFromParent();}
 }

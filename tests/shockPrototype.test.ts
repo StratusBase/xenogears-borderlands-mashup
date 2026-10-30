@@ -124,7 +124,7 @@ test('first A+B remains selectable, and the lightning revision keeps secondary s
  const event={target:root,point:new THREE.Vector3(0,1.5,-2.8),normal:new THREE.Vector3(0,0,1),spec,radius:2.5,phase:'detonate' as const,energy:70};
  a.impact(event);b.impact(event);assert.ok(b.events[0].size.reach>a.events[0].size.reach);assert.equal(b.events[0].size.heavy,true);
  for(const exposure of [.01,.10,.35,.75,1]){const splash={...event,phase:'contact' as const,origin:event.point,primary:false,energy:70*exposure,exposure};a.splash(splash);b.splash(splash);assert.deepEqual(a.events.at(-1)?.size,b.events.at(-1)?.size);}
- assert.equal(a.segments.meshes.length,3);assert.equal(b.segments.meshes.length,1);a.dispose();b.dispose();
+ assert.equal(a.segments.meshes.length,3);assert.equal(b.segments.meshes.length,2);a.dispose();b.dispose();
 });
 test('revised camera-facing filaments stay outside five support planes and keep finite matrices',()=>{
  for(const normal of [new THREE.Vector3(0,1,0),new THREE.Vector3(0,-1,0),new THREE.Vector3(0,0,1),new THREE.Vector3(0,.65,.76).normalize(),new THREE.Vector3(1,0,0)]){
@@ -144,4 +144,11 @@ test('old and revised profiles yield identical real rifle and heavy projectile o
    engine.fire(new THREE.Vector3(0,1.5,2),new THREE.Vector3(0,0,-1),spec,70);for(let i=0;i<240;i++){engine.update(1/120);layer.update(1/120,i/120,false,spec,'pilot');}engine.clear();layer.dispose();return hits;
   }assert.deepEqual(run('lightning'),run('prototype'),delivery);
  }
+});
+
+test('confirmed chain filaments vary per event while retaining exactly the confirmed endpoints',()=>{
+ const scene=new THREE.Scene(),{root}=target(scene),camera=new THREE.PerspectiveCamera(),layer=new ShockResponse(scene,camera),spec=createWeaponSpec('bullet','shock');
+ const event={start:new THREE.Vector3(-2,1.5,-2.8),end:new THREE.Vector3(0,1.5,-2.8),target:root,spec,energy:7,exposure:.35};
+ function connector(){const mesh=layer.segments.meshes[0],matrices:number[][]=[];for(let i=mesh.count-16;i<mesh.count;i++){const matrix=new THREE.Matrix4();mesh.getMatrixAt(i,matrix);matrices.push(matrix.toArray());}return matrices;}
+ layer.chain(event);layer.update(.01);const first=connector();layer.chain(event);layer.update(.01);const second=connector();assert.notDeepEqual(second,first);assert.deepEqual(event.start.toArray(),[-2,1.5,-2.8]);assert.deepEqual(event.end.toArray(),[0,1.5,-2.8]);assert.ok(first.flat().every(Number.isFinite)&&second.flat().every(Number.isFinite));layer.dispose();
 });

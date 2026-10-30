@@ -8,34 +8,38 @@ const fragment=/* glsl */`
  varying vec3 vWorld;
  float noise(float n){return fract(sin(n*127.1+311.7)*43758.5453);}
  float stroke(vec2 p,vec2 a,vec2 b){vec2 ab=b-a;float t=clamp(dot(p-a,ab)/max(dot(ab,ab),.00001),0.,1.);return length(p-a-ab*t);}
- void main(){float core=0.,ion=0.,halo=0.;
+ void main(){float core=0.,ion=0.,halo=0.,nodes=0.;
   for(int i=0;i<3;i++){
    vec3 delta=vWorld-centers[i];float radius=max(.002,radii[i]);vec2 p=vec2(dot(delta,uaxes[i]),dot(delta,vaxes[i]))/radius;
-   float gate=(1.-smoothstep(.77,1.,length(p)))*(1.-smoothstep(.18,.48,abs(dot(delta,normals[i]))/radius));
-   if(gate<.002)continue;
-   float age=ages[i],seed=seeds[i],epoch=floor(age*7.),pulse=.38+.62*pow(max(0.,sin(age*23.+seed)),2.);
-   float reveal=smoothstep(0.,.09,age-length(p)*.09),dist=3.,runner=0.;
-   for(int branch=0;branch<5;branch++){
-    float b=float(branch),angle=branch==0?.32:branch==1?3.85:branch==2?-1.22:branch==3?1.65:2.48;
-    angle+=(noise(seed+b*9.)-.5)*.45;vec2 direction=vec2(cos(angle),sin(angle)),side=vec2(-direction.y,direction.x);
-    float extent=branch==0?.97:branch==1?.79:branch==2?.88:.62;vec2 previous=vec2(0.);
-    for(int j=1;j<=7;j++){
-     float q=float(j)/7.,jitter=(noise(seed+float(j)*3.77+b*27.+epoch*.73)-.5)*.32*sin(q*3.14159);
-     vec2 next=direction*q*extent+side*jitter;
-     float d=stroke(p,previous,next);dist=min(dist,d);
-     // Fine forks actually join the parent conductor; they are not independent spokes.
-     if(j==3||j==5){vec2 tip=next+side*(j==3?.21:-.26)+direction*.17;dist=min(dist,stroke(p,next,tip));}
-     float hot=exp(-pow((q-fract(age*1.9+seed*.11+b*.17))*9.,2.));runner=max(runner,exp(-d*d*1000.)*hot);
+   float gate=(1.-smoothstep(.78,1.,length(p)))*(1.-smoothstep(.18,.48,abs(dot(delta,normals[i]))/radius));if(gate<.002)continue;
+   float age=ages[i],seed=seeds[i],epoch=floor(age*8.),reveal=smoothstep(0.,.08,age-length(p)*.09),aftermath=smoothstep(.15,.80,age);
+   vec2 n1=vec2(-.38,.23),n2=vec2(.29,-.35),n3=vec2(.38,.33);
+   n1+=vec2(noise(seed)-.5,noise(seed+4.)-.5)*.45;n2+=vec2(noise(seed+8.)-.5,noise(seed+12.)-.5)*.40;n3+=vec2(noise(seed+16.)-.5,noise(seed+20.)-.5)*.35;
+   for(int branch=0;branch<7;branch++){
+    float b=float(branch),salt=seed+b*29.,blink=smoothstep(.18,.85,sin(age*(13.+noise(salt)*8.)+salt));
+    float charge=mix(1.,.28+.72*blink,aftermath)*(.55+.45*noise(salt+3.));
+    vec2 origin=branch<3?vec2(0.):branch<5?n1:branch==5?n2:n3;
+    vec2 end=branch==0?n1:branch==1?n2:branch==2?n3:branch==3?vec2(-.83,.48):branch==4?vec2(-.51,-.48):branch==5?vec2(.64,-.76):vec2(.78,.57);
+    if(kind>.5&&branch>=3){end=origin+vec2(branch==4?-.37:branch==6?.32:0.,branch==3?.43:branch==5?-.38:0.);}
+    vec2 direction=normalize(end-origin),side=vec2(-direction.y,direction.x),previous=origin;
+    for(int j=1;j<=10;j++){
+     float q=float(j)/10.,bend=(noise(salt+float(j)*3.77+epoch*.43)-.5)*.16;
+     bend+=(noise(salt+floor(float(j)*.5)*9.1)-.5)*.11;
+     vec2 next=mix(origin,end,q)+side*bend*sin(q*3.14159);
+     float d=stroke(p,previous,next),width=(.028-.018*q)*(branch<3?1.:.60),aa=max(fwidth(d)*.55,.0025);
+     float runner=.35+.65*exp(-pow((q-fract(age*1.7+salt*.17))*9.,2.));
+     core=max(core,(1.-smoothstep(width*.20-aa,width*.65+aa,d))*charge*runner*gate*reveal);
+     ion=max(ion,exp(-d*d/(width*width*3.))*charge*gate*reveal);
+     halo=max(halo,exp(-d*d/(width*width*24.))*.28*charge*gate*reveal);
+     if(j==4||j==7){vec2 joint=next+side*(j==4?.13:-.10)+direction*.08;float f=stroke(p,next,joint);float fine=1.-smoothstep(.003,.010,f);core=max(core,fine*.50*charge*gate*reveal);}
      previous=next;
     }
+    float node=length(p-origin),island=exp(-node*node*190.)*charge*gate*reveal;
+    nodes=max(nodes,island);halo=max(halo,exp(-node*node*38.)*.35*charge*gate*reveal);
    }
-   float aa=max(fwidth(dist)*.6,.003),width=mix(.027,.023,kind),flash=exp(-age*22.);
-   float c=1.-smoothstep(width*.28-aa,width*.62+aa,dist),e=exp(-dist*dist/(width*width*2.4)),h=exp(-dist*dist/(width*width*22.));
-   core=max(core,(c*(.65+.35*pulse)+runner*.6)*gate*reveal);
-   ion=max(ion,e*gate*reveal*(.42+.58*pulse));halo=max(halo,(h*.25+exp(-dot(p,p)*14.)*flash*.35)*gate*reveal);
   }
-  float a=clamp(core+ion*.65+halo,0.,1.)*presence;if(a<.006)discard;
-  vec3 color=mix(vec3(.025,.19,.94),vec3(.82,.97,1.),clamp(core+ion*.17,0.,1.));gl_FragColor=vec4(color,a);
+  float a=clamp(core+ion*.64+halo+nodes,0.,1.)*presence;if(a<.006)discard;
+  vec3 color=mix(vec3(.015,.10,.62),vec3(.77,.96,1.),clamp(core+nodes,0.,1.));gl_FragColor=vec4(color,a);
  }
 `;
 interface Anchor {local:THREE.Vector3;normal:THREE.Vector3;u:THREE.Vector3;radius:number;age:number;seed:number}

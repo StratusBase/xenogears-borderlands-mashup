@@ -1,45 +1,59 @@
 # Shock lightning revision
 
-30 October 2026. The first A+B implementation (`b2dd1ec`) was rejected as too primitive compared with the concept boards. The earlier implementation and frozen evidence remain available; passing its tests/performance was not visual acceptance.
+30 October 2026. The first A+B prototype (`b2dd1ec`) was rejected as too primitive compared with the concept boards. This revision received two independent Claude Opus 5.5 critiques and several actual-Game refinements. It is a new moving-result review candidate, not visual acceptance or a claimed exact paintover match.
 
-## Visual changes
+- [Final gameplay with live sound, comparisons and full measurements](http://127.0.0.1:5226/review/).
+- [Play the final prototype](http://127.0.0.1:5226/shock-lab.html).
+- [Opus findings, corrections and remaining limits](shock-opus-review.md).
+- [Raw final evidence](../../artifacts/shock-lightning/verification.json).
 
-- Camera-facing filaments replace the first prototype's three layers of cylindrical rods. One instanced, depth-tested batch shades a pale narrow core, blue ion envelope and soft local corona. Rounded segment joins and tapered widths avoid faceted tubing. No fullscreen bloom or extra renderer is used.
-- Deterministic multiscale displacement makes unequal macro bends and finer kinks. Fine forks begin on their parent leader, with fast growth, discrete restrikes and decay. The primary leader has stronger width than its subordinate branches.
-- Primary visual reach increases 1.48× for ordinary hits and 1.30× for heavy hits. Primary material coverage increases up to 1.6×, capped to 55% of the visible target span. This is presentation coverage, not collision, blast radius or damaging field size.
-- Secondary splash/chain size records are exactly unchanged across energy/exposure samples. They keep thin, short, quiet feedback and never get the heavy primary discharge.
-- Material charge uses branching conductors, fine attached forks, moving highlights and local glow. It stays on borrowed visible geometry and follows the existing target-local anchors. The original shader remains selectable for honest same-build comparisons.
-- Heavy C uses a larger branching discharge and local flash instead of broad opaque ribbons. Existing explosive detonation gating is unchanged; no C on sticky contact or ordinary rifle/beam/scatter/slug/arc hits.
-- The existing sound recipes are retained. Actual final physical/elemental buses are captured in the review clips. Rifle is an 8-second excerpt of the complete original WebM; heavy is 10.01 s and surface is 4.50 s. Decoded MP4 peaks are 0.5826 / 0.5623 / 0.0858, with zero clipped PCM samples. No normalization, replacement or retiming.
+## Final rendering
 
-`ShockPresentation(scene,camera,'lightning')` is the revised default for the opt-in Shock adapter. `'prototype'` retains the first A+B profile. Both share the response lifecycle, pools, event routing, audio engine and sizing authority. `ElementalPresentation` and normal-game activation are unchanged. Shared surface selection/frame helpers now use their neutral paths; no new cross-element implementation dependency is introduced.
+- Thin tapered leaders and parent-attached forks replace opaque cylindrical rods. Two camera-facing, depth-tested layers share one instance buffer: a normal-blended cobalt separation/ion envelope, then a narrow luminous core. Soft glow stays local; there is no fullscreen bloom or added dynamic light.
+- Deterministic multiscale kinks and the shared cosmetic variation sequence vary direction, length and fork roots independently of gameplay RNG. Fast leader growth, discrete restrikes and decay remain on the existing presentation clock. Outward arc lift is capped at 0.22 m.
+- Primary cosmetic reach is 1.48× the first A+B for ordinary hits and 1.30× for heavy hits. Primary material coverage grows up to 1.6×, capped to 55% of visible target span. This does not enlarge hitboxes, damaging fields or blast radii. Secondary splash/chain size records remain exact.
+- B uses several connected charge islands, tapered conductors, small forks, bright nodes, travelling highlights and a sparse aftermath. Armor steers outgoing paths along plate axes; cloth keeps irregular webs. Borrowed visible geometry, target-local anchors and equipment exclusion remain intact.
+- Heavy C has a stronger local flash and three-segment spark streaks in a directional cone, keeping the same spark count. Existing heavy detonation gating stays exact. Ordinary/secondary feedback never inherits that heavy flash or spark form.
+- Confirmed chain connectors now have event-specific seeds and multiscale kinks. No recipient selection or damage occurs in rendering. A regression verifies successive connector shapes vary without mutating confirmed endpoints.
+- The review entry hides its aim marker to expose the contact and includes repeated native hits on one human. This CSS is scoped to the Shock lab. Normal-game HUD and rendering activation are unchanged.
+- Existing sound recipes and final physical/elemental audio buses are retained. `ShockPresentation(scene,camera,'prototype')` keeps the first A+B; `'lightning'` selects the revision. Existing `ElementalPresentation` remains usable.
 
-## Review and evidence
+## Actual gameplay checks
 
-- [Moving gameplay with sound and matched comparisons](http://127.0.0.1:5225/review/).
-- [Playable revised prototype](http://127.0.0.1:5225/shock-lab.html).
-- Raw measurements, captured gameplay, source hashes and compiled review under `artifacts/shock-lightning/`; earlier `artifacts/shock-ab/` remains frozen.
-- Cloth, outer armor and exposed skin; seven real deliveries; raised platform, wall, slope, underside and finite edge. Screenshots stop actual Game simulation +100 ms after impact/detonation; charge screenshots use +700/+900 ms. Native clips run on wall-clock timing.
-- Five surface checks have minimum centerline clearance 0.1622 m above the actual hit plane, with material charge confined to borrowed finite geometry. The clearance audit inspects actual filament endpoints, excluding the camera-facing halo quad, whose orientation is resolved in the shader.
-- 762 repository tests pass, including 19 Shock checks. All 13 ballistic delivery families retain exact pre-change compatibility. The Shock/main entry and dependencies pass scoped TypeScript checking; review build passes. The whole-workspace build initially failed in concurrently edited `src/dev/effects/radiation/lab.ts` (`ice` property references); that unrelated work was not edited. Its owner resolved those errors, and the final full workspace production build passes. The measured review build remains frozen.
-- Protected game/world/UI, ballistics, arsenal/status logic, Shock sizing and Shock audio hashes match the start of this revision.
+The real Game evaluation driver supplies ordinary weapon cadence, muzzle poses, swept collisions, fuse, heat, reload, damage, statuses and existing confirmed chains. Fixtures are intact stationary raised-health clothed/armored humans, not a full AI encounter.
 
-## Matched timings
+- Cloth, visible outer armor and exposed skin; bullet, sticky, rocket, beam, scatter, slug and arc. Only confirmed sticky/rocket heavy detonations receive C in these studies.
+- Raised top, vertical wall, slope, underside and finite ledge. All have positive filament centerline clearance, minimum 0.1622 m at +100 ms. The audit checks actual filament endpoints; camera-facing halo width is resolved in the shader. Charge at +900 ms stays on finite borrowed geometry/elevation.
+- All nine matched runs preserve exact full shot, hit, confirmed-chain damage, vitals/status, ammo/reload, timing and contact snapshots. Secondary sizes are separately checked against the first profile.
+- 811 repository tests pass, including 20 Shock checks. Production and final review builds pass. All 13 ballistic delivery families retain exact compatibility. Paused matrices/status ages and borrowed geometry ownership retain regression coverage.
+- Stills stop actual Game simulation +100 ms after impact/detonation; charge stills use +700/+900 ms. Four separate recordings use native wall-clock timing and final live audio, with no replacement, normalization or retiming. Canvas clips omit the HTML HUD.
+- No shader/page errors in final checks. Combat-owner files, ballistics/status logic, Shock sizing/audio retain their start hashes. Another workstream changed only radiation/corrosive display colors in `arsenal.ts`; the validation script reverses exactly those two literals and proves the initial hash. All compared versions share that same compiled arsenal. No unrelated edits were staged.
 
-First A+B / revised / repeated first A+B, milliseconds. Same compiled Game/build/scene/seed/inputs/weapon settings, six stationary raised-health human fixtures; 120 warm-up +720 measured displayed frames per run; existing 1/60 simulation step each displayed frame. Both audio buses on; recording off. Apple M5 Max, in-app Chromium 156, 1440×900, DPR1.
+## Final matched timings
+
+First A+B / final revision / repeated first A+B, milliseconds. One compiled `refined-build`, same Game/scene/seed37391/inputs/weapon settings, six humans. 120 warm-up +720 measured displayed frames per run, one existing 1/60 Game step per frame. Both audio buses on; recording off. Apple M5 Max, in-app Chromium156, 1440×900 DPR1.
 
 | Scene | Frame median | Frame p95 | Simulation CPU median | Draw CPU median | GPU median |
 |---|---:|---:|---:|---:|---:|
-| Rifle crowd | 8.30 / 8.30 / 8.40 | 10.00 / 9.90 / 11.20 | 1.50 / 1.40 / 1.50 | 4.10 / 3.50 / 4.50 | 2.69 / 2.38 / 2.10 |
-| Heavy crowd | 8.20 / 8.30 / 8.30 | 9.50 / 9.30 / 9.40 | 1.50 / 1.40 / 1.40 | 4.60 / 3.80 / 4.00 | 2.24 / 2.41 / 1.78 |
-| Crowd + raised surface | 8.30 / 8.30 / 8.30 | 9.50 / 9.50 / 9.40 | 1.20 / 1.20 / 1.30 | 3.20 / 3.10 / 4.00 | 1.83 / 2.13 / 2.22 |
+| Rifle crowd | 18.70 / 18.40 / 18.40 | 23.00 / 22.10 / 21.80 | 1.90 / 1.70 / 1.80 | 5.10 / 4.80 / 5.30 | 1.87 / 2.38 / 1.86 |
+| Heavy crowd | 15.50 / 15.60 / 15.00 | 18.80 / 18.00 / 20.90 | 1.60 / 1.60 / 1.90 | 4.70 / 5.20 / 7.10 | 1.94 / 2.23 / 1.65 |
+| Crowd + raised surface | 16.40 / 16.30 / 16.50 | 18.80 / 19.30 / 19.00 | 1.60 / 1.60 / 1.70 | 4.60 / 4.70 / 5.50 | 1.98 / 1.98 / 1.95 |
 
-All nine runs produce identical complete combat/chain/damage/status/ammo/reload/timing/contact snapshots. Peak revised use: 10/12 bolt slots, 408/1600 segments, six statuses, one world owner. More branches use one filament draw instead of three tube draws, but expanded material masks add GPU work: heavy GPU median is 0.17 ms above the first baseline. Baseline drift, concurrent browser load and display pacing prevent universal speed/improvement claims. This is not a full AI encounter, high-DPI, lower-end or mobile measurement.
+Final GPU median increases are +0.51 / +0.29 / +0.01 ms against each first baseline. Frame medians vary substantially with concurrent browser load; repeat baselines expose that drift. These results do not support a zero-cost claim or a universal frame-rate claim. Peak final use is 474/1600 segment slots, ten/twelve bolt slots, six statuses and one world owner. Lower-end/mobile/high-DPI and full AI encounters remain unmeasured.
 
-## Claude collaboration
+## Recorded sound
 
-The user requested Claude Opus 5.5 for an independent critique. A read-only brief with the concept boards, actual first-prototype captures and relevant code is saved under `artifacts/shock-lightning/opus-review-prompt.txt`. The local CLI returned “Not logged in” before reaching any model; its receipt is preserved. The user opted to authenticate locally while this revision continued. No Opus critique or contribution is claimed until an authenticated call succeeds and its exact model is confirmed.
+| Clip | Seconds | Peak | RMS | Clipped samples |
+|---|---:|---:|---:|---:|
+| repeat-live | 8.00 | 0.5765 | 0.02591 | 0 |
+| rifle-live | 8.00 | 0.5823 | 0.02594 | 0 |
+| heavy-live | 10.01 | 0.5567 | 0.01080 | 0 |
+| surface-live | 4.50 | 0.0869 | 0.00324 | 0 |
 
-## Integration boundary
+Original WebM and playable MP4 files are retained. Initial/working iterations are separate: `iteration-one/` plus the original frozen `build/` preserve the first revision; `iteration-two/` retains discarded intermediate raw measurements, explicitly without a reproducible frozen build. Only parent-path results and `refined-build/` are the final delivered measurements.
 
-The combat-owner handoff in [shock-prototype.md](shock-prototype.md) still applies. This is a revised playable review, awaiting visual acceptance; it is not a claim that the new style is active in normal Enhanced gameplay. No edits to `src/game.ts`, `src/world.ts` or `src/ui.ts`, and no push/deployment.
+## Review and ownership boundary
+
+Opus confirmed the revised cores/outlines and jagged leaders look closer. Its follow-up still found the heavy burst less dense than C's painted board; that remains an explicit art target. Final node visibility, aim-marker removal and chain corrections follow that critique and were verified by Codex, not a third Opus signoff. Charge does not yet route around a finite edge onto a new face, and decorative leaders are not an additional chain mechanic.
+
+Normal Enhanced activation remains pending moving-result approval. The [combat-owner integration handoff](shock-prototype.md) still applies. No edits to `src/game.ts`, `src/world.ts` or `src/ui.ts`; no push or deployment.

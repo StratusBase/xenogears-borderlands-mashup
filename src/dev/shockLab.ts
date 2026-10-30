@@ -14,6 +14,7 @@ import { QualityPerformance, distribution } from '../rendering/quality/performan
 import type { EncounterEnemyVisual } from '../rendering/encounterEnemy';
 import type { BallisticHit, BallisticPresentationImpact } from '../rendering/PlayerBallistics';
 
+document.body.classList.add('shock-vfx-review');
 // Isolated evaluation entry. All shots, reloads, collisions, damage and statuses still run in Game.
 interface Target {
  id:number; mesh:THREE.Group; health:number; maxHealth:number; shield:number; maxShield:number;
@@ -52,10 +53,10 @@ let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;request
 const errors:string[]=[], surfaceResults:unknown[]=[], performanceResults:unknown[]=[];
 window.addEventListener('error',event=>errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
-const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>SHOCK / A+B / LIGHTNING REVISION</strong><p>Actual Game · intact human targets · live sound</p>
+const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>SHOCK / A+B / LIGHTNING REVISION</strong><p>Actual Game · intact human targets · live sound · aim marker hidden for contact review</p>
 <label>Target<select id="study-target"><option value="0">Clothed human</option><option value="1">Armored human</option><option value="skin">Exposed forearm</option></select></label>
 <label>Delivery<select id="study-delivery"><option value="bullet">Rifle</option><option value="sticky">Sticky / heavy</option><option value="rocket">Rocket / heavy</option><option value="beam">Beam</option><option value="scatter">Scatter</option><option value="slug">Slug</option><option value="arc">Arc</option></select></label>
-<button id="study-run">Fire target study</button><button id="study-linger">Show lingering charge</button><button id="study-live">Play target shot with sound</button><button id="study-version" aria-pressed="false">View first A+B</button>
+<button id="study-run">Fire target study</button><button id="study-linger">Show lingering charge</button><button id="study-live">Play target shot with sound</button><button id="study-repeat">Play repeated target hits</button><button id="study-version" aria-pressed="false">View first A+B</button>
 <label>Surface case<select id="surface-case"><option value="raised">Raised platform</option><option value="wall">Vertical wall</option><option value="slope">Sloped face</option><option value="ceiling">Ceiling / underside</option><option value="ledge">Finite ledge</option></select></label>
 <button id="surface-run">Fire surface test</button><button id="surface-settle">Show surface aftermath</button><button id="surface-live">Play surface shot with sound</button>
 <label>Performance scene<select id="perf-scene"><option value="crowd-rifle">Six humans / rifle</option><option value="crowd-sticky">Six humans / sticky</option><option value="crowd-and-surfaces">Six humans + raised surface / sticky</option></select></label>
@@ -205,8 +206,9 @@ async function compare(){
   performanceResults.push(result);publish();state(`${equal&&targetsHit>=3?'PASS':'FAIL'} / ${sceneCase}: three matched runs complete · ${targetsHit} targets hit · combat ${equal?'identical':'DIFFERENT'}`);
  }finally{busy=false;bench=false;frozen=true;}
 }
-let liveScene:'surface'|'crowd'|'human'|undefined,liveFrame=0;
+let liveScene:'surface'|'crowd'|'human'|'repeat-human'|undefined,liveFrame=0;
 async function liveHuman(){humanFixture();await unlock();pendingSurface=undefined;liveScene='human';liveFrame=0;frozen=false;state('Live human shot · native timing · sound on');}
+async function liveRepeat(){humanFixture();await unlock();pendingSurface=undefined;liveScene='repeat-human';liveFrame=0;frozen=false;state('Repeated hits on one human · native timing · live sound');}
 async function liveSurface(){surfaceFixture((document.querySelector('#surface-case') as HTMLSelectElement).value as SurfaceCase);await unlock();pendingSurface=undefined;liveScene='surface';liveFrame=0;frozen=false;state('Live surface shot · native timing · sound on');}
 async function liveCrowd(){sceneCase=(document.querySelector('#perf-scene') as HTMLSelectElement).value as SceneCase;crowdedFixture(false,sceneCase);await unlock();liveScene='crowd';liveFrame=0;frozen=false;state('Live crowded firing · native timing · sound on');}
 let recorder:MediaRecorder|undefined,recordStream:MediaStream|undefined,mix:AudioContext|undefined,chunks:BlobPart[]=[];
@@ -236,6 +238,7 @@ document.querySelector('#record-stop')!.addEventListener('click',guard(stopRecor
 document.querySelector('#study-run')!.addEventListener('click',guard(fireStudy));
 document.querySelector('#study-linger')!.addEventListener('click',guard(lingerStudy));
 document.querySelector('#study-live')!.addEventListener('click',guard(liveHuman));
+document.querySelector('#study-repeat')!.addEventListener('click',guard(liveRepeat));
 document.querySelector('#study-version')!.addEventListener('click',()=>{showPrevious=!showPrevious;const button=document.querySelector('#study-version')!;button.setAttribute('aria-pressed',String(showPrevious));button.textContent=showPrevious?'View revised lightning':'View first A+B';});
 const draw=g.comicRenderer.render.bind(g.comicRenderer);let previous=performance.now();
 g.comicRenderer.render=()=>{
@@ -245,7 +248,7 @@ g.comicRenderer.render=()=>{
  else if(pendingSurface)updateSurface();
  else if(liveScene&&!frozen){
   if(liveScene==='crowd')benchmarkAim(Math.floor(liveFrame/1.5));
-  game.driveEvaluation({fire:liveScene==='crowd'||liveFrame===0,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(Math.max(1/240,dt));liveFrame++;
+  game.driveEvaluation({fire:liveScene==='crowd'||liveScene==='repeat-human'||liveFrame===0,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(Math.max(1/240,dt));liveFrame++;
  }
  const start=perf.begin();draw();perf.end(start);
 };
