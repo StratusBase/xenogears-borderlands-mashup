@@ -1,0 +1,6 @@
+import {defineConfig} from 'vite';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+const paths=['src/dev/iceLab.ts','src/rendering/quality/ice/plates.ts','src/rendering/quality/ice/response.ts','src/rendering/quality/ice/presentation.ts','src/rendering/quality/ice/rime.ts','src/rendering/quality/ice/sizing.ts','src/rendering/quality/shared/variation.ts','src/audio/iceAudio.ts','src/game.ts','src/world.ts','src/ui.ts','src/ui/damageNumbers.ts','src/rendering/PlayerBallistics.ts','src/rendering/quality/elementalPresentation.ts'];
+export default defineConfig({plugins:[{name:'ice-plate-pass-provenance',generateBundle(){this.emitFile({type:'asset',fileName:'provenance.json',source:JSON.stringify({head:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),baseline:'Previous Ice plate-rime prototype',current:'Layered arrangement and polygon-edge material',cosmeticSeed:37391,sources:Object.fromEntries(paths.map(p=>[p,createHash('sha256').update(readFileSync(p)).digest('hex')]))},null,2)});}}],build:{outDir:'artifacts/ice-plate-pass/build',rollupOptions:{input:['ice-lab.html']}},server:{host:'127.0.0.1'},preview:{host:'127.0.0.1'}});

@@ -5,15 +5,15 @@ import type { BallisticPresentationImpact,BallisticPresentationSplash } from '..
 import { ElementalPresentation } from '../elementalPresentation';
 import { corrosiveABAudioRecipe } from '../../../audio/corrosiveAudio';
 import { icePlateAudioRecipe } from '../../../audio/iceAudio';
-import { IceResponse } from './response';
+import { IceResponse,type IceResponseOptions } from './response';
 
 /** Opt-in adapter. The inherited equipment/projectile/status ownership stays intact. */
 export class IcePresentation extends ElementalPresentation {
  readonly ice:IceResponse;
  private iceMode:Mode='pilot';
- constructor(scene:THREE.Scene,private iceCamera:THREE.Camera){
+ constructor(scene:THREE.Scene,private iceCamera:THREE.Camera,options:IceResponseOptions={}){
   super(scene,iceCamera,{corrosiveAB:true,audioRecipe:(element,event,options)=>element==='ice'?icePlateAudioRecipe(element,event,options):corrosiveABAudioRecipe(element,event,options)});
-  this.ice=new IceResponse(scene,iceCamera);
+  this.ice=new IceResponse(scene,iceCamera,options);
  }
  override impact(event:BallisticPresentationImpact){
   const elements=getWeaponElements(event.spec);if(!elements.includes('ice')){super.impact(event);return;}

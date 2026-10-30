@@ -59,3 +59,28 @@ test('ice audio has bounded soft envelopes and preserves recipes of other elemen
  for(const element of['fire','corrosive','shock','gravity','radiation','adhesive']as const)for(const event of['shot','impact','status']as const)assert.deepEqual(icePlateAudioRecipe(element,event),elementalAudioRecipe(element,event));
  for(const event of['equipment','shot','flight','impact','status','release']as const)for(const delivery of['bullet','sticky']as const)for(const surface of['cloth','armor']as const){const voices=icePlateAudioRecipe('ice',event,{delivery,surface});assert.ok(voices.length>0&&voices.length<=9);for(const voice of voices){assert.ok(voice.duration>0&&voice.duration<.5);assert.equal(elementalEnvelope(0,voice),0);assert.equal(elementalEnvelope(voice.duration,voice),0);assert.ok([voice.gain,voice.frequency,voice.endFrequency].every(Number.isFinite));}}
 });
+
+test('plate material pass preserves every delivery size/count/lifetime, secondary mark and flake trajectory',()=>{
+ for(const projectile of['bullet','slug','spike','ricochet','homing','sticky','orb','beam','scatter','rocket','disc','arc','cluster'] as ProjectileType[])for(const secondary of[false,true])for(const phase of['contact','detonate'] as const){
+  function trace(style:'previous'|'layered'){
+   const scene=new THREE.Scene(),{root}=target(scene),r=new IceResponse(scene,undefined,{plateStyle:style,variationSeed:37391});
+   const e={...event(root),phase,spec:createWeaponSpec(projectile,'ice','pilot'),exposure:secondary?.37:1};
+   if(secondary)r.splash({...e,target:root,primary:false,origin:e.point.clone()});else r.impact(e);
+   const internals=r as unknown as {plates:{items:{active:boolean;size:number;life:number;delay:number;velocity:THREE.Vector3}[]};flakes:{items:{active:boolean;size:number;life:number;position:THREE.Vector3;velocity:THREE.Vector3}[]}};
+   const plates=internals.plates.items.filter(p=>p.active).map(p=>({size:p.size,life:p.life,delay:p.delay,speed:p.velocity.length()}));
+   const flakes=internals.flakes.items.filter(p=>p.active).map(p=>({size:p.size,life:p.life,p:p.position.toArray(),v:p.velocity.toArray()}));
+   const geometry=(r.group.getObjectByName('ice-release-plates') as THREE.InstancedMesh).geometry.attributes.position.array.slice();
+   const result={events:structuredClone(r.events),plates,flakes,geometry};r.dispose();return result;
+  }
+  const a=trace('previous'),b=trace('layered');
+  assert.deepEqual(b.events,a.events);assert.deepEqual(b.flakes,a.flakes);assert.deepEqual(b.geometry,a.geometry);assert.equal(b.plates.length,a.plates.length);
+  for(let i=0;i<a.plates.length;i++){assert.equal(b.plates[i].size,a.plates[i].size);assert.equal(b.plates[i].life,a.plates[i].life);assert.equal(b.plates[i].delay,a.plates[i].delay);assert.ok(Math.abs(b.plates[i].speed-a.plates[i].speed)<1e-10);}
+ }
+});
+
+test('layered events vary reproducibly without changing particle budgets or rerolling on pause',()=>{
+ function run(){const scene=new THREE.Scene(),{root}=target(scene),r=new IceResponse(scene,undefined,{variationSeed:37391}),out:number[][]=[];
+  for(let shot=0;shot<4;shot++){r.impact(event(root));r.update(.183);const mesh=r.group.getObjectByName('ice-release-plates') as THREE.InstancedMesh;out.push(Array.from(mesh.instanceMatrix.array));const snapshot=Array.from(mesh.instanceMatrix.array);r.update(0);assert.deepEqual(Array.from(mesh.instanceMatrix.array),snapshot);r.update(1);}
+  r.dispose();return out;
+ }const a=run();assert.deepEqual(run(),a);assert.notDeepEqual(a[0],a[1]);assert.notDeepEqual(a[1],a[2]);
+});

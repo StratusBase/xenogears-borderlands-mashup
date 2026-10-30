@@ -1,5 +1,7 @@
 # Ice B + A: playable plate release and frost aftermath
 
+The later approved [plate arrangement and material pass](ice-plate-pass.md) keeps sizing/counts/falloff and frost unchanged, with its own gameplay, Opus review and matched-performance receipt. This document retains the original prototype results.
+
 30 October 2026. The approved B Platefrost release and A Rimebite aftermath now run as an opt-in actual-Game prototype on clothed and armored humans. The approved direction was checkpointed first as `4facccd`. No push or deployment was performed.
 
 - [Gameplay screenshots, before/after clips with sound, complete measurements](http://127.0.0.1:5233/review/).

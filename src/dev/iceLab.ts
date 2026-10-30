@@ -36,7 +36,7 @@ type SurfaceCase='raised'|'slope'|'ceiling'|'ledge';
 type SceneCase='crowd-rifle'|'crowd-sticky'|'crowd-and-surfaces';
 const progression=createProgression();for(const mode of ['pilot','mech']as const){const item=createWorkbenchWeapon({...DEFAULT_WORKBENCH_CONFIG,target:mode,element:'ice',guaranteedStatus:true},`ice-prototype-${mode}`);progression.inventory.push(item);progression.loadouts[mode].weapon=item.id;}
 const shots:EvaluationShot[]=[], hits:unknown[]=[], contacts:{phase:string;point:number[];normal:number[];surface?:string;target:number;at:number}[]=[];
-const game=new Game(document.querySelector<HTMLElement>('#app')!,{initialProgression:progression,saveKey:'dust-steel.ice.prototype.v1',evaluationDriver:true,manualEvaluation:true,autoEncounters:false,trainingTargets:false,presentation:'legacy',onEvaluationShot:shot=>shots.push(structuredClone(shot))});
+const game=new Game(document.querySelector<HTMLElement>('#app')!,{initialProgression:progression,saveKey:'dust-steel.ice.plates.v1',evaluationDriver:true,manualEvaluation:true,autoEncounters:false,trainingTargets:false,presentation:'legacy',onEvaluationShot:shot=>shots.push(structuredClone(shot))});
 const g=game as unknown as Bridge;
 g.renderer.setPixelRatio(1);g.renderer.setSize(innerWidth,innerHeight);g.comicRenderer.resize(innerWidth,innerHeight,1);
 const perf=new QualityPerformance(g.renderer);
@@ -44,15 +44,19 @@ let layer:ElementalPresentation & {ice?:IceResponse}, targets:Target[]=[], probe
 let vantage:THREE.Mesh|undefined,vantageBounds:Bridge['world']['traversalColliders'][number]|undefined;
 let sceneCase:SceneCase='crowd-rifle', surfaceCase:SurfaceCase='raised', bench=false, benchFrame=0, frozen=true;
 let handsOn=false;
+let benchmarkResizes=0,benchmarkHidden=0;
+function benchmarkViewport(){g.renderer.setPixelRatio(1);g.renderer.setSize(1440,900);g.camera.aspect=1440/900;g.camera.updateProjectionMatrix();g.comicRenderer.resize(1440,900,1);}
+window.addEventListener('resize',()=>{if(busy){benchmarkResizes++;benchmarkViewport();}});
+document.addEventListener('visibilitychange',()=>{if(busy&&document.visibilityState!=='visible')benchmarkHidden++;});
 const simulationCosts:number[]=[], peaks={plates:0,flakes:0,rimes:0,physicalVoices:0,elementalVoices:0};
 let pendingSurface:{phase:'launch'|'wait'|'onset'|'settled';frame:number;requestAt:number;case:SurfaceCase}|undefined;
 const errors:string[]=[], surfaceResults:unknown[]=[], performanceResults:unknown[]=[];
 const humanResults:unknown[]=[];let pendingHuman:{phase:'launch'|'wait'|'peak';frame:number}|undefined;
 window.addEventListener('error',event=>errors.push(event.message));
 window.addEventListener('unhandledrejection',event=>errors.push(String(event.reason)));
-const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>ICE / B + A / FINAL VERIFICATION</strong><p>Actual Game · intact human targets · live sound</p>
+const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHTML=`<strong>ICE / LAYERED PLATE REVIEW</strong><p>Actual Game · unchanged sizing/counts · live sound</p>
 <label for="human-target">Human target</label><select id="human-target"><option value="cloth">Clothed human</option><option value="armor">Armored human</option></select>
-<label for="human-version">Ice presentation</label><select id="human-version"><option value="after">B plates + A rime</option><option value="before">Previous ice pass</option></select>
+<label for="human-version">Ice presentation</label><select id="human-version"><option value="after">Layered plates / pale edges</option><option value="before">Previous plates / cyan material</option></select>
 <label for="human-delivery">Delivery</label><select id="human-delivery"><option value="sticky">Sticky / delayed release</option><option value="bullet">Rifle / compact</option><option value="scatter">Scatter</option><option value="beam">Beam</option><option value="slug">Slug</option><option value="rocket">Rocket</option></select>
 <label for="human-mode">Shooter</label><select id="human-mode"><option value="pilot">Pilot</option><option value="mech">Mech</option></select>
 <button id="human-shot">Fire human snapshot</button><button id="human-aftermath">Show frost aftermath</button><button id="human-live">Play human scene with sound</button><button id="human-control">Take control / move and fire</button>
@@ -61,7 +65,7 @@ const ui=document.createElement('aside');ui.className='signoff-panel';ui.innerHT
 <label>Performance scene<select id="perf-scene"><option value="crowd-rifle">Six humans / rifle</option><option value="crowd-sticky">Six humans / sticky</option><option value="crowd-and-surfaces">Six humans + raised surface / sticky</option></select></label>
 <button id="perf-run">Run matched comparison with sound</button><button id="crowd-live">Play crowded scene with sound</button>
 <button id="record-start">Record live gameplay with sound</button><button id="record-stop" disabled>Stop recording</button><a id="record-download" hidden download="ice-prototype.webm">Download gameplay recording</a>
-<output id="signoff-state">Ready · before = current elemental pass · after = B plates + A rime</output><details><summary>Live verification state</summary><pre id="live-diagnostics">{}</pre></details><details><summary>Raw verification results</summary><pre id="signoff-results">{}</pre></details>`;
+<output id="signoff-state">Ready · previous plate-rime vs arrangement/material pass</output><details><summary>Live verification state</summary><pre id="live-diagnostics">{}</pre></details><details><summary>Raw verification results</summary><pre id="signoff-results">{}</pre></details>`;
 document.body.append(ui);
 const caption=document.createElement('div');caption.className='signoff-caption';document.body.append(caption);
 function state(text:string){document.querySelector('#signoff-state')!.textContent=text;}
@@ -76,7 +80,7 @@ function standOnPlatform(x:number,z:number){
 function response(old:boolean){
  game.setPresentationMode('legacy');before=old;
  g.presentation.setElementalFactory((scene,camera)=>{
-  layer=old?new ElementalPresentation(scene,camera,{corrosiveAB:true}):new IcePresentation(scene,camera);
+  layer=new IcePresentation(scene,camera,{plateStyle:old?'previous':'layered',variationSeed:37391});
   const impact=layer.impact.bind(layer);layer.impact=(event:BallisticPresentationImpact)=>{contacts.push({phase:event.phase,point:event.point.toArray(),normal:event.normal.toArray(),surface:event.hitSurface?.name,target:targets.findIndex(t=>t.mesh===event.target),at:g.time});impact(event);};
   return layer;
  });
@@ -119,7 +123,7 @@ function snapshot(){return{time:g.time,mode:g.mode,body:{...g.bodies[g.mode]},sh
 function humanFixture(){
  const delivery=(document.querySelector('#human-delivery')as HTMLSelectElement).value as ProjectileType,mode=(document.querySelector('#human-mode')as HTMLSelectElement).value as Mode,old=(document.querySelector('#human-version')as HTMLSelectElement).value==='before',armored=(document.querySelector('#human-target')as HTMLSelectElement).value==='armor';
  setup(old,delivery,2,mode);const target=targets[armored?1:0];g.camera.position.set(target.mesh.position.x,mode==='pilot'?1.8:4.4,4.2);aim(target.mesh.position.clone().add(new THREE.Vector3(0,1.55,0)));game.driveEvaluation({fire:false,yaw:g.yaw,pitch:g.pitch});game.stepEvaluation(1/240);
- caption.innerHTML=`ICE / ${old?'PREVIOUS PASS':'B PLATES + A RIME'}<span>${armored?'Armored human':'Clothed human'} · ${delivery} · ${mode} · actual Game / intact characters</span>`;return{delivery,mode,armored,old};
+ caption.innerHTML=`ICE / ${old?'PREVIOUS PLATES':'LAYERED PLATES'}<span>${armored?'Armored human':'Clothed human'} · ${delivery} · ${mode} · actual Game / intact characters</span>`;return{delivery,mode,armored,old};
 }
 function humanAudit(stage:string){const audit={stage,selection:{target:(document.querySelector('#human-target')as HTMLSelectElement).value,version:(document.querySelector('#human-version')as HTMLSelectElement).value,delivery:(document.querySelector('#human-delivery')as HTMLSelectElement).value,mode:g.mode},events:layer.ice?.events??[],snapshot:snapshot()};humanResults.push(structuredClone(audit));publish();return audit;}
 async function humanShot(){humanFixture();await unlock();pendingHuman={phase:'launch',frame:0};frozen=false;state('Firing real human contact…');}
@@ -155,7 +159,7 @@ function settleSurface(){for(let i=0;i<48;i++)shotStep(false);const result={stag
 function crowdedFixture(old:boolean,scene:SceneCase){
  setup(old,scene==='crowd-rifle'?'bullet':'sticky');
  if(scene==='crowd-and-surfaces'){solid('signoff-benchmark-raised-top',[3,.45,2.0],[-1.7,.9,1.25]);standOnPlatform(-1.8,5.4);}
- caption.innerHTML=`${scene.toUpperCase()} / ${old?'BEFORE / EXISTING ICE':'B PLATES + A RIME'}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
+ caption.innerHTML=`${scene.toUpperCase()} / ${old?'PREVIOUS PLATES':'LAYERED PLATES'}<span>Six clothed / armored humans · standard cadence and reload · live sound</span>`;
 }
 function benchmarkAim(frame:number){
  const slot=Math.floor(frame/90)%6;
@@ -167,9 +171,11 @@ function collectPeak(){const d=layer.ice?.diagnostics??{plates:0,flakes:0,rimes:
 function normalized(s:ReturnType<typeof snapshot>){return{time:s.time,body:s.body,shots:s.shots,hits:s.hits,targets:s.targets,contacts:s.contacts};}
 async function compare(){
  if(busy)return;busy=true;performanceResults.length=0;sceneCase=(document.querySelector('#perf-scene') as HTMLSelectElement).value as SceneCase;
+ benchmarkResizes=0;benchmarkHidden=document.visibilityState==='visible'?0:1;
  const runs:unknown[]=[];
  try{
   for(const [label,old] of [['before',true],['current',false],['before-repeat',true]] as const){
+   benchmarkViewport();
    crowdedFixture(old,sceneCase);await unlock();benchFrame=0;simulationCosts.length=0;for(const key of Object.keys(peaks) as (keyof typeof peaks)[])peaks[key]=0;
    state(`${sceneCase} / ${label}: 120 warm-up + 720 measured frames · sound on · capture off`);
    const promise=perf.measure(label,720,120);bench=true;frozen=false;const started=performance.now(),cost=await promise;bench=false;frozen=true;
@@ -178,8 +184,8 @@ async function compare(){
   const typed=runs as {label:string;snapshot:ReturnType<typeof snapshot>}[];
   const equal=typed.every(r=>JSON.stringify(normalized(r.snapshot))===JSON.stringify(normalized(typed[0].snapshot)));
   const targetsHit=new Set((typed[1].snapshot.hits as {target:number}[]).map(h=>h.target).filter(i=>i>=0)).size;
-  const result={scene:sceneCase,runs,combatEqual:equal,targetsHit,protocol:{warmup:120,frames:720,simulationStep:1/60,sound:true,recording:false,visibility:document.visibilityState}};
-  performanceResults.push(result);publish();state(`${equal&&targetsHit>=3?'PASS':'FAIL'} / ${sceneCase}: three matched runs complete · ${targetsHit} targets hit · combat ${equal?'identical':'DIFFERENT'}`);
+  const result={scene:sceneCase,runs,combatEqual:equal,targetsHit,protocol:{warmup:120,frames:720,simulationStep:1/60,sound:true,recording:false,visibility:document.visibilityState,benchmarkResizes,benchmarkHidden}};
+  performanceResults.push(result);publish();state(`${benchmarkResizes||benchmarkHidden?'INVALID / window changed':equal&&targetsHit>=3?'PASS':'FAIL'} / ${sceneCase}: three matched runs complete · ${targetsHit} targets hit · combat ${equal?'identical':'DIFFERENT'}`);
  }finally{busy=false;bench=false;frozen=true;}
 }
 let liveScene:'surface'|'crowd'|'human'|undefined,liveFrame=0;
@@ -228,6 +234,6 @@ g.comicRenderer.render=()=>{
 };
 g.start(false);surfaceFixture('raised');publish();
 const gl=g.renderer.getContext(),ext=gl.getExtension('WEBGL_debug_renderer_info');
-const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:'existing-ice',current:'plate-rime-prototype',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
+const metadata={userAgent:navigator.userAgent,renderer:ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),viewport:[innerWidth,innerHeight],dpr:g.renderer.getPixelRatio(),before:'previous-plate-rime',current:'layered-plates',entry:'Actual Game evaluation driver / isolated review save / raised-health human fixtures'};
 const meta=document.createElement('script');meta.type='application/json';meta.id='signoff-metadata';meta.textContent=JSON.stringify(metadata);document.body.append(meta);
 window.addEventListener('pagehide',()=>perf.dispose());game.run();
