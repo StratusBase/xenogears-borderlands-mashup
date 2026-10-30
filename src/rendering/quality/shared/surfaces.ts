@@ -36,11 +36,15 @@ export function targetSurfaceSpan(root?:THREE.Group):number{
 export interface SurfaceContact {source?:THREE.Mesh;surface:SurfaceKind;point:THREE.Vector3;normal:THREE.Vector3}
 /** Resolve presentation on the visible outer shell; the authoritative collision remains untouched. */
 export function nearestVisibleSurface(root:THREE.Group|undefined,point:THREE.Vector3,normal=new THREE.Vector3(0,0,1)):SurfaceContact{
+ if(root){root.updateWorldMatrix(true,true);return projectVisibleSurface(bodySurfaceSources(root),point,normal);}
+ const direction=normal.clone();if(!Number.isFinite(direction.lengthSq())||direction.lengthSq()<.001)direction.set(0,1,0);return{surface:'ground',point:point.clone(),normal:direction.normalize()};
+}
+/** Reuse the same triangle projection for an explicit world support without reparenting or retagging it. */
+export function projectVisibleSurface(sources:readonly THREE.Mesh[],point:THREE.Vector3,normal=new THREE.Vector3(0,0,1)):SurfaceContact{
  const direction=normal.clone();if(!Number.isFinite(direction.lengthSq())||direction.lengthSq()<.001)direction.set(0,1,0);direction.normalize();
- if(!root)return{surface:'ground',point:point.clone(),normal:direction};
  let source:THREE.Mesh|undefined,best=Infinity;const box=new THREE.Box3(),closest=new THREE.Vector3();
- root.updateWorldMatrix(true,true);
- const sources=bodySurfaceSources(root),ray=new THREE.Raycaster(point.clone().addScaledVector(direction,.75),direction.clone().negate(),0,1.5),hits:THREE.Intersection[]=[];
+ for(const mesh of sources)mesh.updateWorldMatrix(true,false);
+ const ray=new THREE.Raycaster(point.clone().addScaledVector(direction,.75),direction.clone().negate(),0,1.5),hits:THREE.Intersection[]=[];
  for(const mesh of sources){
   // Display meshes intentionally opt out of combat raycasts. Use the stock routine only for this local VFX projection.
   THREE.Mesh.prototype.raycast.call(mesh,ray,hits);

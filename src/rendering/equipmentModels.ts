@@ -212,6 +212,8 @@ function barrel(parent: THREE.Object3D, appearance: EquipmentAppearance, p: Pale
   }
   const muzzle = new THREE.Object3D();
   muzzle.name = 'weapon-muzzle';
+  // Standalone/preview assemblies have one muzzle; equipped rigs override with their authoritative list index.
+  muzzle.userData.equipmentMuzzleIndex = 0;
   if (appearance.element && appearance.element !== 'kinetic') muzzle.userData.equipmentElement = appearance.element;
   muzzle.userData.equipmentVariant = appearance.visualVariant ?? appearance.variant;
   muzzle.userData.equipmentProjectile = appearance.projectile ?? 'bullet';
@@ -340,6 +342,7 @@ function pilotWeapon(appearance: EquipmentAppearance, includeReloadHand = true):
   rig.boltHome = bolt.position.clone();
   rig.barrels.push(tube.assembly);
   rig.barrelHomes.push(tube.assembly.position.clone());
+  tube.muzzle.userData.equipmentMuzzleIndex = rig.muzzles.length;
   rig.muzzles.push(tube.muzzle);
   return rig;
 }
@@ -462,6 +465,7 @@ export function createEquipmentWeapon(mode: Mode, appearance: EquipmentAppearanc
       result.breechHomes.push(cannon.breech.position.clone());
       result.barrels.push(cannon.barrel);
       result.barrelHomes.push(cannon.barrel.position.clone());
+      cannon.muzzle.userData.equipmentMuzzleIndex = result.muzzles.length;
       result.muzzles.push(cannon.muzzle);
     }
   }

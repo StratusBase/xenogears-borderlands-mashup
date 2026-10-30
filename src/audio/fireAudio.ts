@@ -6,9 +6,13 @@ import type { ElementalAudioEvent,ElementalAudioOptions,ElementalVoice } from '.
 export function fireABCAudioRecipe(element:ElementType,event:ElementalAudioEvent,options:ElementalAudioOptions={}):readonly ElementalVoice[]{
  if(element!=='fire')return corrosiveABAudioRecipe(element,event,options);
  const v=(wave:ElementalVoice['wave'],frequency:number,endFrequency:number,duration:number,gain:number,delay=0,extra:Partial<ElementalVoice>={}):ElementalVoice=>({wave,frequency,endFrequency,duration,gain,delay,attack:.003,...extra});
+ const heavy=['sticky','rocket','orb','homing','cluster'].includes(options.delivery??'');
+ if(event==='equipment')return[v('noise',1000,420,.13,.014,0,{texture:'air',filter:'lowpass',attack:.035,endFilter:300})];
+ if(event==='shot')return[v('noise',3900,1700,.022,.085,0,{texture:'crackle',filter:'bandpass'}),v('noise',heavy?1050:1700,430,heavy?.32:.18,heavy?.10:.065,.012,{texture:'air',filter:'lowpass',attack:.018,endFilter:350}),v('noise',4200,1600,.024,.025,.09,{texture:'crackle',filter:'highpass'})];
+ if(event==='flight')return[v('noise',heavy?1300:2400,500,heavy?.23:.10,heavy?.041:.020,0,{texture:'air',filter:'bandpass',attack:.018,endFilter:450})];
  if(event==='impact'&&options.splash)return[v('noise',2300,800,.13,.043,0,{texture:'crackle',filter:'bandpass',endFilter:900}),v('noise',950,400,.18,.022,.025,{texture:'air',filter:'lowpass',attack:.012})];
  if(event==='impact'){
-  const broad=options.strength===1&&['sticky','rocket','orb','homing','lobber','splitter'].includes(options.delivery??'');
+  const broad=options.strength===1&&['sticky','rocket','orb','homing','cluster','lobber','splitter'].includes(options.delivery??'');
   return[v('noise',4200,1100,.025,.10,0,{texture:'crackle',filter:'bandpass'}),v('sine',broad?125:205,broad?34:61,broad?.20:.085,broad?.16:.10),
    v('noise',broad?1250:1800,500,broad?.40:.20,broad?.17:.11,.012,{texture:'air',filter:'lowpass',endFilter:380,attack:.015}),
    v('noise',2800,1100,broad?.46:.24,.075,.035,{texture:'crackle',filter:'bandpass',endFilter:850,attack:.015}),

@@ -82,16 +82,16 @@ export const fireVolumeFragment=/* glsl */`
 
 /** Flamelets use the same rising, curling turbulence as the main volume, rather than tapered strips. */
 export const fireParticleVertex=/* glsl */`
- attribute float fxAlpha,fxAge,fxSeed;uniform float kind;
- varying vec2 vUv;varying float vAlpha,vAge,vSeed;
+ attribute float fxAlpha,fxAge,fxSeed,fxSupported;attribute vec4 fxSupport;uniform float kind;
+ varying vec2 vUv;varying float vAlpha,vAge,vSeed,vSupported;varying vec4 vSupport;varying vec3 vWorld;
  void main(){vUv=uv;vAlpha=fxAlpha;vAge=fxAge;vSeed=fxSeed;vec3 p=position;
  if(kind>.5){p.y+=.5;float q=p.y;p.x+=sin(q*7.-fxAge*14.+fxSeed*13.)*.18*q*q;p.z+=cos(q*5.-fxAge*9.+fxSeed*7.)*.12*q*q;if(kind<1.5)p.y-=.15;}
- gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(p,1.);}`;
+ vSupport=fxSupport;vSupported=fxSupported;vec4 world=modelMatrix*instanceMatrix*vec4(p,1.);vWorld=world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
 export const fireParticleFragment=/* glsl */`
- uniform float kind,hybrid;varying vec2 vUv;varying float vAlpha,vAge,vSeed;
+ uniform float kind,hybrid,cel;varying vec2 vUv;varying float vAlpha,vAge,vSeed,vSupported;varying vec4 vSupport;varying vec3 vWorld;
  float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
  float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
- void main(){if(vAlpha<.012)discard;
+ void main(){if(vAlpha<.012||vSupported>.5&&dot(vSupport.xyz,vWorld)+vSupport.w<.003)discard;
  if(kind<.5){vec3 color=hybrid>.5?mix(vec3(1.,.25,.008),vec3(1.,.95,.54),max(0.,1.-vAge*3.)):mix(vec3(.90,.055,.001),vec3(1.5,.65,.04),max(0.,1.-vAge*2.));gl_FragColor=vec4(color,vAlpha);return;}
  vec2 p=vec2(vUv.x*2.-1.,vUv.y);float q=p.y;
  vec2 adv=vec2(p.x*3.+vSeed*17.,q*6.-vAge*11.);
@@ -104,6 +104,8 @@ export const fireParticleFragment=/* glsl */`
  float foot=kind>1.5?smoothstep(0.,.08,q):smoothstep(root-.035,root+.060,q);
  float a=smoothstep(.0,.18,field)*foot*(1.-smoothstep(.86,1.,q))*vAlpha;
  if(kind>1.5){a*=sin(q*3.14159)*.13;gl_FragColor=vec4(.13,.11,.10,a);return;}
+ if(cel>.5){float contour=smoothstep(.045,.085,field);a=contour*foot*(1.-smoothstep(.86,1.,q))*vAlpha;}
  if(a<.02)discard;float heat=clamp(field*.9+(1.-q)*.25,0.,1.);
- vec3 c=mix(vec3(.9,.025,.001),vec3(1.7,.34,.005),smoothstep(.10,.38,heat));c=mix(c,vec3(2.,.95,.08),smoothstep(.45,.8,heat));gl_FragColor=vec4(c,a*.86);
+ vec3 c=mix(vec3(.9,.025,.001),vec3(1.7,.34,.005),smoothstep(.10,.38,heat));c=mix(c,vec3(2.,.95,.08),smoothstep(.45,.8,heat));if(cel>.5){c=heat<.30?vec3(.95,.065,.001):heat<.56?vec3(1.,.33,.012):vec3(1.,.72,.13);}
+ gl_FragColor=vec4(c,a*.86);
  }`;
