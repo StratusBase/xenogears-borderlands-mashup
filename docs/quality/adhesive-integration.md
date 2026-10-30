@@ -4,6 +4,8 @@ The approved direction is [Tack Resin](adhesive-design.md). The playable prototy
 
 The subsequent [honey-material pass](adhesive-honey-material.md) adds `material:'honey'|'previous'` to the adapter options; honey is the current opt-in default. Its separate build/report preserves the original verification receipt below. It compares against the previous Tack Resin material, with identical animation and audio in both modes.
 
+The [varied-stain pass](adhesive-stains.md) adds `stains:'varied'|'fixed'`. The opt-in default now varies the lingering footprint; `material:'honey',stains:'fixed'` retains the previous honey coat for same-build comparison. Honey material, combat and burst behavior remain unchanged.
+
 ## Review entry
 
 `npx vite --host 127.0.0.1 --port 5186 --strictPort` serves `/adhesive-lab.html`. For a frozen comparison, build with `npx vite build --config vite.adhesive.config.ts`, then preview that config on a free port. The review build contains both prior adhesive and Tack Resin, plus transformed-source SHA-256 provenance. The lab locks the renderer/camera to 1440 × 900, DPR 1.
